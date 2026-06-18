@@ -1,0 +1,75 @@
+name: bbd daemon — build, sign, notarize
+
+# Phase 7: produce a headless, notarized daemon binary (no Electron). The
+# electron-adapter boundary (lint-enforced from Phase 0) makes this a packaging
+# job, not a rewrite. NOTE: notarization requires the signing secrets below; the
+# job is otherwise a normal build.
+
+on:
+  push:
+    tags: ["bbd-v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22  # LTS target (better-sqlite3 + native addons build cleanly)
+
+      - name: Install workspace deps
+        run: npm install --workspaces --include-workspace-root
+
+      - name: Typecheck + test bbd
+        working-directory: packages/bbd
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Build the daemon (bundle + Node SEA)
+        working-directory: packages/bbd
+        run: ./scripts/build-daemon.sh
+
+      - name: Import signing certificate
+        if: ${{ secrets.MACOS_CERT_P12 != '' }}
+        env:
+          CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          echo "$CERT_P12" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+      - name: Codesign (hardened runtime)
+        if: ${{ secrets.MACOS_CERT_P12 != '' }}
+        env:
+          SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: |
+          codesign --force --options runtime --timestamp \
+            --entitlements packages/bbd/scripts/entitlements.plist \
+            --sign "$SIGN_IDENTITY" packages/bbd/dist/bbd
+
+      - name: Notarize + staple
+        if: ${{ secrets.MACOS_CERT_P12 != '' }}
+        env:
+          AC_API_KEY_ID: ${{ secrets.AC_API_KEY_ID }}
+          AC_API_ISSUER: ${{ secrets.AC_API_ISSUER }}
+          AC_API_KEY: ${{ secrets.AC_API_KEY }}
+        run: |
+          echo "$AC_API_KEY" > /tmp/AuthKey.p8
+          ditto -c -k --keepParent packages/bbd/dist/bbd /tmp/bbd.zip
+          xcrun notarytool submit /tmp/bbd.zip \
+            --key /tmp/AuthKey.p8 --key-id "$AC_API_KEY_ID" --issuer "$AC_API_ISSUER" --wait
+          xcrun stapler staple packages/bbd/dist/bbd
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bbd-daemon
+          path: packages/bbd/dist/bbd
