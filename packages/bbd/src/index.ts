@@ -31,3 +31,12 @@ export * from "./notifications/UnifiedPushProvider";
 export { FcmProvider, type FcmTransport } from "./notifications/FcmProvider";
 export { WebPushProvider, type WebPushTransport } from "./notifications/WebPushProvider";
 export * from "./notifications/buildNotificationRegistry";
+
+// Phase 3 — read path (read-only chat.db, schema introspection, durable cursor)
+export * from "./data/imessage/appleConstants";
+export * from "./data/imessage/schema";
+export * from "./data/imessage/connection";
+export * from "./data/imessage/cursor";
+export * from "./data/imessage/MessageReader";
+export * from "./data/imessage/watcher";
+export * from "./data/imessage/IMessageListener";
