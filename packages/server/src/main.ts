@@ -1,230 +1,156 @@
-import "reflect-metadata";
-import "@server/env";
-
-import { app, nativeTheme } from "electron";
-import process from "process";
+/**
+ * Electron shell — thin host for the bbd backend.
+ *
+ * The strangler migration's end state: instead of booting the `Server()` god-object,
+ * this forks the headless `@bluebubbles/bbd` daemon as a child (`utilityProcess`),
+ * lets it own all backend logic (the unified API, read/write paths, scheduler,
+ * webhooks) and serve the bundled UI, then opens a window pointed at that local
+ * server. The renderer talks to the daemon over HTTP/Socket exactly as a phone or a
+ * browser would — so the eventual fully-headless extraction is just "stop forking,
+ * start as a LaunchAgent."
+ */
+import { app, BrowserWindow, Tray, Menu, nativeImage, shell, utilityProcess, type UtilityProcess } from "electron";
+import path from "path";
 import fs from "fs";
-import yaml from "js-yaml";
-import { FileSystem } from "@server/fileSystem";
-import { ParseArguments } from "@server/helpers/argParser";
 
-import { Server } from "@server";
-import { isEmpty, safeTrim } from "@server/helpers/utils";
-import { AppWindow } from "@windows/AppWindow";
-import { AppTray } from "@trays/AppTray";
-import { getLogger } from "@server/lib/logging/Loggable";
-
-app.commandLine.appendSwitch("in-process-gpu");
-
-// Patch in original user data directory
+// Preserve the historical userData directory (config.db et al. live here).
 app.setPath("userData", app.getPath("userData").replace("@bluebubbles/server", "bluebubbles-server"));
 
-// Load the config file
-let cfg = {};
-if (fs.existsSync(FileSystem.cfgFile)) {
-    cfg = yaml.load(fs.readFileSync(FileSystem.cfgFile, "utf8"));
+let backend: UtilityProcess | null = null;
+let win: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
+
+const backendEntry = (): string =>
+    app.isPackaged
+        ? path.join(process.resourcesPath, "bbd", "daemon-entry.cjs")
+        : path.resolve(__dirname, "../../bbd/dist/daemon-entry.cjs");
+
+/** The built UI bundle (index.html + static) sits next to this main bundle in dist/. */
+const uiDir = (): string => __dirname;
+
+function startBackend(): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+        const entry = backendEntry();
+        if (!fs.existsSync(entry)) {
+            reject(new Error(`bbd backend not found at ${entry} — run "npm run build" in packages/bbd`));
+            return;
+        }
+        backend = utilityProcess.fork(entry, [], {
+            stdio: "inherit",
+            env: {
+                ...process.env,
+                BBD_USER_DATA: app.getPath("userData"),
+                BBD_UI_DIR: uiDir(),
+                BBD_MESSAGES_DIR: path.join(app.getPath("home"), "Library", "Messages")
+            }
+        });
+
+        let settled = false;
+        backend.on("message", (msg: { type?: string; port?: number; message?: string }) => {
+            if (settled) return;
+            if (msg?.type === "ready" && typeof msg.port === "number") {
+                settled = true;
+                resolve(msg.port);
+            } else if (msg?.type === "error") {
+                settled = true;
+                reject(new Error(msg.message ?? "backend failed to start"));
+            }
+        });
+        backend.on("exit", code => {
+            backend = null;
+            if (!settled) {
+                settled = true;
+                reject(new Error(`bbd backend exited with code ${code} before becoming ready`));
+            } else if (!isQuitting) {
+                // Unexpected crash after startup — bring the app down so launchd/the user restarts it.
+                app.quit();
+            }
+        });
+    });
 }
 
-// Parse the CLI args and marge with config args
-const args = ParseArguments(process.argv);
-const parsedArgs: Record<string, any> = { ...cfg, ...args };
-let isHandlingExit = false;
+function createWindow(port: number): void {
+    win = new BrowserWindow({
+        width: 1100,
+        height: 800,
+        minWidth: 900,
+        minHeight: 600,
+        title: "BlueBubbles",
+        webPreferences: { contextIsolation: true, nodeIntegration: false }
+    });
+    void win.loadURL(`http://localhost:${port}`);
+    win.on("closed", () => {
+        win = null;
+    });
+}
 
-// Initialize the server
-Server(parsedArgs, null);
-const log = getLogger("Main");
+function createTray(port: number): void {
+    let image = nativeImage.createFromPath(path.join(uiDir(), "logo192.png"));
+    if (!image.isEmpty()) image = image.resize({ width: 18, height: 18 });
+    try {
+        tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image);
+    } catch {
+        return; // a tray is a nicety, not a requirement
+    }
+    tray.setToolTip("BlueBubbles");
+    tray.setContextMenu(
+        Menu.buildFromTemplate([
+            {
+                label: "Open BlueBubbles",
+                click: () => {
+                    if (win) win.show();
+                    else createWindow(port);
+                }
+            },
+            { label: "Open in Browser", click: () => void shell.openExternal(`http://localhost:${port}`) },
+            { type: "separator" },
+            { label: "Quit", click: () => app.quit() }
+        ])
+    );
+}
 
-// Only 1 instance is allowed
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-    console.error("BlueBubbles is already running! Quiting...");
+const stopBackend = (): void => {
+    if (backend) {
+        backend.kill();
+        backend = null;
+    }
+};
+
+// Single-instance: focus the existing window instead of launching a second backend.
+if (!app.requestSingleInstanceLock()) {
     app.exit(0);
 } else {
-    app.on("second-instance", (_, __, ___) => {
-        if (Server().window) {
-            if (Server().window.isMinimized()) Server().window.restore();
-            Server().window.focus();
+    app.on("second-instance", () => {
+        if (win) {
+            if (win.isMinimized()) win.restore();
+            win.focus();
         }
     });
 
-    // Start the Server() when the app is ready
-    app.whenReady().then(() => {
-        Server().start();
+    app.whenReady().then(async () => {
+        try {
+            const port = await startBackend();
+            createWindow(port);
+            createTray(port);
+            app.on("activate", () => {
+                if (win == null) createWindow(port);
+            });
+        } catch (err) {
+            console.error("Failed to start BlueBubbles backend:", err);
+            app.exit(1);
+        }
     });
 }
 
-process.on("uncaughtException", error => {
-    // Print the exception
-    log.error(`Uncaught Exception: ${error.message}`);
-    if (error?.stack) log.debug(`Uncaught Exception StackTrace: ${error?.stack}`);
-});
-
-const handleExit = async (event: any = null, { exit = true } = {}) => {
-    if (event) event.preventDefault();
-    console.trace("handleExit");
-    if (isHandlingExit) return;
-    isHandlingExit = true;
-
-    // Safely close the services
-    if (Server() && !Server().isStopping) {
-        await Server().stopServices();
-    }
-
-    if (exit) {
-        app.exit(0);
-    }
-};
-
-const createApp = () => {
-    AppWindow.getInstance().setArguments(parsedArgs).build();
-    AppTray.getInstance().setArguments(parsedArgs).setExitHandler(handleExit).build();
-};
-
-Server().on("update-available", _ => {
-    AppTray.getInstance().build();
-});
-
-Server().on("ready", () => {
-    createApp();
-});
-
-app.on("ready", () => {
-    nativeTheme.on("updated", () => {
-        AppTray.getInstance().build();
-    });
-});
-
-app.on("activate", () => {
-    if (Server().window == null && Server().repo) {
-        AppWindow.getInstance().build();
-    }
+app.on("before-quit", () => {
+    isQuitting = true;
+    stopBackend();
 });
 
 app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") {
-        handleExit();
-    }
+    if (process.platform !== "darwin") app.quit();
 });
 
-/**
- * Basically, we want to gracefully exist whenever there is a Ctrl + C or other exit command
- */
-app.on("before-quit", event => handleExit(event));
-
-process.on("SIGTERM", async () => {
-    log.debug("Received SIGTERM, exiting...");
-    await handleExit(null, { exit: false });
-});
-process.on("SIGINT", async () => {
-    log.debug("Received SIGINT, exiting...");
-    await handleExit(null, { exit: false });
-});
-
-/**
- * All code below this point has to do with the command-line functionality.
- * This is when you run the app via terminal, we want to give users the ability
- * to still be able to interact with the app.
- */
-
-const quickStrConvert = (val: string): string | number | boolean => {
-    if (val.toLowerCase() === "true") return true;
-    if (val.toLowerCase() === "false") return false;
-    return val;
-};
-
-const handleSet = async (parts: string[]): Promise<void> => {
-    const configKey = parts.length > 1 ? parts[1] : null;
-    const configValue = parts.length > 2 ? parts[2] : null;
-    if (!configKey || !configValue) {
-        log.info("Empty config key/value. Ignoring...");
-        return;
-    }
-
-    if (!Server().repo.hasConfig(configKey)) {
-        log.info(`Configuration, '${configKey}' does not exist. Ignoring...`);
-        return;
-    }
-
-    try {
-        await Server().repo.setConfig(configKey, quickStrConvert(configValue));
-        log.info(`Successfully set config item, '${configKey}' to, '${quickStrConvert(configValue)}'`);
-    } catch (ex: any) {
-        log.error(`Failed set config item, '${configKey}'\n${ex}`);
-    }
-};
-
-const handleShow = async (parts: string[]): Promise<void> => {
-    const configKey = parts.length > 1 ? parts[1] : null;
-    if (!configKey) {
-        log.info("Empty config key. Ignoring...");
-        return;
-    }
-
-    if (!Server().repo.hasConfig(configKey)) {
-        log.info(`Configuration, '${configKey}' does not exist. Ignoring...`);
-        return;
-    }
-
-    try {
-        const value = await Server().repo.getConfig(configKey);
-        log.info(`${configKey} -> ${value}`);
-    } catch (ex: any) {
-        log.error(`Failed set config item, '${configKey}'\n${ex}`);
-    }
-};
-
-const showHelp = () => {
-    const help = `[================================== Help Menu ==================================]\n
-Available Commands:
-    - help:             Show the help menu
-    - restart:          Relaunch/Restart the app
-    - set:              Set configuration item -> \`set <config item> <value>\`
-                        Available configuration items:
-                            -> tutorial_is_done: boolean
-                            -> socket_port: number
-                            -> server_address: string
-                            -> ngrok_key: string
-                            -> password: string
-                            -> auto_caffeinate: boolean
-                            -> auto_start: boolean
-                            -> enable_ngrok: boolean
-                            -> encrypt_coms: boolean
-                            -> hide_dock_icon: boolean
-                            -> last_fcm_restart: number
-                            -> start_via_terminal: boolean
-    - show:             Show the current configuration for an item -> \`show <config item>\`
-\n[===============================================================================]`;
-
-    console.log(help);
-};
-
-process.stdin.on("data", chunk => {
-    const line = safeTrim(chunk.toString());
-    if (!Server() || isEmpty(line)) return;
-    log.debug(`Handling STDIN: ${line}`);
-
-    // Handle the standard input
-    const parts = chunk ? line.split(" ") : [];
-    if (isEmpty(parts)) {
-        log.debug("Invalid command");
-        return;
-    }
-
-    switch (parts[0].toLowerCase()) {
-        case "help":
-            showHelp();
-            break;
-        case "set":
-            handleSet(parts);
-            break;
-        case "show":
-            handleShow(parts);
-            break;
-        case "restart":
-        case "relaunch":
-            Server().relaunch();
-            break;
-        default:
-            log.debug(`Unhandled command, '${parts[0]}'`);
-    }
-});
+process.on("SIGTERM", () => app.quit());
+process.on("SIGINT", () => app.quit());

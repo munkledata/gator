@@ -9,6 +9,13 @@ module.exports = {
         "buildResources": "appResources"
     },
     "asar": true,
+    // Native bindings must live OUTSIDE the asar (dlopen needs a real path).
+    // smartUnpack catches node-mac-*, but better-sqlite3 takes the prebuilt-install
+    // path and is missed — unpack all .node plus the whole better-sqlite3 module.
+    "asarUnpack": [
+        "**/*.node",
+        "**/node_modules/better-sqlite3/**"
+    ],
     "extraResources": [
         "appResources"
     ],

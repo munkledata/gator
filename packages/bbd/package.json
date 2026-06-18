@@ -1,30 +1,34 @@
 {
-    "name": "@bluebubbles/bbd",
-    "version": "0.0.0",
-    "private": true,
-    "type": "module",
-    "description": "bbd — the headless BlueBubbles daemon. Phase 0 scaffold: core primitives (DI, event bus, logger, lifecycle, Result) and the host-platform boundary that the legacy server is incrementally strangled into.",
-    "main": "./src/index.ts",
-    "exports": {
-        ".": "./src/index.ts"
-    },
-    "scripts": {
-        "typecheck": "tsc --noEmit",
-        "test": "tsx --test test/**/*.test.ts",
-        "lint": "eslint src test"
-    },
-    "dependencies": {
-        "@bluebubbles/protocol": "*",
-        "better-sqlite3": "^12.0.0",
-        "drizzle-orm": "^0.33.0",
-        "node-mac-contacts": "^1.7.2",
-        "zod": "^3.23.0"
-    },
-    "devDependencies": {
-        "@types/better-sqlite3": "^7.6.0",
-        "@types/node": "^20.0.0",
-        "tsx": "^4.0.0",
-        "typescript": "^5.5.0"
-    },
-    "//note-pino": "The production Logger impl wraps pino, kept OUT of the core so logging stays an injectable abstraction (this is what breaks the legacy Logger->Server circular dependency). See src/core/logger.ts."
+  "name": "@bluebubbles/bbd",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "bbd — the headless BlueBubbles daemon. Phase 0 scaffold: core primitives (DI, event bus, logger, lifecycle, Result) and the host-platform boundary that the legacy server is incrementally strangled into.",
+  "main": "./dist/main.cjs",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts",
+    "lint": "eslint src test",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@bluebubbles/protocol": "*",
+    "better-sqlite3": "^12.0.0",
+    "drizzle-orm": "^0.33.0",
+    "node-mac-contacts": "^1.7.2",
+    "zod": "^3.23.0",
+    "fastify": "^5.0.0",
+    "socket.io": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0",
+    "esbuild": "^0.24.0"
+  },
+  "//note-pino": "The production Logger impl wraps pino, kept OUT of the core so logging stays an injectable abstraction (this is what breaks the legacy Logger->Server circular dependency). See src/core/logger.ts."
 }

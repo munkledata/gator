@@ -106,3 +106,7 @@ export * from "./api/operations/adminOperations";
 // Phase 7 — de-Electron (headless daemon + launchd LaunchAgent)
 export * from "./host-platform/launchd";
 export * from "./bootstrap/daemon";
+
+// Embeddable backend (Electron shell forks this; headless main() calls it too)
+export * from "./backend";
+export * from "./api/staticUi";
