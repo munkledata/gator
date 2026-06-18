@@ -83,6 +83,12 @@ export * from "./findmy/FindMyDevicesReader";
 export * from "./api/operations/facetimeOperations";
 export * from "./api/operations/findmyOperations";
 
+// Scheduled messages
+export * from "./scheduled/ScheduledMessage";
+export * from "./scheduled/DrizzleScheduledMessageStore";
+export * from "./scheduled/Scheduler";
+export * from "./api/operations/scheduledOperations";
+
 // Phase 6 — networking + admin API
 export * from "./networking/TunnelProvider";
 export * from "./networking/webhook";

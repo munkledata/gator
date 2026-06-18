@@ -36,6 +36,9 @@ import { FindMyService } from "./findmy/FindMyService";
 import { FindMyDevicesReader } from "./findmy/FindMyDevicesReader";
 import { buildFaceTimeOperations } from "./api/operations/facetimeOperations";
 import { buildFindMyOperations } from "./api/operations/findmyOperations";
+import { DrizzleScheduledMessageStore } from "./scheduled/DrizzleScheduledMessageStore";
+import { Scheduler } from "./scheduled/Scheduler";
+import { buildScheduledOperations } from "./api/operations/scheduledOperations";
 import type { Service } from "./core/lifecycle";
 
 const VERSION = "2.0.0-bbd";
@@ -86,6 +89,11 @@ async function main(): Promise<void> {
             buildFindMyOperations({ findmy: new FindMyService(transport, logger), devices: new FindMyDevicesReader() })
         );
 
+    // Scheduled messages (persisted in the config DB) + the scheduler service.
+    const scheduledStore = new DrizzleScheduledMessageStore(path.join(host.userDataPath(), "config.db"));
+    registry.registerAll(buildScheduledOperations({ store: scheduledStore }));
+    const scheduler = new Scheduler(scheduledStore, sender, logger);
+
     const app = Fastify();
     let io: SocketServer | null = null;
 
@@ -111,7 +119,13 @@ async function main(): Promise<void> {
         stop: () => transport.stop()
     };
 
-    const daemon = new Daemon({ services: [transportService, httpService], hostPlatform: host, logger });
+    const schedulerService: Service = {
+        name: "scheduler",
+        start: () => scheduler.start(),
+        stop: () => scheduler.stop()
+    };
+
+    const daemon = new Daemon({ services: [transportService, httpService, schedulerService], hostPlatform: host, logger });
     await daemon.start();
 }
 

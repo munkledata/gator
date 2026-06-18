@@ -29,3 +29,14 @@ export const devicesTable = sqliteTable("devices", {
     createdAt: integer("created_at").notNull(),
     lastActiveAt: integer("last_active_at")
 });
+
+/** Scheduled (future-dated) messages — must survive restarts, hence persisted here. */
+export const scheduledMessagesTable = sqliteTable("scheduled_messages", {
+    id: text("id").primaryKey(),
+    chatGuid: text("chat_guid").notNull(),
+    text: text("text").notNull(),
+    scheduledFor: integer("scheduled_for").notNull(),
+    status: text("status", { enum: ["pending", "sent", "failed"] }).notNull(),
+    createdAt: integer("created_at").notNull(),
+    error: text("error")
+});
