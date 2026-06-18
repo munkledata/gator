@@ -33,6 +33,14 @@ test("track adopts a stoppable resource", async () => {
     assert.equal(stopped, true);
 });
 
+test("track calls exactly one teardown method (stop wins over close)", async () => {
+    const reg = new DisposableRegistry();
+    const calls: string[] = [];
+    reg.track({ stop: () => void calls.push("stop"), close: () => void calls.push("close") });
+    await reg.disposeAll();
+    assert.deepEqual(calls, ["stop"], "only stop() called, not both");
+});
+
 test("add after disposeAll throws", async () => {
     const reg = new DisposableRegistry();
     await reg.disposeAll();

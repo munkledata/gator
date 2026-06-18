@@ -64,7 +64,7 @@ import { getStartDelay } from "./utils/ConfigUtils";
 import { FindMyFriendsCache } from "./api/lib/findmy/FindMyFriendsCache";
 import { ScheduledService } from "./lib/ScheduledService";
 import { getLogger } from "./lib/logging/Loggable";
-import { LogBus } from "./lib/logging/LogBus";
+import { LogBus, formatLogLine } from "./lib/logging/LogBus";
 import { registerLogSideEffects } from "./lib/logging/registerLogSideEffects";
 import { MessageBus } from "./lib/messaging/MessageBus";
 import { registerMessageSinks } from "./lib/messaging/registerMessageSinks";
@@ -288,7 +288,7 @@ class BlueBubblesServer extends EventEmitter {
                 ServerLog.log(message);
         }
 
-        LogBus.emitRecord({ level, line: String(message), timestamp: Date.now() });
+        LogBus.emitRecord({ level, line: formatLogLine(message), timestamp: Date.now() });
     }
 
     setNotificationCount(count: number) {

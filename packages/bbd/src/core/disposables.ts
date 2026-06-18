@@ -46,7 +46,13 @@ export class DisposableRegistry {
 
     /** Adopt a resource exposing stop()/close()/dispose(); returns it for chaining. */
     track<T extends Stoppable>(resource: T): T {
-        this.add(() => resource.stop?.() ?? resource.close?.() ?? resource.dispose?.());
+        // Call exactly ONE teardown method. `??` would chain — a resource exposing both
+        // stop() and close() (each returning void) would get both called.
+        this.add(() => {
+            if (resource.stop) return resource.stop();
+            if (resource.close) return resource.close();
+            return resource.dispose?.();
+        });
         return resource;
     }
 

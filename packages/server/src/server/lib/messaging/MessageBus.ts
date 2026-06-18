@@ -24,10 +24,21 @@ export interface OutgoingEvent {
 export type OutgoingSink = (event: OutgoingEvent) => void | Promise<void>;
 
 class MessageBusImpl extends EventEmitter {
-    /** Dispatch to every sink, awaiting async sinks; one failing sink can't break the others. */
+    /**
+     * Dispatch to every sink IN ORDER (socket -> FCM -> webhook, the legacy order),
+     * awaiting each; one failing sink can't break the others. Sequential await
+     * preserves the legacy emitMessage ordering and its await-FCM-before-returning
+     * semantics.
+     */
     async dispatch(event: OutgoingEvent): Promise<void> {
         const sinks = this.listeners("event") as OutgoingSink[];
-        await Promise.allSettled(sinks.map(sink => Promise.resolve(sink(event))));
+        for (const sink of sinks) {
+            try {
+                await sink(event);
+            } catch {
+                // isolate: a failing sink must not prevent the rest from running
+            }
+        }
     }
 
     /** Register a sink. Returns an unsubscribe function. */
