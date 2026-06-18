@@ -64,6 +64,10 @@ import { getStartDelay } from "./utils/ConfigUtils";
 import { FindMyFriendsCache } from "./api/lib/findmy/FindMyFriendsCache";
 import { ScheduledService } from "./lib/ScheduledService";
 import { getLogger } from "./lib/logging/Loggable";
+import { LogBus } from "./lib/logging/LogBus";
+import { registerLogSideEffects } from "./lib/logging/registerLogSideEffects";
+import { MessageBus } from "./lib/messaging/MessageBus";
+import { registerMessageSinks } from "./lib/messaging/registerMessageSinks";
 import { IMessageListener } from "./databases/imessage/listeners/IMessageListener";
 import { ChatUpdatePoller } from "./databases/imessage/pollers/ChatChangePoller";
 import { IMessageCache } from "./databases/imessage/pollers";
@@ -266,33 +270,25 @@ class BlueBubblesServer extends EventEmitter {
      * @param type The log type
      */
     log(message: any, type?: LogLevel) {
-        switch (type) {
+        // Side effects (alerts, dock badge, UI "new-log" emit) are handled by
+        // subscribers to LogBus (see registerLogSideEffects) — this method no longer
+        // reaches into UI/alert state, which is what broke the Logger -> Server cycle.
+        const level = type === "error" || type === "warn" || type === "debug" ? type : "info";
+        switch (level) {
             case "error":
                 ServerLog.error(message);
-                AlertsInterface.create("error", message);
-                this.notificationCount += 1;
+                break;
+            case "warn":
+                ServerLog.warn(message);
                 break;
             case "debug":
                 ServerLog.debug(message);
                 break;
-            case "warn":
-                ServerLog.warn(message);
-                AlertsInterface.create("warn", message);
-                this.notificationCount += 1;
-                break;
-            case "info":
             default:
                 ServerLog.log(message);
         }
 
-        if (["error"].includes(type)) {
-            this.setNotificationCount(this.notificationCount);
-        }
-
-        this.emitToUI("new-log", {
-            message,
-            type: type ?? "log"
-        });
+        LogBus.emitRecord({ level, line: String(message), timestamp: Date.now() });
     }
 
     setNotificationCount(count: number) {
@@ -647,6 +643,13 @@ class BlueBubblesServer extends EventEmitter {
      * then starts all of the services required for the server
      */
     async start(): Promise<void> {
+        // Wire the cross-cutting subscribers before anything logs or emits:
+        //  - log side effects (alerts/badge/UI) subscribe to LogBus
+        //  - the Socket/FCM/webhook sinks subscribe to MessageBus
+        // Both are idempotent, so a restart re-entering start() is safe.
+        registerLogSideEffects();
+        registerMessageSinks();
+
         // Initialize server components (i.e. database, caches, listeners, etc.)
         await this.initServer();
         if (this.isRestarting) return;
@@ -1139,30 +1142,10 @@ class BlueBubblesServer extends EventEmitter {
         sendFcmMessage = true,
         sendSocket = true
     ) {
-        if (sendSocket) {
-            this.httpService?.socketServer.emit(type, data);
-        }
-
-        // Send notification to devices
-        try {
-            if (sendFcmMessage && FCMService.getApp()) {
-                const devices = await this.repo.devices().find();
-                if (isNotEmpty(devices)) {
-                    const notifData = JSON.stringify(data);
-                    await this.fcm?.sendNotification(
-                        devices.map(device => device.identifier),
-                        { type, data: notifData },
-                        priority
-                    );
-                }
-            }
-        } catch (ex: any) {
-            this.logger.debug("Failed to send FCM messages!");
-            this.logger.debug(ex);
-        }
-
-        // Dispatch the webhook (sometimes it's not initialized)
-        this.webhookService?.dispatch({ type, data });
+        // The three sinks (Socket.IO, FCM, webhook) are subscribers to MessageBus
+        // (see registerMessageSinks). dispatch() awaits them, preserving the legacy
+        // semantics where awaiting emitMessage waited for the FCM send.
+        await MessageBus.dispatch({ type, data, priority, sendFcm: sendFcmMessage, sendSocket });
     }
 
     private getTheme() {
