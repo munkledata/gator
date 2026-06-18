@@ -21,6 +21,8 @@ import { introspectSchema } from "./data/imessage/schema";
 import { ChatReader } from "./data/imessage/ChatReader";
 import { HandleReader } from "./data/imessage/HandleReader";
 import { AttachmentReader } from "./data/imessage/AttachmentReader";
+import { AttachmentStreamer } from "./data/imessage/AttachmentStreamer";
+import { mountAttachmentRoutes } from "./api/attachmentRoutes";
 import { FramedUdsTransport } from "./private-api/PrivateApiTransport";
 import { AppleScriptFallback } from "./messaging/appleScriptFallback";
 import { OsascriptRunner } from "./messaging/OsascriptRunner";
@@ -55,6 +57,7 @@ async function main(): Promise<void> {
     const chatReader = new ChatReader(chatDb, schema);
     const handleReader = new HandleReader(chatDb, schema.handle);
     const attachmentReader = new AttachmentReader(chatDb, schema.attachment);
+    const attachmentStreamer = new AttachmentStreamer(chatDb);
 
     // Write path (Phase 5): the hardened private-API transport + the send service.
     const transport = new FramedUdsTransport({
@@ -77,6 +80,7 @@ async function main(): Promise<void> {
         name: "http",
         async start() {
             mountFastify(app, registry, { logger, auth });
+            mountAttachmentRoutes(app, { streamer: attachmentStreamer, auth });
             await app.listen({ port: config.socketPort, host: "0.0.0.0" });
             io = new SocketServer(app.server, { allowEIO3: true });
             mountSocket(io, registry, { logger, auth });

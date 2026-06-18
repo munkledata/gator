@@ -8,7 +8,7 @@ export interface FastifyAdapterDeps {
     auth: AuthConfig;
 }
 
-function extractCredential(request: FastifyRequest): string | undefined {
+export function extractCredential(request: FastifyRequest): string | undefined {
     const q = (request.query ?? {}) as Record<string, unknown>;
     const fromQuery = q["password"] ?? q["guid"] ?? q["token"];
     if (typeof fromQuery === "string") return fromQuery;

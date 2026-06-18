@@ -41,6 +41,8 @@ export * from "./data/imessage/MessageReader";
 export * from "./data/imessage/ChatReader";
 export * from "./data/imessage/HandleReader";
 export * from "./data/imessage/AttachmentReader";
+export * from "./data/imessage/AttachmentStreamer";
+export * from "./api/attachmentRoutes";
 export * from "./data/imessage/watcher";
 export * from "./data/imessage/IMessageListener";
 export * from "./serialize/chatSerializer";
