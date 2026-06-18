@@ -18,6 +18,8 @@ import { mountSocket } from "./api/socketAdapter";
 import { openReadOnlyChatDb } from "./data/imessage/connection";
 import { introspectSchema } from "./data/imessage/schema";
 import { ChatReader } from "./data/imessage/ChatReader";
+import { HandleReader } from "./data/imessage/HandleReader";
+import { AttachmentReader } from "./data/imessage/AttachmentReader";
 import type { Service } from "./core/lifecycle";
 
 const VERSION = "2.0.0-bbd";
@@ -41,14 +43,17 @@ async function main(): Promise<void> {
     const config = configStore.getConfig();
     const auth = { password: config.password };
 
-    // Read-only chat.db reader (Phase 3) feeding the migrated read operations.
+    // Read-only chat.db readers (Phase 3) feeding the migrated read operations.
     const chatDb = openReadOnlyChatDb(path.join(os.homedir(), "Library", "Messages", "chat.db"));
-    const chatReader = new ChatReader(chatDb, introspectSchema(chatDb));
+    const schema = introspectSchema(chatDb);
+    const chatReader = new ChatReader(chatDb, schema);
+    const handleReader = new HandleReader(chatDb, schema.handle);
+    const attachmentReader = new AttachmentReader(chatDb, schema.attachment);
 
     const registry = new OperationRegistry()
         .registerAll(buildCoreOperations({ configStore, version: VERSION }))
         .registerAll(buildAdminOperations({ configService, version: VERSION, startedAt: Date.now() }))
-        .registerAll(buildReadOperations({ chatReader }));
+        .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader }));
 
     const app = Fastify();
     let io: SocketServer | null = null;

@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { defineOperation, type Operation } from "../Operation";
 import type { ChatReader } from "../../data/imessage/ChatReader";
+import type { HandleReader } from "../../data/imessage/HandleReader";
+import type { AttachmentReader } from "../../data/imessage/AttachmentReader";
 import { serializeChat } from "../../serialize/chatSerializer";
 import { serializeMessage } from "../../serialize/messageSerializer";
+import { serializeHandle } from "../../serialize/handleSerializer";
+import { serializeAttachment } from "../../serialize/attachmentSerializer";
 
 const Pagination = {
     limit: z.coerce.number().int().min(1).max(1000).optional(),
@@ -11,9 +15,13 @@ const Pagination = {
 
 const GetChatsInput = z.object({ ...Pagination });
 const GetChatMessagesInput = z.object({ guid: z.string().min(1), ...Pagination });
+const GetHandlesInput = z.object({ ...Pagination });
+const GetAttachmentsInput = z.object({ guid: z.string().min(1) });
 
 export interface ReadOperationDeps {
     chatReader: ChatReader;
+    handleReader: HandleReader;
+    attachmentReader: AttachmentReader;
 }
 
 /**
@@ -47,6 +55,28 @@ export function buildReadOperations(deps: ReadOperationDeps): Operation[] {
                 messages: deps.chatReader
                     .getChatMessages({ chatGuid: input.guid, limit: input.limit, offset: input.offset })
                     .map(serializeMessage)
+            })
+        }),
+        defineOperation({
+            name: "get-handles",
+            method: "POST",
+            path: "/api/v1/handle/query",
+            auth: true,
+            input: GetHandlesInput,
+            summary: "List handles (addresses)",
+            handler: (_ctx, input) => ({
+                handles: deps.handleReader.getHandles({ limit: input.limit, offset: input.offset }).map(serializeHandle)
+            })
+        }),
+        defineOperation({
+            name: "get-message-attachments",
+            method: "GET",
+            path: "/api/v1/message/:guid/attachment",
+            auth: true,
+            input: GetAttachmentsInput,
+            summary: "Attachment metadata for a message",
+            handler: (_ctx, input) => ({
+                attachments: deps.attachmentReader.getMessageAttachments(input.guid).map(serializeAttachment)
             })
         })
     ];

@@ -39,9 +39,13 @@ export * from "./data/imessage/connection";
 export * from "./data/imessage/cursor";
 export * from "./data/imessage/MessageReader";
 export * from "./data/imessage/ChatReader";
+export * from "./data/imessage/HandleReader";
+export * from "./data/imessage/AttachmentReader";
 export * from "./data/imessage/watcher";
 export * from "./data/imessage/IMessageListener";
 export * from "./serialize/chatSerializer";
+export * from "./serialize/handleSerializer";
+export * from "./serialize/attachmentSerializer";
 export * from "./api/operations/readOperations";
 
 // Phase 4 — unified API (one service layer -> Fastify + Socket.IO adapters)
