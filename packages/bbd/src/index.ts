@@ -40,3 +40,13 @@ export * from "./data/imessage/cursor";
 export * from "./data/imessage/MessageReader";
 export * from "./data/imessage/watcher";
 export * from "./data/imessage/IMessageListener";
+
+// Phase 4 — unified API (one service layer -> Fastify + Socket.IO adapters)
+export * from "./api/Operation";
+export * from "./api/auth";
+export * from "./api/execute";
+export * from "./api/registry";
+export * from "./api/operations/coreOperations";
+export * from "./api/fastifyAdapter";
+export * from "./api/socketAdapter";
+export * from "./api/openapi";
