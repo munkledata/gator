@@ -89,6 +89,14 @@ export * from "./scheduled/DrizzleScheduledMessageStore";
 export * from "./scheduled/Scheduler";
 export * from "./api/operations/scheduledOperations";
 
+// Webhooks + live message fanout
+export * from "./webhooks/Webhook";
+export * from "./webhooks/DrizzleWebhookStore";
+export * from "./webhooks/WebhookSubscriber";
+export * from "./api/operations/webhookOperations";
+export * from "./serialize/messageFanout";
+export * from "./data/imessage/FileCursorStore";
+
 // Phase 6 — networking + admin API
 export * from "./networking/TunnelProvider";
 export * from "./networking/webhook";

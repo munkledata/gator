@@ -24,3 +24,21 @@ export interface DomainEvents {
     "server-update": unknown;
     "hello-world": unknown;
 }
+
+/** Runtime list of the domain event names (keep in sync with {@link DomainEvents}). */
+export const DOMAIN_EVENT_NAMES: readonly (keyof DomainEvents)[] = [
+    "new-message",
+    "updated-message",
+    "message-send-error",
+    "group-name-change",
+    "group-icon-changed",
+    "group-icon-removed",
+    "participant-added",
+    "participant-removed",
+    "participant-left",
+    "chat-read-status-changed",
+    "typing-indicator",
+    "new-server",
+    "server-update",
+    "hello-world"
+];

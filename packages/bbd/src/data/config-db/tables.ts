@@ -30,6 +30,16 @@ export const devicesTable = sqliteTable("devices", {
     lastActiveAt: integer("last_active_at")
 });
 
+/** Registered webhooks (URL + event filter + optional signing secret). */
+export const webhooksTable = sqliteTable("webhooks", {
+    id: text("id").primaryKey(),
+    url: text("url").notNull(),
+    /** JSON array of event types, or ["*"]. */
+    events: text("events").notNull(),
+    secret: text("secret"),
+    createdAt: integer("created_at").notNull()
+});
+
 /** Scheduled (future-dated) messages — must survive restarts, hence persisted here. */
 export const scheduledMessagesTable = sqliteTable("scheduled_messages", {
     id: text("id").primaryKey(),

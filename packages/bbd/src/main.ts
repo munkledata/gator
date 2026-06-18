@@ -39,6 +39,16 @@ import { buildFindMyOperations } from "./api/operations/findmyOperations";
 import { DrizzleScheduledMessageStore } from "./scheduled/DrizzleScheduledMessageStore";
 import { Scheduler } from "./scheduled/Scheduler";
 import { buildScheduledOperations } from "./api/operations/scheduledOperations";
+import type { DomainEvents } from "./events";
+import { MessageReader } from "./data/imessage/MessageReader";
+import { IMessageListener } from "./data/imessage/IMessageListener";
+import { ChatDbWatcher } from "./data/imessage/watcher";
+import { FileCursorStore } from "./data/imessage/FileCursorStore";
+import { DrizzleWebhookStore } from "./webhooks/DrizzleWebhookStore";
+import { WebhookSubscriber } from "./webhooks/WebhookSubscriber";
+import { WebhookDispatcher } from "./networking/webhook";
+import { buildWebhookOperations } from "./api/operations/webhookOperations";
+import { wireMessageFanout } from "./serialize/messageFanout";
 import type { Service } from "./core/lifecycle";
 
 const VERSION = "2.0.0-bbd";
@@ -90,12 +100,29 @@ async function main(): Promise<void> {
         );
 
     // Scheduled messages (persisted in the config DB) + the scheduler service.
-    const scheduledStore = new DrizzleScheduledMessageStore(path.join(host.userDataPath(), "config.db"));
+    const dbPath = path.join(host.userDataPath(), "config.db");
+    const scheduledStore = new DrizzleScheduledMessageStore(dbPath);
     registry.registerAll(buildScheduledOperations({ store: scheduledStore }));
     const scheduler = new Scheduler(scheduledStore, sender, logger);
 
+    // Webhooks + the live read -> serialize-once -> socket + webhook fanout.
+    const domainBus = new EventBus<DomainEvents>();
+    const webhookStore = new DrizzleWebhookStore(dbPath);
+    const webhookSubscriber = new WebhookSubscriber(webhookStore, new WebhookDispatcher({ logger }), logger);
+    registry.registerAll(buildWebhookOperations({ store: webhookStore }));
+
+    const messageReader = new MessageReader(chatDb, schema.message);
+    const cursorStore = new FileCursorStore(path.join(host.userDataPath(), "cursor.json"));
+    const listener = new IMessageListener(messageReader, cursorStore, domainBus, logger);
+    const watcher = new ChatDbWatcher(path.join(os.homedir(), "Library", "Messages"), () => void listener.poll());
+
     const app = Fastify();
     let io: SocketServer | null = null;
+
+    wireMessageFanout(domainBus, {
+        emit: (type, dto) => io?.emit(type, dto),
+        webhook: (type, dto) => webhookSubscriber.onEvent(type, dto)
+    });
 
     const httpService: Service = {
         name: "http",
@@ -125,7 +152,20 @@ async function main(): Promise<void> {
         stop: () => scheduler.stop()
     };
 
-    const daemon = new Daemon({ services: [transportService, httpService, schedulerService], hostPlatform: host, logger });
+    const readPathService: Service = {
+        name: "read-path",
+        start: async () => {
+            await listener.init();
+            watcher.start();
+        },
+        stop: () => watcher.stop()
+    };
+
+    const daemon = new Daemon({
+        services: [transportService, httpService, schedulerService, readPathService],
+        hostPlatform: host,
+        logger
+    });
     await daemon.start();
 }
 
