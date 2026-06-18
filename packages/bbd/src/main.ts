@@ -8,11 +8,16 @@ import { createConsoleLogger } from "./core/logger";
 import { DrizzleConfigStore } from "./data/config-db/DrizzleConfigStore";
 import { ConfigService } from "./config/ConfigService";
 import { EventBus } from "./core/bus";
+import os from "node:os";
 import { OperationRegistry } from "./api/registry";
 import { buildCoreOperations } from "./api/operations/coreOperations";
 import { buildAdminOperations } from "./api/operations/adminOperations";
+import { buildReadOperations } from "./api/operations/readOperations";
 import { mountFastify } from "./api/fastifyAdapter";
 import { mountSocket } from "./api/socketAdapter";
+import { openReadOnlyChatDb } from "./data/imessage/connection";
+import { introspectSchema } from "./data/imessage/schema";
+import { ChatReader } from "./data/imessage/ChatReader";
 import type { Service } from "./core/lifecycle";
 
 const VERSION = "2.0.0-bbd";
@@ -36,9 +41,14 @@ async function main(): Promise<void> {
     const config = configStore.getConfig();
     const auth = { password: config.password };
 
+    // Read-only chat.db reader (Phase 3) feeding the migrated read operations.
+    const chatDb = openReadOnlyChatDb(path.join(os.homedir(), "Library", "Messages", "chat.db"));
+    const chatReader = new ChatReader(chatDb, introspectSchema(chatDb));
+
     const registry = new OperationRegistry()
         .registerAll(buildCoreOperations({ configStore, version: VERSION }))
-        .registerAll(buildAdminOperations({ configService, version: VERSION, startedAt: Date.now() }));
+        .registerAll(buildAdminOperations({ configService, version: VERSION, startedAt: Date.now() }))
+        .registerAll(buildReadOperations({ chatReader }));
 
     const app = Fastify();
     let io: SocketServer | null = null;
