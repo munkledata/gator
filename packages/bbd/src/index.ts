@@ -50,3 +50,11 @@ export * from "./api/operations/coreOperations";
 export * from "./api/fastifyAdapter";
 export * from "./api/socketAdapter";
 export * from "./api/openapi";
+
+// Phase 5 — write path + hardened private-API transport (H1)
+export * from "./private-api/framing";
+export * from "./private-api/transactionManager";
+export * from "./private-api/PrivateApiTransport";
+export * from "./messaging/appleScriptFallback";
+export * from "./messaging/MessageSender";
+export * from "./serialize/messageSerializer";

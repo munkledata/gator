@@ -8,3 +8,8 @@
 export * as v1 from "./v1/index";
 export type { ResponseFormat, ResponseError, ResponseMetadata, ValidStatus } from "./v1/envelope";
 export { ResponseMessage, success, failure } from "./v1/envelope";
+
+// bb-helper-proto — the daemon <-> injected dylib contract (Phase 5 / H1).
+export * as helper from "./helper/index";
+export { HELPER_PROTOCOL_VERSION } from "./helper/index";
+export type { HelperHandshake, HelperRequest, HelperMessage } from "./helper/index";
