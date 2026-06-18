@@ -57,7 +57,7 @@ test("sendReaction requires the Private API", async () => {
     const sender = new MessageSender(t, new AppleScriptFallback(new FakeRunner(), silent), silent);
     await assert.rejects(
         () => sender.sendReaction({ chatGuid: "c", messageGuid: "m", reactionType: "love" }),
-        /require the Private API/
+        /requires the Private API/
     );
 });
 

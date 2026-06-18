@@ -63,7 +63,9 @@ export * from "./private-api/framing";
 export * from "./private-api/transactionManager";
 export * from "./private-api/PrivateApiTransport";
 export * from "./messaging/appleScriptFallback";
+export * from "./messaging/OsascriptRunner";
 export * from "./messaging/MessageSender";
+export * from "./api/operations/actionOperations";
 export * from "./serialize/messageSerializer";
 
 // Phase 6 — networking + admin API

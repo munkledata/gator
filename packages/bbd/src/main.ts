@@ -1,4 +1,5 @@
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import Fastify from "fastify";
 import { Server as SocketServer } from "socket.io";
 
@@ -20,6 +21,11 @@ import { introspectSchema } from "./data/imessage/schema";
 import { ChatReader } from "./data/imessage/ChatReader";
 import { HandleReader } from "./data/imessage/HandleReader";
 import { AttachmentReader } from "./data/imessage/AttachmentReader";
+import { FramedUdsTransport } from "./private-api/PrivateApiTransport";
+import { AppleScriptFallback } from "./messaging/appleScriptFallback";
+import { OsascriptRunner } from "./messaging/OsascriptRunner";
+import { MessageSender } from "./messaging/MessageSender";
+import { buildActionOperations } from "./api/operations/actionOperations";
 import type { Service } from "./core/lifecycle";
 
 const VERSION = "2.0.0-bbd";
@@ -50,10 +56,19 @@ async function main(): Promise<void> {
     const handleReader = new HandleReader(chatDb, schema.handle);
     const attachmentReader = new AttachmentReader(chatDb, schema.attachment);
 
+    // Write path (Phase 5): the hardened private-API transport + the send service.
+    const transport = new FramedUdsTransport({
+        socketPath: path.join(host.userDataPath(), "private-api.sock"),
+        secret: randomBytes(24).toString("hex"),
+        logger
+    });
+    const sender = new MessageSender(transport, new AppleScriptFallback(new OsascriptRunner(), logger), logger);
+
     const registry = new OperationRegistry()
         .registerAll(buildCoreOperations({ configStore, version: VERSION }))
         .registerAll(buildAdminOperations({ configService, version: VERSION, startedAt: Date.now() }))
-        .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader }));
+        .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader }))
+        .registerAll(buildActionOperations({ sender }));
 
     const app = Fastify();
     let io: SocketServer | null = null;
@@ -73,7 +88,13 @@ async function main(): Promise<void> {
         }
     };
 
-    const daemon = new Daemon({ services: [httpService], hostPlatform: host, logger });
+    const transportService: Service = {
+        name: "private-api",
+        start: () => transport.start(),
+        stop: () => transport.stop()
+    };
+
+    const daemon = new Daemon({ services: [transportService, httpService], hostPlatform: host, logger });
     await daemon.start();
 }
 
