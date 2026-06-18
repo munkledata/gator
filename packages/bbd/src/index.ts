@@ -70,6 +70,11 @@ export * from "./messaging/MessageSender";
 export * from "./api/operations/actionOperations";
 export * from "./serialize/messageSerializer";
 
+// Contacts (node-mac-contacts behind an injected source)
+export * from "./contacts/ContactsService";
+export * from "./contacts/MacContactsSource";
+export * from "./api/operations/contactsOperations";
+
 // Phase 6 — networking + admin API
 export * from "./networking/TunnelProvider";
 export * from "./networking/webhook";

@@ -28,6 +28,9 @@ import { AppleScriptFallback } from "./messaging/appleScriptFallback";
 import { OsascriptRunner } from "./messaging/OsascriptRunner";
 import { MessageSender } from "./messaging/MessageSender";
 import { buildActionOperations } from "./api/operations/actionOperations";
+import { ContactsService } from "./contacts/ContactsService";
+import { MacContactsSource } from "./contacts/MacContactsSource";
+import { buildContactsOperations } from "./api/operations/contactsOperations";
 import type { Service } from "./core/lifecycle";
 
 const VERSION = "2.0.0-bbd";
@@ -71,7 +74,8 @@ async function main(): Promise<void> {
         .registerAll(buildCoreOperations({ configStore, version: VERSION }))
         .registerAll(buildAdminOperations({ configService, version: VERSION, startedAt: Date.now() }))
         .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader }))
-        .registerAll(buildActionOperations({ sender }));
+        .registerAll(buildActionOperations({ sender }))
+        .registerAll(buildContactsOperations({ contacts: new ContactsService(new MacContactsSource(), logger) }));
 
     const app = Fastify();
     let io: SocketServer | null = null;
