@@ -31,6 +31,11 @@ import { buildActionOperations } from "./api/operations/actionOperations";
 import { ContactsService } from "./contacts/ContactsService";
 import { MacContactsSource } from "./contacts/MacContactsSource";
 import { buildContactsOperations } from "./api/operations/contactsOperations";
+import { FaceTimeService } from "./facetime/FaceTimeService";
+import { FindMyService } from "./findmy/FindMyService";
+import { FindMyDevicesReader } from "./findmy/FindMyDevicesReader";
+import { buildFaceTimeOperations } from "./api/operations/facetimeOperations";
+import { buildFindMyOperations } from "./api/operations/findmyOperations";
 import type { Service } from "./core/lifecycle";
 
 const VERSION = "2.0.0-bbd";
@@ -75,7 +80,11 @@ async function main(): Promise<void> {
         .registerAll(buildAdminOperations({ configService, version: VERSION, startedAt: Date.now() }))
         .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader }))
         .registerAll(buildActionOperations({ sender }))
-        .registerAll(buildContactsOperations({ contacts: new ContactsService(new MacContactsSource(), logger) }));
+        .registerAll(buildContactsOperations({ contacts: new ContactsService(new MacContactsSource(), logger) }))
+        .registerAll(buildFaceTimeOperations({ facetime: new FaceTimeService(transport, logger) }))
+        .registerAll(
+            buildFindMyOperations({ findmy: new FindMyService(transport, logger), devices: new FindMyDevicesReader() })
+        );
 
     const app = Fastify();
     let io: SocketServer | null = null;

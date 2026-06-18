@@ -64,6 +64,7 @@ export * from "./api/openapi";
 export * from "./private-api/framing";
 export * from "./private-api/transactionManager";
 export * from "./private-api/PrivateApiTransport";
+export * from "./private-api/call";
 export * from "./messaging/appleScriptFallback";
 export * from "./messaging/OsascriptRunner";
 export * from "./messaging/MessageSender";
@@ -74,6 +75,13 @@ export * from "./serialize/messageSerializer";
 export * from "./contacts/ContactsService";
 export * from "./contacts/MacContactsSource";
 export * from "./api/operations/contactsOperations";
+
+// FaceTime + FindMy (Private API + local cache)
+export * from "./facetime/FaceTimeService";
+export * from "./findmy/FindMyService";
+export * from "./findmy/FindMyDevicesReader";
+export * from "./api/operations/facetimeOperations";
+export * from "./api/operations/findmyOperations";
 
 // Phase 6 — networking + admin API
 export * from "./networking/TunnelProvider";
