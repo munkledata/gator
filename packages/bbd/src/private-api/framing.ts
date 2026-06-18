@@ -9,6 +9,21 @@
 
 const LENGTH_BYTES = 4;
 
+/**
+ * Hard cap on a single frame. A malicious local peer could otherwise send a u32
+ * length prefix up to ~4 GB and dribble bytes to force unbounded buffering (this
+ * decoder buffers *before* the handshake runs). 16 MiB is far above any legitimate
+ * private-API frame; an oversized length is treated as a protocol violation.
+ */
+export const MAX_FRAME_BYTES = 16 * 1024 * 1024;
+
+export class FrameTooLargeError extends Error {
+    constructor(length: number) {
+        super(`frame length ${length} exceeds MAX_FRAME_BYTES (${MAX_FRAME_BYTES})`);
+        this.name = "FrameTooLargeError";
+    }
+}
+
 export function encodeFrame(value: unknown): Buffer {
     const payload = Buffer.from(JSON.stringify(value), "utf8");
     const header = Buffer.allocUnsafe(LENGTH_BYTES);
@@ -28,6 +43,11 @@ export class FrameDecoder {
         const out: unknown[] = [];
         while (this.#buffer.length >= LENGTH_BYTES) {
             const length = this.#buffer.readUInt32LE(0);
+            if (length > MAX_FRAME_BYTES) {
+                // Hostile/garbage length — drop the buffer and signal a protocol violation.
+                this.#buffer = Buffer.alloc(0);
+                throw new FrameTooLargeError(length);
+            }
             if (this.#buffer.length < LENGTH_BYTES + length) break; // partial frame — wait
             const payload = this.#buffer.subarray(LENGTH_BYTES, LENGTH_BYTES + length);
             this.#buffer = this.#buffer.subarray(LENGTH_BYTES + length);

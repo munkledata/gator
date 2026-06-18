@@ -1,9 +1,38 @@
-import { appleDateToUnixMs, isReaction, REACTION_TYPES } from "../data/imessage/appleConstants";
+import { appleDateToUnixMs } from "../data/imessage/appleConstants";
 
 /**
- * The frozen v1 message DTO clients receive. Field names and shapes match the
- * legacy `MessageResponse` exactly (see the server README), so the serializer is a
- * wire-compatibility contract, not just a mapping.
+ * Reaction/associated-message code → wire string, byte-compatible with the legacy
+ * `MessageTypeTransformer` (ReactionIdToString): a reaction code maps to its name,
+ * 0 maps to null, anything else is the code stringified. Clients parse this field
+ * as a string, so emitting a number would break them.
+ */
+const REACTION_ID_TO_STRING: Readonly<Record<number, string | null>> = {
+    0: null,
+    1000: "sticker",
+    2000: "love",
+    2001: "like",
+    2002: "dislike",
+    2003: "laugh",
+    2004: "emphasize",
+    2005: "question",
+    3000: "-love",
+    3001: "-like",
+    3002: "-dislike",
+    3003: "-laugh",
+    3004: "-emphasize",
+    3005: "-question"
+};
+
+function associatedMessageTypeToString(code: number | null): string | null {
+    if (code == null) return null;
+    if (code in REACTION_ID_TO_STRING) return REACTION_ID_TO_STRING[code]!;
+    return String(code);
+}
+
+/**
+ * The v1 message DTO clients receive. Field shapes are wire-compatible with the
+ * legacy `MessageResponse` (this is a representative subset; more fields are added
+ * as the message read operations are migrated).
  */
 export interface MessageResponse {
     guid: string;
@@ -22,9 +51,8 @@ export interface MessageResponse {
     groupTitle: string | null;
     groupActionType: number | null;
     associatedMessageGuid: string | null;
-    associatedMessageType: number | null;
-    /** Decoded reaction name (e.g. "love", "-like") when this is a tapback. */
-    reaction: string | null;
+    /** Reaction name (e.g. "love", "-like"), or the stringified code, or null. */
+    associatedMessageType: string | null;
     balloonBundleId: string | null;
     expressiveSendStyleId: string | null;
     threadOriginatorGuid: string | null;
@@ -41,7 +69,6 @@ const bool = (v: unknown): boolean => v === 1 || v === true;
  * the centralized map. Missing columns (older macOS) serialize to null, never throw.
  */
 export function serializeMessage(row: Record<string, unknown>): MessageResponse {
-    const associatedMessageType = numOrNull(row["associated_message_type"]);
     return {
         guid: str(row["guid"]) ?? "",
         text: str(row["text"]),
@@ -59,8 +86,7 @@ export function serializeMessage(row: Record<string, unknown>): MessageResponse 
         groupTitle: str(row["group_title"]),
         groupActionType: numOrNull(row["group_action_type"]),
         associatedMessageGuid: str(row["associated_message_guid"]),
-        associatedMessageType,
-        reaction: isReaction(associatedMessageType) ? (REACTION_TYPES[associatedMessageType!] ?? null) : null,
+        associatedMessageType: associatedMessageTypeToString(numOrNull(row["associated_message_type"])),
         balloonBundleId: str(row["balloon_bundle_id"]),
         expressiveSendStyleId: str(row["expressive_send_style_id"]),
         threadOriginatorGuid: str(row["thread_originator_guid"]),

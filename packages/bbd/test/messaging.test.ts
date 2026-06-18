@@ -81,10 +81,14 @@ test("serializeMessage projects a row to the v1 DTO with date + reaction decodin
     assert.equal(dto.text, "hello");
     assert.equal(dto.dateCreated, Date.UTC(2026, 0, 1));
     assert.equal(dto.isFromMe, true);
-    assert.equal(dto.reaction, null);
+    // associated_message_type 0 serializes to null (legacy ReactionIdToString)
+    assert.equal(dto.associatedMessageType, null);
 
-    const tapback = serializeMessage({ guid: "g", associated_message_type: 2000 });
-    assert.equal(tapback.reaction, "love");
+    // reaction codes become their legacy string name (NOT a number — wire compat)
+    assert.equal(serializeMessage({ guid: "g", associated_message_type: 2000 }).associatedMessageType, "love");
+    assert.equal(serializeMessage({ guid: "g", associated_message_type: 3001 }).associatedMessageType, "-like");
+    // non-reaction codes become the stringified number
+    assert.equal(serializeMessage({ guid: "g", associated_message_type: 5 }).associatedMessageType, "5");
 });
 
 test("serializeMessage maps missing columns to null without throwing", () => {

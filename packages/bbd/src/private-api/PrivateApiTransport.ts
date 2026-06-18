@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { HELPER_PROTOCOL_VERSION } from "@bluebubbles/protocol";
 import type { Logger } from "../core/logger";
+import { safeEqual } from "../api/auth";
 import { encodeFrame, FrameDecoder } from "./framing";
 import { TransactionManager } from "./transactionManager";
 
@@ -74,13 +75,23 @@ export class FramedUdsTransport implements PrivateApiTransport {
     }
 
     #onConnection(socket: net.Socket): void {
+        // Adopt the new client, closing any prior one first (reconnect race).
+        this.#client?.destroy();
         this.#client = socket;
         this.#authed = false;
         this.#decoder = new FrameDecoder();
         socket.on("data", chunk => {
-            for (const message of this.#decoder.push(chunk)) this.#handle(message as Record<string, unknown>);
+            try {
+                for (const message of this.#decoder.push(chunk)) this.#handle(message as Record<string, unknown>);
+            } catch (e) {
+                // A framing/protocol violation (e.g. oversized frame) — drop the client.
+                this.#logger.warn("framing error; dropping client", e);
+                socket.destroy();
+            }
         });
         socket.on("close", () => {
+            // Ignore the close of a socket we've already replaced.
+            if (this.#client !== socket) return;
             this.#client = null;
             this.#authed = false;
             this.#txn.rejectAll(new Error("helper disconnected"));
@@ -90,7 +101,12 @@ export class FramedUdsTransport implements PrivateApiTransport {
 
     #handle(message: Record<string, unknown>): void {
         if (!this.#authed) {
-            const ok = message["secret"] === this.#secret && Number(message["protocolVersion"]) >= HELPER_PROTOCOL_VERSION;
+            const provided = message["secret"];
+            const ok =
+                typeof provided === "string" &&
+                this.#secret.length > 0 &&
+                safeEqual(provided, this.#secret) &&
+                Number(message["protocolVersion"]) >= HELPER_PROTOCOL_VERSION;
             if (!ok) {
                 this.#logger.warn("rejecting helper: bad handshake");
                 this.#client?.destroy();

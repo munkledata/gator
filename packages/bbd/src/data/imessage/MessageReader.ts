@@ -67,11 +67,34 @@ export class MessageReader {
         return this.#columns.map(c => `message.${c}`).join(", ");
     }
 
-    /** Read messages new or updated since the cursor; returns rows + advanced cursor. */
-    readSince(cursor: Cursor, limit = 1000): ReadResult {
+    /**
+     * Read every message new or updated since the cursor, then advance it.
+     *
+     * Correctness note: a naive `LIMIT` truncation would advance the per-field date
+     * high-water marks past rows that didn't fit in the page — and because those
+     * rows' ROWIDs are below the cursor, they'd never qualify again (silent loss of
+     * edits/receipts). Instead we page strictly by ROWID over the *fixed* delta set
+     * (`AND ROWID > @afterRowId`, ascending), draining it fully before advancing the
+     * cursor. Each page makes monotonic ROWID progress, so there's no re-emit and no
+     * loss; the cursor only moves once the whole set has been returned. `pageSize`
+     * bounds memory per query, not total work.
+     */
+    readSince(cursor: Cursor, pageSize = 1000): ReadResult {
         const { where, params } = buildDeltaQuery(cursor, this.#message);
-        const sql = `SELECT ${this.#select()} FROM message WHERE ${where} ORDER BY message.ROWID ASC LIMIT @limit`;
-        const rows = this.#db.prepare(sql).all({ ...params, limit }) as Record<string, unknown>[];
+        const sql =
+            `SELECT ${this.#select()} FROM message ` +
+            `WHERE (${where}) AND message.ROWID > @afterRowId ORDER BY message.ROWID ASC LIMIT @pageSize`;
+        const stmt = this.#db.prepare(sql);
+
+        const rows: Record<string, unknown>[] = [];
+        let afterRowId = 0;
+        for (;;) {
+            const page = stmt.all({ ...params, afterRowId, pageSize }) as Record<string, unknown>[];
+            if (page.length === 0) break;
+            rows.push(...page);
+            afterRowId = Number(page[page.length - 1]!["ROWID"]);
+            if (page.length < pageSize) break;
+        }
         return { rows, cursor: advanceCursor(cursor, rows) };
     }
 

@@ -51,6 +51,28 @@ test("an edit to an existing row is re-detected via date_edited (no ROWID change
     assert.equal(second.rows[0]!["guid"], "g1");
 });
 
+test("drains the full delta set across pages — no loss when updates exceed the page size", () => {
+    // Regression for the LIMIT-truncation cursor bug: many OLD rows (low ROWID) get a
+    // read receipt at once. With a tiny page size, a naive reader would advance the
+    // date watermark past un-returned old rows and lose them forever.
+    const db = new Database(":memory:");
+    db.exec(
+        "CREATE TABLE message(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, date INTEGER, date_read INTEGER DEFAULT 0)"
+    );
+    const ins = db.prepare("INSERT INTO message(guid, date, date_read) VALUES (?, ?, ?)");
+    for (let i = 1; i <= 25; i++) ins.run(`g${i}`, 1000, 5000); // 25 old rows, all read at t=5000
+    const reader = new MessageReader(db, introspectTable(db, "message"));
+
+    // page size 10 << 25 rows: must still return all 25 and advance the cursor fully.
+    const { rows, cursor } = reader.readSince(INITIAL_CURSOR, 10);
+    assert.equal(rows.length, 25);
+    assert.equal(cursor.lastRowId, 25);
+    assert.equal(cursor.maxDateRead, 5000);
+
+    // A second poll from the advanced cursor returns nothing (no re-emit, no loss).
+    assert.equal(reader.readSince(cursor, 10).rows.length, 0);
+});
+
 test("byGuid hydrates specific messages", () => {
     const db = seed();
     const reader = new MessageReader(db, introspectTable(db, "message"));

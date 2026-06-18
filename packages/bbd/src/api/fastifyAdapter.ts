@@ -28,10 +28,12 @@ export function mountFastify(app: FastifyInstance, registry: OperationRegistry, 
             method: op.method,
             url: op.path,
             handler: async (request, reply) => {
+                // Precedence: path params (trusted, from the route) win over query,
+                // which wins over body — so a client can't override a route :id via body.
                 const input = {
-                    ...((request.params as object) ?? {}),
+                    ...((request.body as object) ?? {}),
                     ...((request.query as object) ?? {}),
-                    ...((request.body as object) ?? {})
+                    ...((request.params as object) ?? {})
                 };
                 const envelope = await executeOperation(
                     op,
