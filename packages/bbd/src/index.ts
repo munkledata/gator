@@ -58,3 +58,9 @@ export * from "./private-api/PrivateApiTransport";
 export * from "./messaging/appleScriptFallback";
 export * from "./messaging/MessageSender";
 export * from "./serialize/messageSerializer";
+
+// Phase 6 — networking + admin API
+export * from "./networking/TunnelProvider";
+export * from "./networking/webhook";
+export * from "./networking/oauthPkce";
+export * from "./api/operations/adminOperations";
