@@ -17,3 +17,17 @@ export * from "./host-platform/electron-adapter";
 export * from "./events";
 export * from "./tokens";
 export { composeCore, type ComposeOptions } from "./compose";
+
+// Phase 2 — config + pluggable notifications
+export * from "./config/configSchema";
+export * from "./config/ConfigService";
+export * from "./data/config-db/ConfigStore";
+export * from "./data/config-db/DrizzleConfigStore";
+export * as tables from "./data/config-db/tables";
+export * from "./notifications/types";
+export type { NotificationProvider } from "./notifications/NotificationProvider";
+export * from "./notifications/NotificationRegistry";
+export * from "./notifications/UnifiedPushProvider";
+export { FcmProvider, type FcmTransport } from "./notifications/FcmProvider";
+export { WebPushProvider, type WebPushTransport } from "./notifications/WebPushProvider";
+export * from "./notifications/buildNotificationRegistry";
