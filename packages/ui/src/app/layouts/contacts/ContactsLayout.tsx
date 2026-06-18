@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ipcRenderer } from 'electron';
+import { invoke, onEvent, offEvent } from 'lib/apiClient';
 import {
     Box,
     Divider,
@@ -104,7 +104,7 @@ export const ContactsLayout = (): JSX.Element => {
     const refreshPermissionStatus = async (): Promise<void> => {
         setPermission(null);
         await waitMs(500);
-        ipcRenderer.invoke('contact-permission-status').then((status: string) => {
+        invoke('contact-permission-status').then((status: string) => {
             setPermission(status);
         }).catch(() => {
             setPermission('Unknown');
@@ -113,7 +113,7 @@ export const ContactsLayout = (): JSX.Element => {
 
     const requestContactPermission = async (): Promise<void> => {
         setPermission(null);
-        ipcRenderer.invoke('request-contact-permission', true).then((status: string) => {
+        invoke('request-contact-permission', true).then((status: string) => {
             setPermission(status);
         }).catch(() => {
             setPermission('Unknown');
@@ -121,7 +121,7 @@ export const ContactsLayout = (): JSX.Element => {
     };
 
     const loadContacts = (showToast = false, extraProps: string[] = ['contactThumbnailImage']) => {
-        ipcRenderer.invoke('get-contacts', extraProps).then((contactList: any[]) => {
+        invoke('get-contacts', extraProps).then((contactList: any[]) => {
             setContacts(contactList.map((e: any) => { 
                 // Patch the ID as a string
                 e.id = String(e.id);
@@ -154,10 +154,10 @@ export const ContactsLayout = (): JSX.Element => {
         loadContacts();
         refreshPermissionStatus();
 
-        ipcRenderer.removeAllListeners('oauth-status');
+        offEvent('oauth-status');
         getContactsOauthUrl().then(url => setOauthUrl(url));
 
-        ipcRenderer.on('oauth-status', (_: any, data: ProgressStatus) => {
+        onEvent('oauth-status', (data: ProgressStatus) => {
             setAuthStatus(data);
 
             if (data === ProgressStatus.COMPLETED) {
@@ -328,7 +328,7 @@ export const ContactsLayout = (): JSX.Element => {
                                     onChange={async (e) => {
                                         const files = e?.target?.files ?? [];
                                         for (const i of files) {
-                                            await ipcRenderer.invoke('import-vcf', i.path);
+                                            await invoke('import-vcf', i.path);
                                         }
 
                                         loadContacts();

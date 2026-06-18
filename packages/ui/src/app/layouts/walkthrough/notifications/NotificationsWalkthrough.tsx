@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { onEvent, offEvent } from 'lib/apiClient';
 import React, { useRef, useState, useEffect } from 'react';
 import {
     Box,
@@ -52,13 +52,13 @@ export const NotificationsWalkthrough = (): JSX.Element => {
     const alertOpen = errors.length > 0;
 
     useEffect(() => {
-        ipcRenderer.removeAllListeners('oauth-status');
+        offEvent('oauth-status');
         getFirebaseOauthUrl().then(url => setOauthUrl(url));
     }, []);
 
     logs = logs.filter(log => log.message.startsWith('[OauthService]'));
 
-    ipcRenderer.on('oauth-status', (_: any, data: ProgressStatus) => {
+    onEvent('oauth-status', (data: ProgressStatus) => {
         setAuthStatus(data);
     });
 

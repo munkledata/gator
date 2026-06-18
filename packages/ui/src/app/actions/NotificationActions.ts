@@ -1,8 +1,8 @@
-import { ipcRenderer } from 'electron';
+import { invoke } from 'lib/apiClient';
 import { showSuccessToast } from '../utils/ToastUtils';
 
 export const clearAlerts = async (showToast = true): Promise<void> => {
-    await ipcRenderer.invoke('clear-alerts');
+    await invoke('clear-alerts');
     if (showToast) {
         showSuccessToast({
             id: 'alerts',
@@ -13,5 +13,5 @@ export const clearAlerts = async (showToast = true): Promise<void> => {
 
 
 export const markAlertsAsRead = async (alertIds: Array<number>): Promise<void> => {
-    await ipcRenderer.invoke('mark-alerts-as-read', alertIds);
+    await invoke('mark-alerts-as-read', alertIds);
 };

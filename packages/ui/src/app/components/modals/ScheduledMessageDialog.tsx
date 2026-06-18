@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { invoke } from 'lib/apiClient';
 import React, { useEffect, useState } from 'react';
 import {
     AlertDialog,
@@ -74,7 +74,7 @@ export const ScheduledMessageDialog = ({
     const hasIntervalError = (intervalError ?? '').length > 0;
 
     useEffect(() => {
-        ipcRenderer.invoke('get-chats').then((chats: any[]) => {
+        invoke('get-chats').then((chats: any[]) => {
             chats.sort((a, b) => a.displayName && !b.displayName ? -1 : 1);
             const groups = chats.filter((e: any) => e.style === 43).map((e: any) => {
                 let label = e.displayName ?? '';

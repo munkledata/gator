@@ -102,6 +102,7 @@ export * from "./networking/TunnelProvider";
 export * from "./networking/webhook";
 export * from "./networking/oauthPkce";
 export * from "./api/operations/adminOperations";
+export * from "./api/operations/adminCommandOperations";
 
 // Phase 7 — de-Electron (headless daemon + launchd LaunchAgent)
 export * from "./host-platform/launchd";

@@ -1,12 +1,12 @@
-import { ipcRenderer } from 'electron';
+import { invoke } from 'lib/apiClient';
 import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
 
 export const clearFcmConfiguration = async (): Promise<boolean> => {
     let success = false;
 
     try {
-        await ipcRenderer.invoke('set-fcm-client', null);
-        await ipcRenderer.invoke('set-fcm-server', null);
+        await invoke('set-fcm-client', null);
+        await invoke('set-fcm-server', null);
 
         success = true;
         showSuccessToast({
@@ -24,7 +24,7 @@ export const clearFcmConfiguration = async (): Promise<boolean> => {
 };
 
 export const saveFcmClient = async (json: NodeJS.Dict<any>): Promise<void> => {
-    await ipcRenderer.invoke('set-fcm-client', json);
+    await invoke('set-fcm-client', json);
     showSuccessToast({
         id: 'fcm',
         description: 'Successfully saved FCM Client Configuration!'
@@ -32,7 +32,7 @@ export const saveFcmClient = async (json: NodeJS.Dict<any>): Promise<void> => {
 };
 
 export const saveFcmServer = async (json: NodeJS.Dict<any>): Promise<void> => {
-    await ipcRenderer.invoke('set-fcm-server', json);
+    await invoke('set-fcm-server', json);
     showSuccessToast({
         id: 'fcm',
         description: 'Successfully saved FCM Server Configuration!'

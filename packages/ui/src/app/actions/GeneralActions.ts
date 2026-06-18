@@ -1,9 +1,9 @@
-import { ipcRenderer } from 'electron';
+import { invoke } from 'lib/apiClient';
 
 export const toggleTutorialCompleted = async (toggle: boolean): Promise<void> => {
-    ipcRenderer.invoke('toggle-tutorial', toggle);
+    invoke('toggle-tutorial', toggle);
 };
 
 export const resetApp = async (): Promise<void> => {
-    ipcRenderer.invoke('reset-app');
+    invoke('reset-app');
 };

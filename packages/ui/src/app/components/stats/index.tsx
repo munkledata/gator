@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ipcRenderer } from 'electron';
+import { invoke } from 'lib/apiClient';
 import {
     Spacer,
     Box,
@@ -95,7 +95,7 @@ export const UpdatableStatBox = (
             finalArgs.after = new Date(new Date().getTime() - (pastDays * 86_400_000));
         }
 
-        ipcRenderer.invoke(ipcEvent, finalArgs).then(async (value) => {
+        invoke(ipcEvent, finalArgs).then(async (value) => {
             // If we want to transform the value in any way, do it
             if (transform) {
                 const result = transform(value);

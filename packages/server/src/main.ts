@@ -9,7 +9,7 @@
  * browser would — so the eventual fully-headless extraction is just "stop forking,
  * start as a LaunchAgent."
  */
-import { app, BrowserWindow, Tray, Menu, nativeImage, shell, utilityProcess, type UtilityProcess } from "electron";
+import { app, BrowserWindow, Tray, Menu, nativeImage, shell, ipcMain, utilityProcess, type UtilityProcess } from "electron";
 import path from "path";
 import fs from "fs";
 
@@ -77,7 +77,11 @@ function createWindow(port: number): void {
         minWidth: 900,
         minHeight: 600,
         title: "BlueBubbles",
-        webPreferences: { contextIsolation: true, nodeIntegration: false }
+        webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            preload: path.join(__dirname, "preload.js")
+        }
     });
     void win.loadURL(`http://localhost:${port}`);
     win.on("closed", () => {
@@ -117,6 +121,34 @@ const stopBackend = (): void => {
     }
 };
 
+/** Host-side channels the renderer reaches via the `window.bbShell` preload bridge. */
+function registerShellHandlers(): void {
+    const sysPref = (pane: string): Promise<void> =>
+        shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${pane}`);
+    const relaunch = (): void => {
+        isQuitting = true;
+        stopBackend();
+        app.relaunch();
+        app.exit(0);
+    };
+    const handlers: Record<string, (data?: unknown) => unknown> = {
+        "open-log-location": () => shell.openPath(app.getPath("logs")),
+        "open-app-location": () => shell.showItemInFolder(app.getPath("exe")),
+        "open-fulldisk-preferences": () => sysPref("Privacy_AllFiles"),
+        "open-accessibility-preferences": () => sysPref("Privacy_Accessibility"),
+        "get-binary-path": () => app.getPath("exe"),
+        "restart-via-terminal": relaunch,
+        "hot-restart": relaunch,
+        "full-restart": relaunch,
+        "install-update": () => ({ success: false, message: "Auto-update is not available in this build" }),
+        "reset-app": () => ({ success: false, message: "Reset is not available from the UI" }),
+        "reinstall-helper-bundle": () => ({ success: false, message: "Helper reinstall is not available yet" })
+    };
+    for (const [channel, fn] of Object.entries(handlers)) {
+        ipcMain.handle(`shell:${channel}`, async (_evt, data) => fn(data));
+    }
+}
+
 // Single-instance: focus the existing window instead of launching a second backend.
 if (!app.requestSingleInstanceLock()) {
     app.exit(0);
@@ -130,6 +162,7 @@ if (!app.requestSingleInstanceLock()) {
 
     app.whenReady().then(async () => {
         try {
+            registerShellHandlers();
             const port = await startBackend();
             createWindow(port);
             createTray(port);

@@ -28,7 +28,9 @@ import {
     ImageMetadata,
     ImageMetadataKeys
 } from "./types";
-import { uuidv4 } from "@firebase/util";
+// @firebase/util dropped the uuidv4 export; use the platform's crypto UUID (identical use).
+// require() since the pinned @types/node predates randomUUID's typings (it exists at runtime).
+const uuidv4 = (): string => require("crypto").randomUUID();
 
 const FindProcess = require("find-process");
 const { rimrafSync } = require("rimraf");

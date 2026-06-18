@@ -15,6 +15,13 @@ export interface InvocationRequest {
     credential?: string;
     /** Rate-limit key (e.g. client IP). */
     rateLimitKey?: string;
+    /**
+     * The caller is the local machine (loopback). The admin UI is served by the
+     * daemon and runs in the local Electron window, so — like the legacy trusted
+     * renderer — it is allowed without the password; the password still guards every
+     * remote request (over the tunnel).
+     */
+    trusted?: boolean;
 }
 
 /**
@@ -30,7 +37,7 @@ export async function executeOperation<I, O>(
     auth: AuthConfig
 ): Promise<ResponseFormat<O>> {
     // 1. Auth (frozen v1 shared-password model, now constant-time + rate-limited).
-    if (op.auth) {
+    if (op.auth && !req.trusted) {
         const key = req.rateLimitKey ?? "global";
         if (auth.rateLimiter?.isLocked(key)) {
             return failure(403, ResponseMessage.FORBIDDEN, { type: "rate_limit", message: "too many failed attempts" });

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ipcRenderer } from 'electron';
+import { invoke, onEvent } from 'lib/apiClient';
 import {
     Box,
     Divider,
@@ -76,7 +76,7 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
     });
 
     const loadMessages = (showToast = false) => {
-        ipcRenderer.invoke('get-scheduled-messages').then((msgList: any[]) => {
+        invoke('get-scheduled-messages').then((msgList: any[]) => {
             setMessages(msgList.map(normalizeMessage));
             setIsLoading.off();
         }).catch(() => {
@@ -94,7 +94,7 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
     useEffect(() => {
         loadMessages();
 
-        ipcRenderer.on('scheduled-message-update', () => {
+        onEvent('scheduled-message-update', () => {
             loadMessages();
         });
     }, []);

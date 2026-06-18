@@ -1,9 +1,9 @@
 import { ContactAddress, ContactItem } from 'app/components/tables/ContactsTable';
-import { ipcRenderer } from 'electron';
+import { invoke } from 'lib/apiClient';
 import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
 
 export const deleteContact = async (contactId: number): Promise<void> => {
-    await ipcRenderer.invoke('remove-contact', contactId);
+    await invoke('remove-contact', contactId);
     showSuccessToast({
         id: 'contacts',
         description: 'Successfully deleted Contact!'
@@ -12,7 +12,7 @@ export const deleteContact = async (contactId: number): Promise<void> => {
 
 export const deleteContactAddress = async (contacAddresstId: number): Promise<void> => {
     try {
-        await ipcRenderer.invoke('remove-address', contacAddresstId);
+        await invoke('remove-address', contacAddresstId);
         showSuccessToast({
             id: 'contacts',
             description: 'Successfully deleted Address!'
@@ -28,7 +28,7 @@ export const deleteContactAddress = async (contacAddresstId: number): Promise<vo
 };
 
 export const updateContact = async (contactId: number, updatedFields: NodeJS.Dict<any>): Promise<ContactItem> => {
-    const result: ContactItem = await ipcRenderer.invoke('update-contact', { contactId, ...updatedFields });
+    const result: ContactItem = await invoke('update-contact', { contactId, ...updatedFields });
     showSuccessToast({
         id: 'contacts',
         description: 'Successfully updated Contact!'
@@ -42,7 +42,7 @@ export const createContact = async (
     { emails = [], phoneNumbers = [] }: { emails?: string[], phoneNumbers?: string[] }
 ): Promise<ContactItem | null> => {
     try {
-        const newContact = await ipcRenderer.invoke('add-contact', {
+        const newContact = await invoke('add-contact', {
             firstName,
             lastName,
             phoneNumbers,
@@ -69,7 +69,7 @@ export const createContact = async (
 
 export const addAddressToContact = async (contactId: number, address: string, addressType: string): Promise<ContactAddress | null> => {
     try {
-        const newAddress = await ipcRenderer.invoke('add-address', {
+        const newAddress = await invoke('add-address', {
             contactId,
             address,
             type: addressType
@@ -95,7 +95,7 @@ export const addAddressToContact = async (contactId: number, address: string, ad
 
 export const deleteLocalContacts = async (): Promise<void> => {
     try {
-        await ipcRenderer.invoke('delete-contacts');
+        await invoke('delete-contacts');
 
         showSuccessToast({
             id: 'contacts',

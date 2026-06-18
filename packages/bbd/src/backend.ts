@@ -13,6 +13,7 @@ import { EventBus } from "./core/bus";
 import { OperationRegistry } from "./api/registry";
 import { buildCoreOperations } from "./api/operations/coreOperations";
 import { buildAdminOperations } from "./api/operations/adminOperations";
+import { buildAdminCommandOperations } from "./api/operations/adminCommandOperations";
 import { buildReadOperations } from "./api/operations/readOperations";
 import { mountFastify } from "./api/fastifyAdapter";
 import { mountSocket } from "./api/socketAdapter";
@@ -115,13 +116,16 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         logger
     });
     const sender = new MessageSender(transport, new AppleScriptFallback(new OsascriptRunner(), logger), logger);
+    const contacts = new ContactsService(new MacContactsSource(), logger);
+    // Declared early so the admin-command dispatcher can emit() to clients once io exists.
+    let io: SocketServer | null = null;
 
     const registry = new OperationRegistry()
         .registerAll(buildCoreOperations({ configStore, version: BBD_VERSION }))
         .registerAll(buildAdminOperations({ configService, version: BBD_VERSION, startedAt: Date.now() }))
         .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader }))
         .registerAll(buildActionOperations({ sender }))
-        .registerAll(buildContactsOperations({ contacts: new ContactsService(new MacContactsSource(), logger) }))
+        .registerAll(buildContactsOperations({ contacts }))
         .registerAll(buildFaceTimeOperations({ facetime: new FaceTimeService(transport, logger) }))
         .registerAll(
             buildFindMyOperations({ findmy: new FindMyService(transport, logger), devices: new FindMyDevicesReader() })
@@ -138,13 +142,28 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const webhookSubscriber = new WebhookSubscriber(webhookStore, new WebhookDispatcher({ logger }), logger);
     registry.registerAll(buildWebhookOperations({ store: webhookStore }));
 
+    // The admin-command dispatcher — the UI's former-IPC channels over HTTP.
+    registry.registerAll(
+        buildAdminCommandOperations({
+            configService,
+            configStore,
+            chatReader,
+            contacts,
+            scheduledStore,
+            webhookStore,
+            transport,
+            version: BBD_VERSION,
+            emit: (event, data) => io?.emit(event, data),
+            logger
+        })
+    );
+
     const messageReader = new MessageReader(chatDb, schema.message);
     const cursorStore = new FileCursorStore(path.join(userDataPath, "cursor.json"));
     const listener = new IMessageListener(messageReader, cursorStore, domainBus, logger);
     const watcher = new ChatDbWatcher(messagesDir, () => void listener.poll());
 
     const app = Fastify();
-    let io: SocketServer | null = null;
 
     wireMessageFanout(domainBus, {
         emit: (type, dto) => io?.emit(type, dto),

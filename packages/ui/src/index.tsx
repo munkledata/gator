@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { onEvent } from 'lib/apiClient';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -107,7 +107,7 @@ getWebhooks().then(hooks => {
     store.dispatch(addAllWebhooks(hooks));
 });
 
-ipcRenderer.on('new-log', (_: any, data: any) => {
+onEvent('new-log', (data: any) => {
     store.dispatch(addLog({
         id: String(getRandomInt(999999999)),
         message: String(data.message),
@@ -116,7 +116,7 @@ ipcRenderer.on('new-log', (_: any, data: any) => {
     }));
 });
 
-ipcRenderer.on('config-update', (_: any, cfg: any) => {
+onEvent('config-update', (cfg: any) => {
     if (!cfg) return;
 
     const items: Array<ConfigItem> = [];
@@ -127,7 +127,7 @@ ipcRenderer.on('config-update', (_: any, cfg: any) => {
     store.dispatch(setConfigBulk(items));
 });
 
-ipcRenderer.on('new-alert', (_: any, alert: any) => {
+onEvent('new-alert', (alert: any) => {
     if (!alert?.value || !alert?.type) return;
 
     store.dispatch(addAlert({
@@ -140,12 +140,12 @@ ipcRenderer.on('new-alert', (_: any, alert: any) => {
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-ipcRenderer.on('refresh-alerts', (_: any, __: any) => {
+onEvent('refresh-alerts', (__: any) => {
     loadAlerts(true);
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-ipcRenderer.on('update-available', (_: any, data: any) => {
+onEvent('update-available', (data: any) => {
     store.dispatch(setConfig({
         name: 'update_available',
         value: {

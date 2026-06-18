@@ -8,6 +8,12 @@ export interface FastifyAdapterDeps {
     auth: AuthConfig;
 }
 
+/** Loopback callers are the local admin UI (served by the daemon); they are trusted. */
+export function isLoopback(ip: string | undefined): boolean {
+    if (!ip) return false;
+    return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1" || ip.startsWith("127.");
+}
+
 export function extractCredential(request: FastifyRequest): string | undefined {
     const q = (request.query ?? {}) as Record<string, unknown>;
     const fromQuery = q["password"] ?? q["guid"] ?? q["token"];
@@ -37,7 +43,12 @@ export function mountFastify(app: FastifyInstance, registry: OperationRegistry, 
                 };
                 const envelope = await executeOperation(
                     op,
-                    { input, credential: extractCredential(request), rateLimitKey: request.ip },
+                    {
+                        input,
+                        credential: extractCredential(request),
+                        rateLimitKey: request.ip,
+                        trusted: isLoopback(request.ip)
+                    },
                     { logger: deps.logger },
                     deps.auth
                 );

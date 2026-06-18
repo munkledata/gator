@@ -13,7 +13,8 @@ module.exports = merge(baseConfig, {
         }),
     ],
     entry: {
-        main: "./src/main.ts"
+        main: "./src/main.ts",
+        preload: "./src/preload.ts"
     },
     module: {
         rules: [
