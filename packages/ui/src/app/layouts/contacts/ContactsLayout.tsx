@@ -13,16 +13,10 @@ import {
     Menu,
     Button,
     Anchor,
-    Image
+    Image,
+    Pagination
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import {
-    Pagination,
-    usePagination,
-    PaginationPage,
-    PaginationContainer,
-    PaginationPageGroup,
-} from 'lib/pagination';
 import { AiOutlineInfoCircle, AiOutlineSearch } from 'react-icons/ai';
 import { BsCheckAll, BsChevronDown, BsPersonPlus, BsUnlockFill } from 'react-icons/bs';
 import { BiImport, BiRefresh } from 'react-icons/bi';
@@ -33,8 +27,6 @@ import { FiTrash } from 'react-icons/fi';
 import { ConfirmationItems, showSuccessToast } from 'app/utils/ToastUtils';
 import { ConfirmationDialog } from 'app/components/modals/ConfirmationDialog';
 import { waitMs } from 'app/utils/GenericUtils';
-import { PaginationPreviousButton } from 'app/components/buttons/PaginationPreviousButton';
-import { PaginationNextButton } from 'app/components/buttons/PaginationNextButton';
 import { ProgressStatus } from 'app/types';
 import { getContactsOauthUrl, restartOauthService } from 'app/utils/IpcUtils';
 import GoogleIcon from '../../../images/walkthrough/google-icon.png';
@@ -79,15 +71,8 @@ export const ContactsLayout = (): JSX.Element => {
         filteredContacts = filteredContacts.filter((c) => buildIdentifier(c).includes(search.toLowerCase()));
     }
 
-    const {
-        currentPage,
-        setCurrentPage,
-        pagesCount,
-        pages
-    } = usePagination({
-        pagesCount: Math.ceil(filteredContacts.length / perPage),
-        initialState: { currentPage: 1 },
-    });
+    const [currentPage, setCurrentPage] = useState(1);
+    const pagesCount = Math.ceil(filteredContacts.length / perPage);
 
     const refreshPermissionStatus = async (): Promise<void> => {
         setPermission(null);
@@ -444,35 +429,12 @@ export const ContactsLayout = (): JSX.Element => {
                     />
                 ) : null}
                 <Pagination
-                    pagesCount={pagesCount}
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                >
-                    <PaginationContainer
-                        align="center"
-                        justify="space-between"
-                        w="full"
-                        pt={2}
-                    >
-                        <PaginationPreviousButton />
-                        <Box ml={4}></Box>
-                        <PaginationPageGroup flexWrap="wrap" justifyContent="center">
-                            {pages.map((page: number) => (
-                                <PaginationPage 
-                                    key={`pagination_page_${page}`} 
-                                    page={page}
-                                    my={1}
-                                    px={3}
-                                    fontSize={14}
-                                    colorScheme='gray'
-                                    color='black'
-                                />
-                            ))}
-                        </PaginationPageGroup>
-                        <Box ml={4}></Box>
-                        <PaginationNextButton />
-                    </PaginationContainer>
-                </Pagination>
+                    total={pagesCount}
+                    value={currentPage}
+                    onChange={setCurrentPage}
+                    w="full"
+                    pt={2}
+                />
             </Stack>
 
             <ContactDialog

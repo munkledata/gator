@@ -5,9 +5,9 @@ import {
     Group,
     Modal,
     TextInput,
-    Text
+    Text,
+    MultiSelect
 } from '@mantine/core';
-import { Select as MultiSelect } from 'lib/select';
 type FocusableElement = HTMLElement;
 import { webhookEventOptions } from '../../constants';
 import { MultiSelectValue } from '../../types';
@@ -84,12 +84,14 @@ export const AddWebhookDialog = ({
                     <Text component="label" fw={500} fz="sm" mb={4} htmlFor='permissions'>Event Subscriptions</Text>
                     <MultiSelect
                         size='md'
-                        isMulti={true}
-                        options={webhookEventOptions}
-                        value={selectedEvents}
-                        onChange={(newValues: any) => {
+                        searchable
+                        data={webhookEventOptions}
+                        value={selectedEvents.map(e => e.value)}
+                        onChange={(vals) => {
                             setEventsError('');
-                            setSelectedEvents(newValues as Array<MultiSelectValue>);
+                            setSelectedEvents(
+                                vals.map(v => webhookEventOptions.find((o: any) => o.value === v) ?? { value: v, label: v }) as Array<MultiSelectValue>
+                            );
                         }}
                     />
                     {isEventsError ? (

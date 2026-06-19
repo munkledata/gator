@@ -9,16 +9,10 @@ import {
     Popover,
     Loader,
     Menu,
-    Button
+    Button,
+    Pagination
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import {
-    Pagination,
-    usePagination,
-    PaginationPage,
-    PaginationContainer,
-    PaginationPageGroup,
-} from 'lib/pagination';
 import { AiOutlineInfoCircle } from 'react-icons/ai';
 import { BsChevronDown } from 'react-icons/bs';
 import { AiOutlinePlus } from 'react-icons/ai';
@@ -29,8 +23,6 @@ import { ConfirmationDialog } from 'app/components/modals/ConfirmationDialog';
 import { ScheduledMessageDialog } from 'app/components/modals/ScheduledMessageDialog';
 import { ScheduledMessageItem, ScheduledMessagesTable } from 'app/components/tables/ScheduledMessagesTable';
 import { createScheduledMessage, deleteScheduledMessage, deleteScheduledMessages } from 'app/utils/IpcUtils';
-import { PaginationPreviousButton } from 'app/components/buttons/PaginationPreviousButton';
-import { PaginationNextButton } from 'app/components/buttons/PaginationNextButton';
 
 const perPage = 25;
 
@@ -55,15 +47,8 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
         return null;
     });
 
-    const {
-        currentPage,
-        setCurrentPage,
-        pagesCount,
-        pages
-    } = usePagination({
-        pagesCount: Math.ceil(messages.length / perPage),
-        initialState: { currentPage: 1 },
-    });
+    const [currentPage, setCurrentPage] = useState(1);
+    const pagesCount = Math.ceil(messages.length / perPage);
 
     const loadMessages = (showToast = false) => {
         invoke('get-scheduled-messages').then((msgList: any[]) => {
@@ -223,33 +208,12 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
                     />
                 ) : null}
                 <Pagination
-                    pagesCount={pagesCount}
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                >
-                    <PaginationContainer
-                        align="center"
-                        justify="space-between"
-                        w="full"
-                        pt={2}
-                    >
-                        <PaginationPreviousButton />
-                        <Box ml={4}></Box>
-                        <PaginationPageGroup flexWrap="wrap" justifyContent="center">
-                            {pages.map((page: number) => (
-                                <PaginationPage 
-                                    key={`pagination_page_${page}`} 
-                                    page={page}
-                                    my={1}
-                                    px={3}
-                                    fontSize={14}
-                                />
-                            ))}
-                        </PaginationPageGroup>
-                        <Box ml={4}></Box>
-                        <PaginationNextButton />
-                    </PaginationContainer>
-                </Pagination>
+                    total={pagesCount}
+                    value={currentPage}
+                    onChange={setCurrentPage}
+                    w="full"
+                    pt={2}
+                />
             </Stack>
 
             <ConfirmationDialog

@@ -7,11 +7,11 @@ import {
     Text,
     Button,
     TextInput,
-    Radio
+    Radio,
+    Select
 } from '@mantine/core';
 type FocusableElement = HTMLElement;
 import { ScheduledMessageItem } from '../tables/ScheduledMessagesTable';
-import { Options, Select } from 'lib/select';
 import { intervalTypeOpts, scheduledMessageTypeOptions, scheduleTypeOptions } from 'app/constants';
 import { useAppSelector } from 'app/hooks';
 
@@ -113,9 +113,9 @@ export const ScheduledMessageDialog = ({
                     <Text component="label" fw={500} fz="sm" mb={4}>Type</Text>
                     <Select
                         size='md'
-                        options={scheduledMessageTypeOptions as unknown as Options<string>}
-                        value={type}
-                        onChange={setType}
+                        data={scheduledMessageTypeOptions}
+                        value={type?.value ?? null}
+                        onChange={(v) => setType(scheduledMessageTypeOptions.find(o => o.value === v) ?? null)}
                     />
                 </Box>
                 <Box mt={20}>
@@ -149,11 +149,12 @@ export const ScheduledMessageDialog = ({
                         <Text component="label" fw={500} fz="sm" mb={4}>Select Group Chat</Text>
                         <Select
                             size='md'
-                            options={groups as unknown as Options<string>}
-                            value={selectedGroup}
-                            onChange={(e: any) => {
-                                setSelectedGroup(e);
-                                setChatGuid((e as any).value);
+                            data={groups}
+                            value={selectedGroup?.value ?? null}
+                            onChange={(v) => {
+                                const g = groups.find((o: any) => o.value === v) ?? null;
+                                setSelectedGroup(g);
+                                setChatGuid(g?.value ?? '');
                             }}
                         />
                     </Box>
@@ -178,9 +179,9 @@ export const ScheduledMessageDialog = ({
                     <Text component="label" fw={500} fz="sm" mb={4}>Schedule Type</Text>
                     <Select
                         size='md'
-                        options={scheduleTypeOptions as unknown as Options<string>}
-                        value={scheduleType}
-                        onChange={setScheduleType}
+                        data={scheduleTypeOptions}
+                        value={scheduleType?.value ?? null}
+                        onChange={(v) => setScheduleType(scheduleTypeOptions.find(o => o.value === v) ?? null)}
                     />
                 </Box>
                 <Box mt={20}>
@@ -228,9 +229,9 @@ export const ScheduledMessageDialog = ({
                         <Box mt={20}>
                             <Select
                                 size='md'
-                                options={intervalTypeOpts as unknown as Options<string>}
-                                value={intervalType}
-                                onChange={setIntervalType}
+                                data={intervalTypeOpts}
+                                value={intervalType?.value ?? null}
+                                onChange={(v) => setIntervalType(intervalTypeOpts.find(o => o.value === v) ?? null)}
                             />
                         </Box>
                     </>
