@@ -3,6 +3,7 @@
 module.exports = {
     "productName": "BlueBubbles",
     "appId": "com.BlueBubbles.BlueBubbles-Server",
+    "electronVersion": "42.4.1",
     "npmRebuild": true,
     "directories": {
         "output": "releases",
@@ -16,8 +17,18 @@ module.exports = {
         "**/*.node",
         "**/node_modules/better-sqlite3/**"
     ],
+    // Embed the bbd backend the Electron shell forks (utilityProcess) — its bundled
+    // CJS entry plus the minimal native runtime it can't bundle (better-sqlite3 +
+    // bindings; node-mac-* for contacts/permissions, which degrade gracefully if absent).
+    // The forked process resolves these from resources/bbd/node_modules.
     "extraResources": [
-        "appResources"
+        "appResources",
+        { "from": "../bbd/dist/daemon-entry.cjs", "to": "bbd/daemon-entry.cjs" },
+        { "from": "../../node_modules/better-sqlite3", "to": "bbd/node_modules/better-sqlite3" },
+        { "from": "../../node_modules/bindings", "to": "bbd/node_modules/bindings" },
+        { "from": "../../node_modules/file-uri-to-path", "to": "bbd/node_modules/file-uri-to-path" },
+        { "from": "../../node_modules/node-mac-contacts", "to": "bbd/node_modules/node-mac-contacts" },
+        { "from": "../../node_modules/node-mac-permissions", "to": "bbd/node_modules/node-mac-permissions" }
     ],
     "mac": {
         "category": "public.app-category.social-networking",

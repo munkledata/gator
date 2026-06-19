@@ -269,30 +269,49 @@ export const AlertTitle = fwd(MText, p => ({ fw: 600, ...p }));
 export const AlertDescription = fwd(MText);
 
 // =====================================================================================
-// Modal  (best-effort: subcomponents become fragments/boxes; footer -> Group)
+// Modal / Drawer  — lift the <ModalHeader>/<DrawerHeader> into Mantine's title bar
+// (which brings the close button); body + footer render below.
 // =====================================================================================
-export const Modal = ({ isOpen, onClose, children, size, isCentered, ...rest }: AnyProps) => (
-    <MModal opened={!!isOpen} onClose={onClose} size={size} centered={isCentered} withCloseButton={false} {...rest}>{children}</MModal>
-);
-export const ModalOverlay : React.FC<any> = () => null;
+export const ModalOverlay: React.FC<any> = () => null;
 export const ModalContent = ({ children }: AnyProps) => <>{children}</>;
-export const ModalHeader = fwd(MText, p => ({ fw: 600, fz: 'lg', mb: 'sm', ...p }));
+export const ModalHeader = fwd(MText, p => ({ fw: 600, fz: 'lg', ...p }));
 export const ModalBody = fwd(MBox);
 export const ModalFooter = fwd(MGroup, p => ({ justify: 'flex-end', mt: 'md', ...p }));
-export const ModalCloseButton : React.FC<any> = () => null;
-
-// =====================================================================================
-// Drawer  (best-effort, same shape as Modal)
-// =====================================================================================
-export const Drawer = ({ isOpen, onClose, children, placement, size, ...rest }: AnyProps) => (
-    <MDrawer opened={!!isOpen} onClose={onClose} position={placement} size={size} {...rest}>{children}</MDrawer>
-);
-export const DrawerOverlay : React.FC<any> = () => null;
+export const ModalCloseButton: React.FC<any> = () => null;
+export const DrawerOverlay: React.FC<any> = () => null;
 export const DrawerContent = ({ children }: AnyProps) => <>{children}</>;
-export const DrawerHeader = fwd(MText, p => ({ fw: 600, fz: 'lg', mb: 'sm', ...p }));
+export const DrawerHeader = fwd(MText, p => ({ fw: 600, fz: 'lg', ...p }));
 export const DrawerBody = fwd(MBox);
 export const DrawerFooter = fwd(MGroup, p => ({ justify: 'flex-end', mt: 'md', ...p }));
-export const DrawerCloseButton : React.FC<any> = () => null;
+export const DrawerCloseButton: React.FC<any> = () => null;
+
+function splitHeader(children: React.ReactNode, HeaderType: React.ElementType): { title: React.ReactNode; body: React.ReactNode } {
+    let title: React.ReactNode = null;
+    const walk = (nodes: React.ReactNode): React.ReactNode =>
+        React.Children.map(nodes, node => {
+            if (!React.isValidElement(node)) return node;
+            if (node.type === HeaderType) {
+                title = (node.props as AnyProps).children;
+                return null;
+            }
+            if (node.type === ModalContent || node.type === DrawerContent) {
+                return walk((node.props as AnyProps).children);
+            }
+            return node;
+        });
+    const body = walk(children);
+    return { title, body };
+}
+
+export const Modal = ({ isOpen, onClose, children, size, isCentered, ...rest }: AnyProps) => {
+    const { title, body } = splitHeader(children, ModalHeader);
+    return <MModal opened={!!isOpen} onClose={onClose} size={size} centered={isCentered} title={title} {...(rest as any)}>{body}</MModal>;
+};
+
+export const Drawer = ({ isOpen, onClose, children, placement, size, ...rest }: AnyProps) => {
+    const { title, body } = splitHeader(children, DrawerHeader);
+    return <MDrawer opened={!!isOpen} onClose={onClose} position={placement} size={size} title={title} {...(rest as any)}>{body}</MDrawer>;
+};
 
 // =====================================================================================
 // Menu  (Chakra MenuButton/MenuList/MenuItem -> Mantine Menu.Target/Dropdown/Item)
@@ -317,33 +336,46 @@ export const PopoverArrow : React.FC<any> = () => null;
 export const PopoverCloseButton : React.FC<any> = () => null;
 
 // =====================================================================================
-// Tabs  (Chakra is index-based; Mantine is value-based — agents may refine per file)
+// Tabs  (Chakra is index-based; Mantine is value-based). Assign values by child
+// position via cloneElement — robust to re-renders and conditional tabs.
 // =====================================================================================
-let _tabIdx = 0;
-let _panelIdx = 0;
+const injectValues = (nodes: React.ReactNode): React.ReactNode => {
+    let i = 0;
+    return React.Children.map(nodes, node =>
+        React.isValidElement(node) ? React.cloneElement(node as any, { __value: String(i++) }) : node
+    );
+};
 export const Tabs = ({ children, index, onChange, defaultIndex, ...rest }: AnyProps) => {
-    // Reset the per-render index counters so Tab/TabPanel value assignment lines up
-    // (parent body runs before children render). Non-nested usage only.
-    _tabIdx = 0;
-    _panelIdx = 0;
+    const processed = React.Children.map(children, child => {
+        if (!React.isValidElement(child)) return child;
+        if (child.type === TabList) return React.cloneElement(child as any, {}, injectValues((child.props as AnyProps).children));
+        if (child.type === TabPanels) return <>{injectValues((child.props as AnyProps).children)}</>;
+        return child;
+    });
     return (
-        <MTabs defaultValue={String(defaultIndex ?? 0)} {...(index != null ? { value: String(index) } : {})} onChange={(v: any) => onChange?.(Number(v))} {...rest}>{children}</MTabs>
+        <MTabs
+            defaultValue={String(defaultIndex ?? 0)}
+            {...(index != null ? { value: String(index) } : {})}
+            onChange={(v: any) => onChange?.(Number(v))}
+            {...rest}
+        >{processed}</MTabs>
     );
 };
 export const TabList = ({ children, ...rest }: AnyProps) => <MTabs.List {...rest}>{children}</MTabs.List>;
-export const Tab = ({ children, ...rest }: AnyProps) => <MTabs.Tab value={String(_tabIdx++)} {...rest}>{children}</MTabs.Tab>;
+export const Tab = ({ children, __value, ...rest }: AnyProps) => <MTabs.Tab value={__value ?? '0'} {...rest}>{children}</MTabs.Tab>;
 export const TabPanels = ({ children }: AnyProps) => <>{children}</>;
-export const TabPanel = ({ children, ...rest }: AnyProps) => <MTabs.Panel value={String(_panelIdx++)} {...adapt(rest)}>{children}</MTabs.Panel>;
+export const TabPanel = ({ children, __value, ...rest }: AnyProps) => <MTabs.Panel value={__value ?? '0'} {...adapt(rest)}>{children}</MTabs.Panel>;
 
 // =====================================================================================
 // Accordion
 // =====================================================================================
-let _accIdx = 0;
 export const Accordion = ({ children, allowToggle, allowMultiple, ...rest }: AnyProps) => {
-    _accIdx = 0;
-    return <MAccordion multiple={!!allowMultiple} {...rest}>{children}</MAccordion>;
+    const processed = React.Children.map(children, (child, i) =>
+        React.isValidElement(child) ? React.cloneElement(child as any, { __value: String(i) }) : child
+    );
+    return <MAccordion multiple={!!allowMultiple} {...rest}>{processed}</MAccordion>;
 };
-export const AccordionItem = ({ children, ...rest }: AnyProps) => <MAccordion.Item value={String(_accIdx++)} {...rest}>{children}</MAccordion.Item>;
+export const AccordionItem = ({ children, __value, ...rest }: AnyProps) => <MAccordion.Item value={__value ?? '0'} {...rest}>{children}</MAccordion.Item>;
 export const AccordionButton = ({ children, ...rest }: AnyProps) => <MAccordion.Control {...rest}>{children}</MAccordion.Control>;
 export const AccordionPanel = ({ children, ...rest }: AnyProps) => <MAccordion.Panel {...adapt(rest)}>{children}</MAccordion.Panel>;
 export const AccordionIcon : React.FC<any> = () => null;

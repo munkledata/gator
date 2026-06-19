@@ -3,21 +3,28 @@ import { build } from "esbuild";
 /**
  * Bundles the bbd backend to CJS files the Electron shell can `utilityProcess.fork()`.
  *
- * - First-party code (bbd's own src + the `@bluebubbles/*` workspace packages, whose
- *   "main" is raw TypeScript) is bundled in, so the output is self-contained TS-free.
- * - Every other bare import (fastify, socket.io, drizzle-orm, zod, and the native
- *   addons like better-sqlite3 / node-mac-*) stays external and resolves from
- *   node_modules at runtime — bundling native `.node` or avvio's dynamic requires
- *   would break them.
+ * - Pure-JS deps (fastify, socket.io, drizzle-orm, zod, @bluebubbles/*) are bundled IN,
+ *   so the packaged app only has to ship the handful of native/dynamic modules below in
+ *   resources/bbd/node_modules — not bbd's whole dependency tree.
+ * - Native addons and modules loaded via dynamic require/createRequire stay external:
+ *   bundling a `.node` file or a runtime-resolved path is impossible.
  * - Output is `.cjs` (CommonJS) even though the package is `type: module`, so Node
  *   treats the forked entry as CJS regardless of the surrounding ESM package.
  */
-const bundleFirstPartyExternalizeRest = {
-    name: "external-except-workspace",
+const NATIVE_OR_DYNAMIC = new Set([
+    "better-sqlite3",
+    "node-mac-contacts",
+    "node-mac-permissions",
+    "firebase-admin",
+    "bufferutil",
+    "utf-8-validate"
+]);
+const externalizeNativeOnly = {
+    name: "externalize-native-only",
     setup(b) {
         b.onResolve({ filter: /^[^./]/ }, args => {
-            if (args.path.startsWith("@bluebubbles/")) return undefined; // bundle workspace pkgs
-            return { path: args.path, external: true };
+            const top = args.path.startsWith("@") ? args.path.split("/").slice(0, 2).join("/") : args.path.split("/")[0];
+            return NATIVE_OR_DYNAMIC.has(top) ? { path: args.path, external: true } : undefined;
         });
     }
 };
@@ -37,7 +44,7 @@ await build({
     // __filename (which CJS does provide).
     define: { "import.meta.url": "__bbdImportMetaUrl" },
     banner: { js: "const __bbdImportMetaUrl = require('node:url').pathToFileURL(__filename).href;" },
-    plugins: [bundleFirstPartyExternalizeRest]
+    plugins: [externalizeNativeOnly]
 });
 
 console.log("bbd backend bundled -> dist/daemon-entry.cjs, dist/main.cjs");
