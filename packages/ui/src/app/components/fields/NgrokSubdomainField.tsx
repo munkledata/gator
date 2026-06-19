@@ -9,7 +9,7 @@ import {
     Box,
     Link,
     Text
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -78,7 +78,7 @@ export const NgrokSubdomainField = ({ helpText }: NgrokSubdomainFieldProps): JSX
                 maxWidth="20em"
                 placeholder="my-subdomain.ngrok-free.app"
                 value={newNgrokSubdomain}
-                onChange={(e) => {
+                onChange={(e: any) => {
                     if (hasNgrokSubdomainError) setNgrokSubdomainError('');
                     setNewNgrokSubdomain(e.target.value);
                 }}

@@ -1,4 +1,4 @@
-import { useColorMode } from '@chakra-ui/react';
+import { useColorMode } from 'lib/ui';
 
 import { useAppSelector } from '../hooks';
 

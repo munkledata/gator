@@ -10,7 +10,7 @@ import {
     AccordionPanel,
     AccordionIcon,
     Box
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { AutoStartMethodField } from '../../../components/fields/AutoStartMethodField';
 import { AutoCaffeinateField } from '../../../components/fields/AutoCaffeinateField';
 import { DockBadgeField } from '../../../components/fields/DockBadgeField';

@@ -7,7 +7,7 @@ import {
     Alert,
     AlertIcon,
     Spacer
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { ProxySetupField } from '../../../components/fields/ProxySetupField';
 import { useAppSelector } from '../../../hooks';
 import { NgrokAuthTokenField } from '../../../components/fields/NgrokAuthTokenField';

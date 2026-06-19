@@ -4,7 +4,7 @@ import {
     Text,
     SlideFade,
     Image
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { PermissionRequirements } from '../../../components/PermissionRequirements';
 import FullDiskImage from '../../../../images/walkthrough/full-disk-access.png';
 import SystemPreferencesImage from '../../../../images/walkthrough/system-preferences.png';

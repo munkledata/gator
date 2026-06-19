@@ -1,10 +1,10 @@
 import React from 'react';
-import { Box, Divider, LinkBox, Spacer, Stack, Text, Wrap } from '@chakra-ui/react';
+import { Box, Divider, LinkBox, Spacer, Stack, Text, Wrap } from 'lib/ui';
 import {
     Heading,
     LinkOverlay,
     WrapItem
-} from '@chakra-ui/react';
+} from 'lib/ui';
 
 
 export const GuidesLayout = (): JSX.Element => {

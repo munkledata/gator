@@ -8,7 +8,7 @@ import {
     Wrap,
     WrapItem,
     SlideFade
-} from '@chakra-ui/react';
+} from 'lib/ui';
 
 export const IntroWalkthrough = (): JSX.Element => {
     return (

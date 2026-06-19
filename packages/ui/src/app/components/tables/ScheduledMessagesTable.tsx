@@ -10,7 +10,7 @@ import {
     Icon,
     Box,
     Tooltip
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { AiOutlineCheck } from 'react-icons/ai';
 import { MdErrorOutline } from 'react-icons/md';
 import { IoIosTimer } from 'react-icons/io';

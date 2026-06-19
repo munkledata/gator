@@ -4,7 +4,7 @@ import {
     Flex,
     Text,
     Center
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { RiDragDropLine } from 'react-icons/ri';
 
 interface DropZoneProps {

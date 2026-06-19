@@ -7,7 +7,7 @@ import {
     IconButton,
     FormErrorMessage,
     Flex
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -58,7 +58,7 @@ export const PollIntervalField = ({ helpText }: PollIntervalFieldProps): JSX.Ele
                     type='number'
                     maxWidth="5em"
                     value={newInterval}
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                         if (hasIntervalError) setIntervalError('');
                         setNewInterval(Number.parseInt(e.target.value));
                     }}

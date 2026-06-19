@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Box, Divider, Flex, LinkBox, Spacer, Stack, Text, useBoolean } from '@chakra-ui/react';
+import { Box, Divider, Flex, LinkBox, Spacer, Stack, Text, useBoolean } from 'lib/ui';
 import {
     Menu,
     MenuButton,
@@ -15,7 +15,7 @@ import {
     PopoverTrigger,
     Heading,
     LinkOverlay
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { BsChevronDown } from 'react-icons/bs';
 import { AiOutlineInfoCircle, AiOutlinePlus } from 'react-icons/ai';
 import { WebhooksTable } from '../../components/tables/WebhooksTable';

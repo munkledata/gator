@@ -15,10 +15,10 @@ import {
     RadioGroup,
     Stack,
     Radio
-} from '@chakra-ui/react';
-import { FocusableElement } from '@chakra-ui/utils';
+} from 'lib/ui';
+type FocusableElement = HTMLElement;
 import { ScheduledMessageItem } from '../tables/ScheduledMessagesTable';
-import { Options, Select } from 'chakra-react-select';
+import { Options, Select } from 'lib/select';
 import { intervalTypeOpts, scheduledMessageTypeOptions, scheduleTypeOptions } from 'app/constants';
 import { useAppSelector } from 'app/hooks';
 
@@ -143,7 +143,7 @@ export const ScheduledMessageDialog = ({
                                     type='text'
                                     value={chatGuid ?? ''}
                                     placeholder=''
-                                    onChange={(e) => {
+                                    onChange={(e: any) => {
                                         setGuidError('');
                                         setChatGuid(e.target.value);
                                     }}
@@ -160,7 +160,7 @@ export const ScheduledMessageDialog = ({
                                     size='md'
                                     options={groups as unknown as Options<string>}
                                     value={selectedGroup}
-                                    onChange={(e) => {
+                                    onChange={(e: any) => {
                                         setSelectedGroup(e);
                                         setChatGuid((e as any).value);
                                     }}
@@ -174,7 +174,7 @@ export const ScheduledMessageDialog = ({
                                 type='text'
                                 value={message}
                                 placeholder='Good morning :)'
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     setMessageError('');
                                     setMessage(e.target.value);
                                 }}
@@ -198,7 +198,7 @@ export const ScheduledMessageDialog = ({
                                 id='scheduledFor'
                                 type='datetime-local'
                                 defaultValue={toLocalIsoString(scheduledFor)}
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     setDateError('');
                                     if (e.target.value.length !== 0) {
                                         let date;
@@ -226,7 +226,7 @@ export const ScheduledMessageDialog = ({
                                         id='scheduleInterval'
                                         type='number'
                                         value={interval ?? 1}
-                                        onChange={(e) => {
+                                        onChange={(e: any) => {
                                             setIntervalValue(Number.parseInt(e.target.value));
                                         }}
                                     />

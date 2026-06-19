@@ -5,7 +5,7 @@ import {
     Checkbox,
     Text,
     Code
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 

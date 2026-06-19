@@ -8,7 +8,7 @@ import {
     UnorderedList,
     useColorModeValue,
     keyframes
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { BiRefresh, BiTrash } from 'react-icons/bi';
 import { clearAttachmentCache, getAttachmentCacheInfo } from '../utils/IpcUtils';
 import { showErrorToast, showSuccessToast } from 'app/utils/ToastUtils';

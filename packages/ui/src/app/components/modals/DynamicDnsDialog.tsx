@@ -14,8 +14,8 @@ import {
     FormErrorMessage,
     FormLabel,
     Text
-} from '@chakra-ui/react';
-import { FocusableElement } from '@chakra-ui/utils';
+} from 'lib/ui';
+type FocusableElement = HTMLElement;
 
 
 interface DynamicDnsDialogProps {
@@ -69,7 +69,7 @@ export const DynamicDnsDialog = ({
                                 maxWidth="20em"
                                 value={address}
                                 placeholder={`http://<your DNS>:${port}`}
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     setError('');
                                     setAddress(e.target.value);
                                 }}

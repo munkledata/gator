@@ -10,7 +10,7 @@ import {
     Icon,
     Flex,
     Text
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { BiErrorAlt } from 'react-icons/bi';
 import { AiOutlineWarning, AiOutlineInfoCircle } from 'react-icons/ai';
 import { BsCheckAll } from 'react-icons/bs';

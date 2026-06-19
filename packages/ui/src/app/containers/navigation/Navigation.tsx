@@ -31,7 +31,7 @@ import {
     Button,
     Badge,
     Divider
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { FiHome, FiSettings, FiMenu, FiBell, FiGithub, FiMessageCircle, FiTrash } from 'react-icons/fi';
 import { FaDiscord, FaGoogle } from 'react-icons/fa';
 import { AiOutlineBug, AiOutlineHome, AiOutlineApi, AiOutlineHeart, AiOutlineDownload } from 'react-icons/ai';

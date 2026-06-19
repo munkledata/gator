@@ -6,7 +6,7 @@ import {
     FormLabel,
     FormHelperText
 
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppSelector } from '../../hooks';
 import { onSelectChange } from '../../actions/ConfigActions';
 
@@ -29,7 +29,7 @@ export const PrivateApiModeField = ({ helpText }: PrivateApiModeFieldProps): JSX
                     maxWidth="15em"
                     mr={3}
                     value={mode}
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                         if (!e.target.value || e.target.value.length === 0) return;
                         onSelectChange(e);
                     }}

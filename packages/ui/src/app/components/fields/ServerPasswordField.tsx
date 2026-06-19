@@ -7,7 +7,7 @@ import {
     IconButton,
     FormErrorMessage,
     useBoolean
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -69,7 +69,7 @@ export const ServerPasswordField = ({ helpText, errorOnEmpty = false }: ServerPa
                 type={showPassword ? 'text' : 'password'}
                 maxWidth="20em"
                 value={newPassword}
-                onChange={(e) => {
+                onChange={(e: any) => {
                     if (hasPasswordError) setPasswordError('');
                     setNewPassword(e.target.value);
                 }}

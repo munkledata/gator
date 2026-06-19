@@ -4,7 +4,7 @@ import {
     FormHelperText,
     Checkbox,
     Text
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 

@@ -7,7 +7,7 @@ import {
     IconButton,
     FormErrorMessage,
     Flex
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -61,7 +61,7 @@ export const LocalPortField = ({ helpText }: LocalPortFieldProps): JSX.Element =
                     type='number'
                     maxWidth="5em"
                     value={newPort}
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                         if (hasPortError) setPortError('');
                         setNewPort(Number.parseInt(e.target.value));
                     }}

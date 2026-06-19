@@ -4,7 +4,7 @@ import {
     Flex,
     FormControl,
 
-} from '@chakra-ui/react';
+} from 'lib/ui';
 
 
 export interface TimeframeDropdownFieldProps {
@@ -20,7 +20,7 @@ export const TimeframeDropdownField = ({ selectedDays = 30 * 6, onChange }: Time
                     maxWidth="16em"
                     mr={3}
                     value={String(selectedDays)}
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                         if (onChange) {
                             onChange(Number.parseInt(e.target.value));
                         }

@@ -9,7 +9,7 @@ import {
     PopoverBody,
     PopoverContent,
     PopoverTrigger
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { ConfirmationItems, showSuccessToast } from '../../utils/ToastUtils';
 import { disableZrok, saveLanUrl } from 'app/utils/IpcUtils';
 import { setConfig } from 'app/slices/ConfigSlice';

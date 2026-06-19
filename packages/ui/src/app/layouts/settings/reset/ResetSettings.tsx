@@ -5,7 +5,7 @@ import {
     Text,
     Spacer,
     Button
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { store } from '../../../store';
 import { toggleTutorialCompleted, resetApp } from '../../../actions/GeneralActions';
 import { ConfirmationDialog } from '../../../components/modals/ConfirmationDialog';

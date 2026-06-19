@@ -9,8 +9,8 @@ import {
     Button,
     ListItem,
     UnorderedList
-} from '@chakra-ui/react';
-import { FocusableElement } from '@chakra-ui/utils';
+} from 'lib/ui';
+type FocusableElement = HTMLElement;
 
 export type ErrorItem = {
     id: string,

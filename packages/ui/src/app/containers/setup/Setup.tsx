@@ -13,7 +13,7 @@ import {
     useColorMode,
     Spacer,
     Divider
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { FiGithub, FiMessageCircle } from 'react-icons/fi';
 import { FaDiscord } from 'react-icons/fa';
 import { AiOutlineHome } from 'react-icons/ai';

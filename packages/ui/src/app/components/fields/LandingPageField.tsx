@@ -5,7 +5,7 @@ import {
     FormHelperText,
     FormErrorMessage,
     Flex
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import FilePicker from '../FilePicker';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';

@@ -8,7 +8,7 @@ import {
     UnorderedList,
     useColorModeValue,
     keyframes
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { BiRefresh } from 'react-icons/bi';
 import { getPrivateApiStatus } from '../utils/IpcUtils';
 

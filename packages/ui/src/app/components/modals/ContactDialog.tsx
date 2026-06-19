@@ -21,8 +21,8 @@ import {
     IconButton,
     useBoolean,
     Stack
-} from '@chakra-ui/react';
-import { FocusableElement } from '@chakra-ui/utils';
+} from 'lib/ui';
+type FocusableElement = HTMLElement;
 import { ContactAddress, ContactItem } from '../tables/ContactsTable';
 import { showErrorToast } from 'app/utils/ToastUtils';
 import { AiOutlinePlus } from 'react-icons/ai';
@@ -128,7 +128,7 @@ export const ContactDialog = ({
                         type='text'
                         value={firstName}
                         placeholder='Tim'
-                        onChange={(e) => {
+                        onChange={(e: any) => {
                             setFirstNameError('');
                             setFirstName(e.target.value);
                             if (!hasEdited) {
@@ -147,7 +147,7 @@ export const ContactDialog = ({
                         type='text'
                         value={lastName}
                         placeholder='Apple'
-                        onChange={(e) => {
+                        onChange={(e: any) => {
                             setLastName(e.target.value);
                             if (!hasEdited) {
                                 setDisplayName(`${firstName} ${e.target.value}`.trim());
@@ -194,7 +194,7 @@ export const ContactDialog = ({
                                 type='text'
                                 value={displayName}
                                 placeholder='Tim Apple'
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     setHasEdited.on();
                                     setDisplayName(e.target.value);
                                 }}
@@ -208,7 +208,7 @@ export const ContactDialog = ({
                                     type='text'
                                     value={currentAddress}
                                     placeholder='Add Address'
-                                    onChange={(e) => {
+                                    onChange={(e: any) => {
                                         setCurrentAddress(e.target.value);
                                     }}
                                 />

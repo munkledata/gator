@@ -8,7 +8,7 @@ import {
     SlideFade,
     Alert,
     AlertIcon
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { PrivateApiField } from '../../../components/fields/PrivateApiField';
 
 

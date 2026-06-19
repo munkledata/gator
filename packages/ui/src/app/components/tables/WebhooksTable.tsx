@@ -12,7 +12,7 @@ import {
     GridItem,
     Tooltip,
     Stack,
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { FiTrash } from 'react-icons/fi';
 import { AiOutlineEdit } from 'react-icons/ai';
 import { remove, WebhookItem } from '../../slices/WebhooksSlice';

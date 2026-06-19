@@ -12,9 +12,9 @@ import {
     FormErrorMessage,
     FormLabel,
     Text
-} from '@chakra-ui/react';
-import { Select as MultiSelect } from 'chakra-react-select';
-import { FocusableElement } from '@chakra-ui/utils';
+} from 'lib/ui';
+import { Select as MultiSelect } from 'lib/select';
+type FocusableElement = HTMLElement;
 import { webhookEventOptions } from '../../constants';
 import { MultiSelectValue } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../hooks';
@@ -79,7 +79,7 @@ export const AddWebhookDialog = ({
                                 type='text'
                                 value={url}
                                 placeholder='https://<your URL path>'
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     setUrlError('');
                                     setUrl(e.target.value);
                                 }}
@@ -95,7 +95,7 @@ export const AddWebhookDialog = ({
                                 isMulti={true}
                                 options={webhookEventOptions}
                                 value={selectedEvents}
-                                onChange={(newValues) => {
+                                onChange={(newValues: any) => {
                                     setEventsError('');
                                     setSelectedEvents(newValues as Array<MultiSelectValue>);
                                 }}

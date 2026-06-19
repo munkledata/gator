@@ -8,7 +8,7 @@ import {
     FormErrorMessage,
     useBoolean,
     Text
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -63,7 +63,7 @@ export const ZrokTokenField = ({ helpText }: ZrokTokenFieldProps): JSX.Element =
                 type={showZrokToken ? 'text' : 'password'}
                 maxWidth="20em"
                 value={newZrokToken}
-                onChange={(e) => {
+                onChange={(e: any) => {
                     if (hasZrokTokenError) setZrokTokenError('');
                     setNewZrokToken(e.target.value);
                 }}

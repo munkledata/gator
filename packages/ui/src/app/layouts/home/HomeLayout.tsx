@@ -19,7 +19,7 @@ import {
     ListItem,
     SkeletonText,
     Tooltip
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import QRCode from 'react-qr-code';
 import { AiOutlineInfoCircle, AiOutlineQrcode } from 'react-icons/ai';
 

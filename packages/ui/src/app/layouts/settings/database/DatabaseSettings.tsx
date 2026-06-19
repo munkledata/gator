@@ -4,7 +4,7 @@ import {
     Stack,
     Text,
     Spacer
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { PollIntervalField } from '../../../components/fields/PollIntervalField';
 
 

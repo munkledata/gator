@@ -1,5 +1,5 @@
 import React from 'react';
-import { useColorMode, useColorModeValue } from '@chakra-ui/react';
+import { useColorMode, useColorModeValue } from 'lib/ui';
 
 export const withColorModeHooks = (Elem: any): (props: any) => JSX.Element => {
     // eslint-disable-next-line react/display-name

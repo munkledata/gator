@@ -7,7 +7,7 @@ import {
     Th,
     Td,
     TableCaption,
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { LogItem } from '../../slices/LogsSlice';
 
 

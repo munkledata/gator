@@ -27,14 +27,14 @@ import {
     Spinner,
     Link,
     Image
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import {
     Pagination,
     usePagination,
     PaginationPage,
     PaginationContainer,
     PaginationPageGroup,
-} from '@ajna/pagination';
+} from 'lib/pagination';
 import { AiOutlineInfoCircle, AiOutlineSearch } from 'react-icons/ai';
 import { BsCheckAll, BsChevronDown, BsPersonPlus, BsUnlockFill } from 'react-icons/bs';
 import { BiImport, BiRefresh } from 'react-icons/bi';
@@ -429,7 +429,7 @@ export const ContactsLayout = (): JSX.Element => {
                         </InputLeftElement>
                         <Input
                             placeholder='Search Contacts'
-                            onChange={(e) => {
+                            onChange={(e: any) => {
                                 if (currentPage > 1) {
                                     setCurrentPage(1);
                                 }

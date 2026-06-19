@@ -7,8 +7,8 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     Button
-} from '@chakra-ui/react';
-import { FocusableElement } from '@chakra-ui/utils';
+} from 'lib/ui';
+type FocusableElement = HTMLElement;
 
 
 interface ConfirmationDialogProps {

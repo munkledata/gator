@@ -21,14 +21,14 @@ import {
     Button,
     MenuList,
     MenuItem
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import {
     Pagination,
     usePagination,
     PaginationPage,
     PaginationContainer,
     PaginationPageGroup,
-} from '@ajna/pagination';
+} from 'lib/pagination';
 import { AiOutlineInfoCircle } from 'react-icons/ai';
 import { BsChevronDown } from 'react-icons/bs';
 import { AiOutlinePlus } from 'react-icons/ai';

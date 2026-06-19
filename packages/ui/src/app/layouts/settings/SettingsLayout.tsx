@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text, Divider, Stack } from '@chakra-ui/react';
+import { Box, Text, Divider, Stack } from 'lib/ui';
 import { ConnectionSettings } from './connection/ConnectionSettings';
 import { FeatureSettings } from './features/FeatureSettings';
 import { PrivateApiSettings } from './privateApi/PrivateApiSettings';

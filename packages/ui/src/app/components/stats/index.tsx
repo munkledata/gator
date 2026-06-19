@@ -6,7 +6,7 @@ import {
     Badge,
     Text,
     SkeletonText
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { formatNumber } from 'app/utils/NumberUtils';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { setStat } from '../../slices/StatsSlice';

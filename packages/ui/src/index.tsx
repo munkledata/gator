@@ -1,11 +1,14 @@
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
 import { onEvent } from 'lib/apiClient';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { Provider } from 'react-redux';
 import App from './app/App';
-import { ChakraProvider, extendTheme, ColorModeScript, localStorageManager } from '@chakra-ui/react';
-import { baseTheme } from './theme';
+import { MantineProvider } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
+import { theme } from './theme';
 import { store } from './app/store';
 import { checkPermissions, getAlerts, getConfig, getDevices, getFcmConfig, getPrivateApiRequirements, getWebhooks } from './app/utils/IpcUtils';
 import { setConfigBulk, ConfigItem, setConfig } from './app/slices/ConfigSlice';
@@ -16,8 +19,6 @@ import { addAll as addAllWebhooks } from './app/slices/WebhooksSlice';
 import { add as addAlert, addAll as addAllAlerts, NotificationItem, clear as clearAlerts } from './app/slices/NotificationsSlice';
 import { getRandomInt } from './app/utils/GenericUtils';
 
-
-const theme = extendTheme(baseTheme);
 
 // Load the configuration from the server
 getConfig().then(cfg => {
@@ -162,10 +163,10 @@ const root = createRoot(domNode);
 root.render(
     <React.StrictMode>
         <Provider store={store}>
-            <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-            <ChakraProvider theme={theme} colorModeManager={localStorageManager}>
+            <MantineProvider theme={theme} defaultColorScheme="auto">
+                <Notifications />
                 <App />
-            </ChakraProvider>
+            </MantineProvider>
         </Provider>
     </React.StrictMode>
 );

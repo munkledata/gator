@@ -19,7 +19,7 @@ import {
     Button,
     Flex,
     useBoolean
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { IntroWalkthrough } from './intro/IntroWalkthrough';
 import { ConnectionWalkthrough } from './connection/ConnectionWalkthrough';
 import { PrivateApiWalkthrough } from './privateApi/PrivateApiWalkthrough';

@@ -17,7 +17,7 @@ import {
     PopoverBody,
     PopoverArrow,
     PopoverTrigger,
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { BsChevronDown } from 'react-icons/bs';
 import { FiTrash } from 'react-icons/fi';
 import { BiRefresh } from 'react-icons/bi';

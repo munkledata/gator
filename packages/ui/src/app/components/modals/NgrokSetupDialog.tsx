@@ -12,9 +12,9 @@ import {
     FormErrorMessage,
     FormLabel,
     Text
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppSelector } from '../../hooks';
-import { FocusableElement } from '@chakra-ui/utils';
+type FocusableElement = HTMLElement;
 import { NgrokSubdomainField } from '../fields/NgrokSubdomainField';
 
 
@@ -69,7 +69,7 @@ export const NgrokSetupDialog = ({
                                 type='password'
                                 maxWidth="20em"
                                 value={authToken}
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     setError('');
                                     setAuthToken(e.target.value);
                                 }}

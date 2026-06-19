@@ -15,7 +15,7 @@ import {
     UnorderedList,
     useColorModeValue,
     keyframes
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { BiRefresh } from 'react-icons/bi';
 import { useAppSelector } from '../hooks';
 import { AiOutlineInfoCircle } from 'react-icons/ai';

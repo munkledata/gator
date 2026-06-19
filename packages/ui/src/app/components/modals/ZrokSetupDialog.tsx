@@ -14,9 +14,9 @@ import {
     Text,
     IconButton,
     useBoolean
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppSelector } from '../../hooks';
-import { FocusableElement } from '@chakra-ui/utils';
+type FocusableElement = HTMLElement;
 import { registerZrokEmail, setZrokToken } from 'app/utils/IpcUtils';
 import { showSuccessToast } from 'app/utils/ToastUtils';
 import { AiFillEye, AiFillEyeInvisible } from 'react-icons/ai';
@@ -82,7 +82,7 @@ export const ZrokSetupDialog = ({
                                 maxWidth="16em"
                                 mr={3}
                                 value={email}
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     setEmailError('');
                                     setEmail(e.target.value);
                                 }}
@@ -131,7 +131,7 @@ export const ZrokSetupDialog = ({
                                 type={showToken ? 'text' : 'password'}
                                 mr={3}
                                 value={token}
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     setTokenError('');
                                     setToken(e.target.value);
                                 }}

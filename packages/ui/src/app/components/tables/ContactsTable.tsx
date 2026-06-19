@@ -11,7 +11,7 @@ import {
     Icon,
     Box,
     Tooltip
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { AiOutlineEdit } from 'react-icons/ai';
 import { MdOutlineEditOff } from 'react-icons/md';
 import { ContactDialog } from '../modals/ContactDialog';

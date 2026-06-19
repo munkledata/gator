@@ -18,7 +18,7 @@ import {
     PopoverBody,
     PopoverArrow,
     PopoverTrigger,
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import {  AiOutlineInfoCircle } from 'react-icons/ai';
 import { useAppSelector } from '../../../hooks';
 import { NgrokAuthTokenField } from '../../../components/fields/NgrokAuthTokenField';

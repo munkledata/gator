@@ -7,7 +7,7 @@ import {
     IconButton,
     FormErrorMessage,
     Text
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -62,7 +62,7 @@ export const ZrokReservedNameField = ({ helpText }: ZrokReservedNameFieldProps):
                 type='text'
                 maxWidth="20em"
                 value={newZrokReservedName}
-                onChange={(e) => {
+                onChange={(e: any) => {
                     if (hasZrokReservedNameError) setZrokReservedNameError('');
                     setNewZrokReservedName(e.target.value);
                 }}

@@ -1,8 +1,8 @@
-import { createStandaloneToast, ToastId } from '@chakra-ui/react';
+import { notifications } from '@mantine/notifications';
 import { AnyAction } from '@reduxjs/toolkit';
 import { getRandomInt } from './GenericUtils';
 
-const standaloneToast = createStandaloneToast();
+export type ToastId = string;
 
 export type ToastStatus = 'info' | 'warning' | 'success' | 'error';
 
@@ -24,52 +24,35 @@ export type ToastParams = {
     onCloseComplete?: () => void
 };
 
+const STATUS_COLOR: Record<ToastStatus, string> = {
+    info: 'blue',
+    warning: 'yellow',
+    success: 'green',
+    error: 'red'
+};
+
 export const showSuccessToast = ({
-    id,
-    title = 'Success',
-    description,
-    status = 'success',
-    duration,
-    isClosable,
-    onCloseComplete
+    id, title = 'Success', description, status = 'success', duration, isClosable, onCloseComplete
 }: ToastParams): void => {
-    showToast({ id, title, description, status, duration, isClosable, onCloseComplete});
+    showToast({ id, title, description, status, duration, isClosable, onCloseComplete });
 };
 
 export const showInfoToast = ({
-    id,
-    title = 'Info',
-    description,
-    status = 'info',
-    duration,
-    isClosable,
-    onCloseComplete
+    id, title = 'Info', description, status = 'info', duration, isClosable, onCloseComplete
 }: ToastParams): void => {
-    showToast({ id, title, description, status, duration, isClosable, onCloseComplete});
+    showToast({ id, title, description, status, duration, isClosable, onCloseComplete });
 };
 
 export const showWarnToast = ({
-    id,
-    title = 'Warning',
-    description,
-    status = 'warning',
-    duration,
-    isClosable,
-    onCloseComplete
+    id, title = 'Warning', description, status = 'warning', duration, isClosable, onCloseComplete
 }: ToastParams): void => {
-    showToast({ id, title, description, status, duration, isClosable, onCloseComplete});
+    showToast({ id, title, description, status, duration, isClosable, onCloseComplete });
 };
 
 export const showErrorToast = ({
-    id,
-    title = 'Error',
-    description,
-    status = 'error',
-    duration,
-    isClosable,
-    onCloseComplete
+    id, title = 'Error', description, status = 'error', duration, isClosable, onCloseComplete
 }: ToastParams): void => {
-    showToast({ id, title, description, status, duration, isClosable, onCloseComplete});
+    showToast({ id, title, description, status, duration, isClosable, onCloseComplete });
 };
 
 export const showToast = ({
@@ -81,6 +64,13 @@ export const showToast = ({
     isClosable = true,
     onCloseComplete
 }: ToastParams): void => {
-    const finalId = `${id}-${String(getRandomInt(10000))}`;
-    standaloneToast.toast({ id: finalId, title, description, status, duration, isClosable, onCloseComplete });
+    notifications.show({
+        id: `${id}-${String(getRandomInt(10000))}`,
+        title,
+        message: description,
+        color: STATUS_COLOR[status],
+        autoClose: duration,
+        withCloseButton: isClosable,
+        onClose: onCloseComplete
+    });
 };

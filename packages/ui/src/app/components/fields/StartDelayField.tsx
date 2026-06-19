@@ -7,7 +7,7 @@ import {
     IconButton,
     FormErrorMessage,
     Flex
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -70,7 +70,7 @@ export const StartDelayField = ({ helpText }: StartDelayFieldProps): JSX.Element
                     type='number'
                     maxWidth="5em"
                     value={newStartDelay}
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                         if (hasDelayError) setDelayError('');
                         setStartDelay(Number.parseInt(e.target.value));
                     }}

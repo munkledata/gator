@@ -31,7 +31,7 @@ import {
     TabPanel,
     Image,
     Spinner
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { BsChevronDown, BsCheckAll } from 'react-icons/bs';
 import { FiTrash } from 'react-icons/fi';
 
@@ -280,10 +280,10 @@ export const NotificationsLayout = (): JSX.Element => {
         <Box
             p={8}
             borderRadius={10}
-            onDragEnter={(e) => onDragEnter(e)}
+            onDragEnter={(e: any) => onDragEnter(e)}
             onDragLeave={() => onDragLeave()}
-            onDragOver={(e) => onDragOver(e)}
-            onDrop={(e) => onDrop(e)}
+            onDragOver={(e: any) => onDragOver(e)}
+            onDrop={(e: any) => onDrop(e)}
         >
             <Text fontSize='2xl'>Notifications</Text>
             <Divider orientation='horizontal' />

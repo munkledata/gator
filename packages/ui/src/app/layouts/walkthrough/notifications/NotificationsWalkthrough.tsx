@@ -18,7 +18,7 @@ import {
     TabPanel,
     Image,
     Spinner
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { store } from '../../../store';
 import { filter as filterLogs } from '../../../slices/LogsSlice';
 import { LogsTable } from '../../../components/tables/LogsTable';
@@ -171,10 +171,10 @@ export const NotificationsWalkthrough = (): JSX.Element => {
         <SlideFade in={true} offsetY='150px'>
             <Box
                 px={5}
-                onDragEnter={(e) => onDragEnter(e)}
+                onDragEnter={(e: any) => onDragEnter(e)}
                 onDragLeave={() => onDragLeave()}
-                onDragOver={(e) => onDragOver(e)}
-                onDrop={(e) => onDrop(e)}    
+                onDragOver={(e: any) => onDragOver(e)}
+                onDrop={(e: any) => onDrop(e)}    
             >
                 <Text fontSize='4xl'>Notifications &amp; Firebase</Text>
                 <Text fontSize='md' mt={5} mb={5}>

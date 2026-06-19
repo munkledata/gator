@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Box, Divider, Flex, Spacer, Stack, Text } from '@chakra-ui/react';
+import { Box, Divider, Flex, Spacer, Stack, Text } from 'lib/ui';
 import {
     Menu,
     MenuButton,
@@ -14,7 +14,7 @@ import {
     PopoverBody,
     PopoverArrow,
     PopoverTrigger
-} from '@chakra-ui/react';
+} from 'lib/ui';
 import { BsChevronDown, BsBootstrapReboot, BsTerminal } from 'react-icons/bs';
 import { VscDebugRestart } from 'react-icons/vsc';
 import { AiOutlineClear, AiOutlineInfoCircle } from 'react-icons/ai';
@@ -195,7 +195,7 @@ export const LogsLayout = (): JSX.Element => {
                     <Divider orientation='horizontal' />
                     <Spacer />
                     <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                        <Checkbox onChange={(e) => toggleDebugMode(e)} isChecked={showDebug}>Show Debug Logs</Checkbox>
+                        <Checkbox onChange={(e: any) => toggleDebugMode(e)} isChecked={showDebug}>Show Debug Logs</Checkbox>
                         <Popover trigger='hover'>
                             <PopoverTrigger>
                                 <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
@@ -215,7 +215,7 @@ export const LogsLayout = (): JSX.Element => {
                             </PopoverContent>
                         </Popover>
                         <Box ml={5} />
-                        <Checkbox onChange={(e) => toggleMessagesAppLogs(e)} isChecked={showMessagesAppLogs}>Show Messages App Logs</Checkbox>
+                        <Checkbox onChange={(e: any) => toggleMessagesAppLogs(e)} isChecked={showMessagesAppLogs}>Show Messages App Logs</Checkbox>
                         <Popover trigger='hover'>
                             <PopoverTrigger>
                                 <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
