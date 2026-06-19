@@ -22,6 +22,19 @@ export class DrizzleConfigStore implements ConfigStore {
     constructor(dbPath: string) {
         const sqlite = new Database(dbPath);
         sqlite.pragma("journal_mode = WAL");
+
+        // A `config`/`devices` table left over from the legacy server (or an older bbd)
+        // can have an incompatible schema — e.g. the legacy `config` table has no `key`
+        // column — which makes every query throw ("no such column: key") and crashes the
+        // daemon on boot. bbd never wrote to those tables, so drop any table that's
+        // missing our discriminating column; CREATE TABLE IF NOT EXISTS then recreates it.
+        const dropIfIncompatible = (table: string, requiredCol: string): void => {
+            const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+            if (cols.length > 0 && !cols.some(c => c.name === requiredCol)) sqlite.exec(`DROP TABLE ${table}`);
+        };
+        dropIfIncompatible("config", "key");
+        dropIfIncompatible("devices", "provider");
+
         sqlite.exec(
             `CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
              CREATE TABLE IF NOT EXISTS devices (

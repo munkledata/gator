@@ -9,9 +9,16 @@
  * browser would — so the eventual fully-headless extraction is just "stop forking,
  * start as a LaunchAgent."
  */
-import { app, BrowserWindow, Tray, Menu, nativeImage, shell, ipcMain, utilityProcess, type UtilityProcess } from "electron";
+import { app, BrowserWindow, Tray, Menu, nativeImage, shell, ipcMain, dialog, utilityProcess, type UtilityProcess } from "electron";
 import path from "path";
 import fs from "fs";
+
+// A fatal startup failure should leave a trace instead of silently closing the app:
+// append to a log the user can find, and (once Electron is ready) show a dialog.
+const logStartupError = (m: string): void => {
+    try { fs.appendFileSync(path.join(app.getPath("logs"), "startup-error.log"), `[${new Date().toISOString()}] ${m}\n`); } catch { /* noop */ }
+};
+process.on("uncaughtException", e => logStartupError(`uncaughtException: ${(e as Error)?.stack ?? e}`));
 
 // Preserve the historical userData directory (config.db et al. live here).
 app.setPath("userData", app.getPath("userData").replace("@bluebubbles/server", "bluebubbles-server"));
@@ -178,7 +185,12 @@ if (!app.requestSingleInstanceLock()) {
                 if (win == null) createWindow(port);
             });
         } catch (err) {
-            console.error("Failed to start BlueBubbles backend:", err);
+            const msg = (err as Error)?.stack ?? String(err);
+            logStartupError(`Failed to start backend: ${msg}`);
+            dialog.showErrorBox(
+                "BlueBubbles couldn't start",
+                `The backend failed to start, so the app will close.\n\n${(err as Error)?.message ?? err}\n\nDetails were written to the startup-error.log in the app's log folder.`
+            );
             app.exit(1);
         }
     });
