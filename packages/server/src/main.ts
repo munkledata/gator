@@ -90,8 +90,16 @@ function createWindow(port: number): void {
 }
 
 function createTray(port: number): void {
-    let image = nativeImage.createFromPath(path.join(uiDir(), "logo192.png"));
-    if (!image.isEmpty()) image = image.resize({ width: 18, height: 18 });
+    // The purpose-drawn gator menu-bar silhouette, as a macOS template image so it adapts
+    // to the light/dark menu bar. Falls back to the app logo if the asset is missing.
+    let image = nativeImage.createFromPath(path.join(uiDir(), "tray-icon-dark.png"));
+    if (!image.isEmpty()) {
+        image = image.resize({ width: 18, height: 18 });
+        image.setTemplateImage(true);
+    } else {
+        image = nativeImage.createFromPath(path.join(uiDir(), "logo192.png"));
+        if (!image.isEmpty()) image = image.resize({ width: 18, height: 18 });
+    }
     try {
         tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image);
     } catch {
