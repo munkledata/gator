@@ -49,12 +49,12 @@ export const ConfigSchema = z
         autoStart: z.boolean().default(false),
         enablePrivateApi: z.boolean().default(false),
         encryptComs: z.boolean().default(false),
-        tunnelProvider: z.enum(["cloudflare", "ngrok", "zrok", "lan", "none"]).default("none"),
+        tunnelProvider: z.enum(["cloudflare", "zrok", "lan", "none"]).default("none"),
         notifications: NotificationsConfigSchema
     })
     // passthrough() keeps the wider legacy config surface (the UI reads ~40 snake_case
     // keys not in this typed core) so get/set-config round-trip them — e.g. the setup
-    // flow's `tutorial_is_done`, ngrok/zrok keys, fcm config, poll interval, auto_* flags.
+    // flow's `tutorial_is_done`, zrok keys, fcm config, poll interval, auto_* flags.
     .passthrough()
     .default({});
 

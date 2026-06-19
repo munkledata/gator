@@ -18,7 +18,7 @@ import { buildReadOperations } from "./api/operations/readOperations";
 import { mountFastify } from "./api/fastifyAdapter";
 import { mountSocket } from "./api/socketAdapter";
 import { serveStaticUi } from "./api/staticUi";
-import { openReadOnlyChatDb } from "./data/imessage/connection";
+import { openChatDbOrEmpty } from "./data/imessage/connection";
 import { introspectSchema } from "./data/imessage/schema";
 import { ChatReader } from "./data/imessage/ChatReader";
 import { StatsReader } from "./data/imessage/StatsReader";
@@ -104,7 +104,12 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const auth = { password: options.password ?? config.password };
 
     // Read-only chat.db readers (Phase 3) feeding the migrated read operations.
-    const chatDb = openReadOnlyChatDb(chatDbPath);
+    const { db: chatDb, degraded: readPathDegraded } = openChatDbOrEmpty(chatDbPath);
+    if (readPathDegraded) {
+        logger.warn(
+            `chat.db unavailable at ${chatDbPath} — Full Disk Access not granted? Read path (chats/messages/stats) degraded to empty; restart after granting access.`
+        );
+    }
     const schema = introspectSchema(chatDb);
     const chatReader = new ChatReader(chatDb, schema);
     const handleReader = new HandleReader(chatDb, schema.handle);
@@ -208,10 +213,14 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const readPathService: Service = {
         name: "read-path",
         start: async () => {
+            // Nothing to read/watch without chat.db; the daemon still serves everything else.
+            if (readPathDegraded) return;
             await listener.init();
             watcher.start();
         },
-        stop: () => watcher.stop()
+        stop: () => {
+            if (!readPathDegraded) watcher.stop();
+        }
     };
 
     const daemon = new Daemon({

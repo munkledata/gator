@@ -49,6 +49,8 @@ export class ChatReader {
     }
 
     getChats(params: GetChatsParams = {}): Record<string, unknown>[] {
+        // No chat columns => the chat table isn't present (degraded/empty DB) — return [].
+        if (this.#chatCols.length === 0) return [];
         const cols = this.#chatCols.map(c => `chat.${c}`).join(", ");
         const sql = `SELECT ${cols} FROM chat ORDER BY chat.ROWID DESC LIMIT @limit OFFSET @offset`;
         return this.#db.prepare(sql).all({ limit: params.limit ?? 1000, offset: params.offset ?? 0 }) as Record<
@@ -58,6 +60,7 @@ export class ChatReader {
     }
 
     getChatMessages(params: GetChatMessagesParams): Record<string, unknown>[] {
+        if (this.#messageCols.length === 0) return [];
         const cols = this.#messageCols.map(c => `message.${c}`).join(", ");
         const sql =
             `SELECT ${cols} FROM message ` +

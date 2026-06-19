@@ -21,7 +21,6 @@ import {
 } from 'lib/ui';
 import {  AiOutlineInfoCircle } from 'react-icons/ai';
 import { useAppSelector } from '../../../hooks';
-import { NgrokAuthTokenField } from '../../../components/fields/NgrokAuthTokenField';
 import { ProxySetupField } from '../../../components/fields/ProxySetupField';
 import { ServerPasswordField } from '../../../components/fields/ServerPasswordField';
 import { LocalPortField } from '../../../components/fields/LocalPortField';
@@ -29,7 +28,6 @@ import { UseHttpsField } from '../../../components/fields/UseHttpsField';
 import { ZrokTokenField } from 'app/components/fields/ZrokTokenField';
 import { ZrokReserveTunnelField } from 'app/components/fields/ZrokReserveTunnelField';
 import { ZrokReservedNameField } from 'app/components/fields/ZrokReservedNameField';
-import { NgrokSubdomainField } from 'app/components/fields/NgrokSubdomainField';
 import { ZrokDisableField } from 'app/components/fields/ZrokDisableField';
 // import { EncryptCommunicationsField } from '../../../components/fields/EncryptCommunicationsField';
 
@@ -63,15 +61,7 @@ export const ConnectionSettings = (): JSX.Element => {
             <Divider orientation='horizontal' />
             <Spacer />
             <ProxySetupField />
-            {(proxyService === 'ngrok') ? (
-                <>
-                    <Spacer />
-                    <NgrokAuthTokenField />
-                    <Spacer />
-                    <NgrokSubdomainField />
-                </>
-            ) : null}
-            
+
             {(proxyService === 'zrok') ? (
                 <>
                     <Spacer />

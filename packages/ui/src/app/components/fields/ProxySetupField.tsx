@@ -20,7 +20,6 @@ import { copyToClipboard } from '../../utils/GenericUtils';
 import { ConfirmationItems } from '../../utils/ToastUtils';
 import { ConfirmationDialog } from '../modals/ConfirmationDialog';
 import { saveLanUrl } from 'app/utils/IpcUtils';
-import { NgrokSetupDialog } from '../modals/NgrokSetupDialog';
 import { ZrokSetupDialog } from '../modals/ZrokSetupDialog';
 
 
@@ -46,14 +45,12 @@ const confirmationActions: ConfirmationItems = {
 export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFieldProps): JSX.Element => {
     const dispatch = useAppDispatch();
     const dnsRef = useRef(null);
-    const ngrokRef = useRef(null);
     const zrokRef = useRef(null);
     const alertRef = useRef(null);
     const proxyService: string = (useAppSelector(state => state.config.proxy_service) ?? '').toLowerCase().replace(' ', '-');
     const address: string = useAppSelector(state => state.config.server_address) ?? '';
     const port: number = useAppSelector(state => state.config.socket_port) ?? 1234;
     const [dnsModalOpen, setDnsModalOpen] = useBoolean();
-    const [ngrokModalOpen, setNgrokModalOpen] = useBoolean();
     const [zrokModalOpen, setZrokModalOpen] = useBoolean();
     const [requiresConfirmation, confirm] = useState((): string | null => {
         return null;
@@ -75,9 +72,6 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                         if (e.target.value === 'dynamic-dns') {
                             shouldSave = false;
                             setDnsModalOpen.on();
-                        } else if (e.target.value === 'ngrok') {
-                            shouldSave = false;
-                            setNgrokModalOpen.on();
                         } else if (e.target.value === 'zrok') {
                             shouldSave = false;
                             setZrokModalOpen.on();
@@ -94,7 +88,6 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                 >
                     <option value='cloudflare'>Cloudflare (Recommended)</option>
                     <option value='zrok'>Zrok</option>
-                    <option value='ngrok'>Ngrok</option>
                     <option value='dynamic-dns'>Dynamic DNS / Custom URL</option>
                     <option value='lan-url'>LAN URL</option>
                 </Select>
@@ -132,16 +125,6 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                 isOpen={dnsModalOpen}
                 port={port as number}
                 onClose={() => setDnsModalOpen.off()}
-            />
-
-            <NgrokSetupDialog
-                modalRef={ngrokRef}
-                onConfirm={(token: string) => {
-                    dispatch(setConfig({ name: 'proxy_service', value: 'Ngrok' }));
-                    dispatch(setConfig({ name: 'ngrok_key', value: token }));
-                }}
-                isOpen={ngrokModalOpen}
-                onClose={() => setNgrokModalOpen.off()}
             />
 
             <ZrokSetupDialog

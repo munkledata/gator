@@ -10,12 +10,10 @@ import {
 } from 'lib/ui';
 import { ProxySetupField } from '../../../components/fields/ProxySetupField';
 import { useAppSelector } from '../../../hooks';
-import { NgrokAuthTokenField } from '../../../components/fields/NgrokAuthTokenField';
 import { ServerPasswordField } from '../../../components/fields/ServerPasswordField';
 import { ZrokTokenField } from 'app/components/fields/ZrokTokenField';
 import { ZrokReservedNameField } from 'app/components/fields/ZrokReservedNameField';
 import { ZrokReserveTunnelField } from 'app/components/fields/ZrokReserveTunnelField';
-import { NgrokSubdomainField } from 'app/components/fields/NgrokSubdomainField';
 
 export const ConnectionWalkthrough = (): JSX.Element => {
     const proxyService: string = (useAppSelector(state => state.config.proxy_service) ?? '').toLowerCase().replace(' ', '-');
@@ -51,13 +49,6 @@ export const ConnectionWalkthrough = (): JSX.Element => {
                 <Stack direction='column' p={5}>
                     <ServerPasswordField errorOnEmpty={true} />
                     <ProxySetupField />
-                    {(proxyService === 'ngrok') ? (
-                        <>
-                            <NgrokAuthTokenField />
-                            <Spacer />
-                            <NgrokSubdomainField />
-                        </>
-                    ): null}
                     {(proxyService === 'zrok') ? (
                         <>
                             <Spacer />
