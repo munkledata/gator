@@ -2,8 +2,7 @@ import React from 'react';
 import {
     Box,
     Text,
-    SlideFade,
-} from 'lib/ui';
+} from '@mantine/core';
 import { AutoStartMethodField } from '../../../components/fields/AutoStartMethodField';
 import { AutoCaffeinateField } from '../../../components/fields/AutoCaffeinateField';
 import { CheckForUpdatesField } from '../../../components/fields/CheckForUpdatesField';
@@ -13,27 +12,27 @@ import { OpenFindMyOnStartupField } from 'app/components/fields/OpenFindMyOnStar
 
 export const ConfigurationsWalkthrough = (): JSX.Element => {
     return (
-        <SlideFade in={true} offsetY='150px'>
-            <Box px={5}>
-                <Text fontSize='4xl'>Setup Complete!</Text>
-                <Text fontSize='md' mt={5}>
+        <Box>
+            <Box px={20}>
+                <Text fz='4xl'>Setup Complete!</Text>
+                <Text fz='md' mt={20}>
                     Congratulations, you have completed the BlueBubbles Server setup! Here are some useful features that
                     you may want to checkout to customize your BlueBubbles experience!
                 </Text>
-                <Text fontSize='3xl' mt={5}>Features</Text>
-                <Box my={3} />
+                <Text fz='3xl' mt={20}>Features</Text>
+                <Box my={12} />
                 <OpenFindMyOnStartupField />
-                <Box my={3} />
+                <Box my={12} />
                 <AutoStartMethodField />
-                <Box my={3} />
+                <Box my={12} />
                 <AutoCaffeinateField />
-                <Text fontSize='3xl' mt={5}>Update Settings</Text>
-                <Box my={3} />
+                <Text fz='3xl' mt={20}>Update Settings</Text>
+                <Box my={12} />
                 <CheckForUpdatesField />
-                <Text fontSize='3xl' mt={5}>Theme Settings</Text>
-                <Box my={3} />
+                <Text fz='3xl' mt={20}>Theme Settings</Text>
+                <Box my={12} />
                 <UseOledDarkModeField />
             </Box>
-        </SlideFade>
+        </Box>
     );
 };

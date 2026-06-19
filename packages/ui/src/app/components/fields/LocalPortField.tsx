@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-    FormControl,
-    FormLabel,
-    FormHelperText,
-    Input,
-    IconButton,
-    FormErrorMessage,
+    Box,
+    Text,
+    TextInput,
+    ActionIcon,
     Flex
-} from 'lib/ui';
+} from '@mantine/core';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -53,34 +51,36 @@ export const LocalPortField = ({ helpText }: LocalPortFieldProps): JSX.Element =
     };
 
     return (
-        <FormControl isInvalid={hasPortError}>
-            <FormLabel htmlFor='socket_port'>Local Port</FormLabel>
-            <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                <Input
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='socket_port'>Local Port</Text>
+            <Flex direction='row' justify='flex-start' align='center'>
+                <TextInput
                     id='socket_port'
                     type='number'
-                    maxWidth="5em"
+                    maw="5em"
                     value={newPort}
                     onChange={(e: any) => {
                         if (hasPortError) setPortError('');
                         setNewPort(Number.parseInt(e.target.value));
                     }}
                 />
-                <IconButton
-                    ml={3}
-                    verticalAlign='top'
+                <ActionIcon
+                    ml={12}
+                    variant="subtle"
+                    style={{ verticalAlign: 'top' }}
                     aria-label='Save port'
-                    icon={<AiOutlineSave />}
                     onClick={() => savePort(newPort)}
-                />
+                >
+                    <AiOutlineSave />
+                </ActionIcon>
             </Flex>
             {!hasPortError ? (
-                <FormHelperText>
+                <Text fz="xs" c="dimmed">
                     {helpText ?? 'Enter the local port for the socket server to run on'}
-                </FormHelperText>
+                </Text>
             ) : (
-                <FormErrorMessage>{portError}</FormErrorMessage>
+                <Text fz="xs" c="red">{portError}</Text>
             )}
-        </FormControl>
+        </Box>
     );
 };

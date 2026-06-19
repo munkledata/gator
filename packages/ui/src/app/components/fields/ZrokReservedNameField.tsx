@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-    FormControl,
-    FormLabel,
-    FormHelperText,
-    Input,
-    IconButton,
-    FormErrorMessage,
-    Text
-} from 'lib/ui';
+    Box,
+    Text,
+    TextInput,
+    ActionIcon
+} from '@mantine/core';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -55,27 +52,29 @@ export const ZrokReservedNameField = ({ helpText }: ZrokReservedNameFieldProps):
     };
 
     return (
-        <FormControl isInvalid={hasZrokReservedNameError}>
-            <FormLabel htmlFor='zrok_reserved_name'>Reserved Subdomain (Optional)</FormLabel>
-            <Input
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='zrok_reserved_name'>Reserved Subdomain (Optional)</Text>
+            <TextInput
                 id='password'
                 type='text'
-                maxWidth="20em"
+                maw="20em"
                 value={newZrokReservedName}
                 onChange={(e: any) => {
                     if (hasZrokReservedNameError) setZrokReservedNameError('');
                     setNewZrokReservedName(e.target.value);
                 }}
             />
-            <IconButton
-                ml={3}
-                verticalAlign='top'
+            <ActionIcon
+                ml={12}
+                variant="subtle"
                 aria-label='Save Zrok token'
-                icon={<AiOutlineSave />}
                 onClick={() => saveZrokReservedName(newZrokReservedName)}
-            />
+                style={{ verticalAlign: 'top' }}
+            >
+                <AiOutlineSave />
+            </ActionIcon>
             {!hasZrokReservedNameError ? (
-                <FormHelperText>
+                <Text fz="xs" c="dimmed">
                     {helpText ?? (
                         <Text>
                             Enter a name to reserve for your Zrok tunnel.
@@ -84,10 +83,10 @@ export const ZrokReservedNameField = ({ helpText }: ZrokReservedNameFieldProps):
                             left blank, a randomly generated name will be used.
                         </Text>
                     )}
-                </FormHelperText>
+                </Text>
             ) : (
-                <FormErrorMessage>{zrokTokenError}</FormErrorMessage>
+                <Text fz="xs" c="red">{zrokTokenError}</Text>
             )}
-        </FormControl>
+        </Box>
     );
 };

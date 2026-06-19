@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-    FormControl,
-    FormHelperText,
     Checkbox,
     Text,
     Box,
     Stack,
+    Group,
     Button,
-    Link
-} from 'lib/ui';
+    Anchor
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 import { PrivateApiRequirements } from '../PrivateApiRequirements';
@@ -33,26 +32,25 @@ export const PrivateApiField = ({ helpTextMessages, helpTextFaceTime }: PrivateA
     }, []);
 
     return (
-        <Box mt={1}>
-            <Stack direction='row'>
+        <Box mt={4}>
+            <Group>
                 <PrivateApiRequirements />
                 <PrivateApiStatus />
-            </Stack>
-            <FormControl mt={5}>
-                <Stack direction='column'>
-                    <Button size='xs' width="150px" mb={2}>
-                        <Link target="_blank" href="https://docs.bluebubbles.app/private-api/">
+            </Group>
+            <Box mt={20}>
+                <Stack>
+                    <Button size='xs' w="150px" mb={8}>
+                        <Anchor target="_blank" href="https://docs.bluebubbles.app/private-api/">
                             Private API Setup Docs
-                        </Link>
+                        </Anchor>
                     </Button>
                     <Checkbox
                         id='enable_private_api'
-                        isChecked={privateApi}
+                        checked={privateApi}
                         onChange={onCheckboxToggle}
-                    >
-                        Messages Private API
-                    </Checkbox>
-                    <FormHelperText>
+                        label='Messages Private API'
+                    />
+                    <Text fz="xs" c="dimmed">
                         {helpTextMessages ?? (
                             <Text>
                                 If you have set up the Private API features,
@@ -61,15 +59,14 @@ export const PrivateApiField = ({ helpTextMessages, helpTextFaceTime }: PrivateA
                                 Enabling this will allow you to send reactions, replies, editing, effects, use FindMy, etc.
                             </Text>
                         )}
-                    </FormHelperText>
+                    </Text>
                     <Checkbox
                         id='enable_ft_private_api'
-                        isChecked={ftPrivateApi}
+                        checked={ftPrivateApi}
                         onChange={onCheckboxToggle}
-                    >
-                        FaceTime Private API
-                    </Checkbox>
-                    <FormHelperText>
+                        label='FaceTime Private API'
+                    />
+                    <Text fz="xs" c="dimmed">
                         {helpTextFaceTime ?? (
                             <Text>
                                 If you have set up the Private API features,
@@ -78,12 +75,12 @@ export const PrivateApiField = ({ helpTextMessages, helpTextFaceTime }: PrivateA
                                 Enabling this will allow the server to detect incoming FaceTime calls.
                             </Text>
                         )}
-                    </FormHelperText>
+                    </Text>
                     {(ftPrivateApi && !!env?.isMinMonterey) ? (
                         <FaceTimeCallingField />
                     ) : null}
                 </Stack>
-            </FormControl>
+            </Box>
         </Box>
     );
 };

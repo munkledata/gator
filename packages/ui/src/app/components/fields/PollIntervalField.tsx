@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-    FormControl,
-    FormLabel,
-    FormHelperText,
-    Input,
-    IconButton,
-    FormErrorMessage,
+    Box,
+    Text,
+    TextInput,
+    ActionIcon,
     Flex
-} from 'lib/ui';
+} from '@mantine/core';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -50,34 +48,36 @@ export const PollIntervalField = ({ helpText }: PollIntervalFieldProps): JSX.Ele
     };
 
     return (
-        <FormControl isInvalid={hasIntervalError}>
-            <FormLabel htmlFor='db_poll_interval'>Database Poll Interval (ms)</FormLabel>
-            <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                <Input
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='db_poll_interval'>Database Poll Interval (ms)</Text>
+            <Flex style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                <TextInput
                     id='db_poll_interval'
                     type='number'
-                    maxWidth="5em"
+                    maw="5em"
                     value={newInterval}
                     onChange={(e: any) => {
                         if (hasIntervalError) setIntervalError('');
                         setNewInterval(Number.parseInt(e.target.value));
                     }}
                 />
-                <IconButton
-                    ml={3}
-                    verticalAlign='top'
+                <ActionIcon
+                    variant="subtle"
+                    ml={12}
+                    style={{ verticalAlign: 'top' }}
                     aria-label='Save poll interval'
-                    icon={<AiOutlineSave />}
                     onClick={() => saveInterval(newInterval)}
-                />
+                >
+                    {<AiOutlineSave />}
+                </ActionIcon>
             </Flex>
             {!hasIntervalError ? (
-                <FormHelperText>
+                <Text fz="xs" c="dimmed">
                     {helpText ?? 'Enter how often (in milliseconds) you want the server to check for new messages in the database'}
-                </FormHelperText>
+                </Text>
             ) : (
-                <FormErrorMessage>{intervalError}</FormErrorMessage>
+                <Text fz="xs" c="red">{intervalError}</Text>
             )}
-        </FormControl>
+        </Box>
     );
 };

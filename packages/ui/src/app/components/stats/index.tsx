@@ -1,12 +1,11 @@
 import React, { useEffect } from 'react';
 import { invoke } from 'lib/apiClient';
 import {
-    Spacer,
     Box,
     Badge,
     Text,
-    SkeletonText
-} from 'lib/ui';
+    Skeleton
+} from '@mantine/core';
 import { formatNumber } from 'app/utils/NumberUtils';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { setStat } from '../../slices/StatsSlice';
@@ -133,24 +132,24 @@ export const StatBox = (
     { title, text, color }:
     { title: string, text: string | number | null, color: string }
 ): JSX.Element => {
-    return (  
-        <Box maxW='sm' borderWidth='1px' borderRadius='lg' overflow='hidden' p={5} m={1}>
-            <Badge borderRadius='full' px='2' colorScheme={color} mb={2}>
+    return (
+        <Box maw='sm' p={20} m={4} style={{ borderWidth: '1px', borderRadius: 'lg', overflow: 'hidden' }}>
+            <Badge px='2' color={color} mb={8} style={{ borderRadius: 'full' }}>
                 {title}
             </Badge>
-            <Spacer />
+            <Box style={{ flex: 1 }} />
             <Box
-                color='gray.500'
-                fontWeight='semibold'
-                letterSpacing='wide'
+                c='gray.5'
+                fw='semibold'
+                style={{ letterSpacing: 'wide' }}
             >
                 {(text === null) ? (
-                    <SkeletonText height={20} mt={2} noOfLines={2} />
+                    <Skeleton height={8} radius="sm" h={20} mt={8} />
                 ) : (
                     (typeof(text) === 'number') ? (
-                        <Text fontSize='2vw'>{formatNumber(text)}</Text>
+                        <Text fz='2vw'>{formatNumber(text)}</Text>
                     ) : (
-                        <Text fontSize='2vw'>{text}</Text>
+                        <Text fz='2vw'>{text}</Text>
                     )
                 )}
             </Box>

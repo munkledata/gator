@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
-    useBoolean,
     Box,
     Text,
-    Stack,
-    ListItem,
-    UnorderedList,
-    useColorModeValue,
-    keyframes
-} from 'lib/ui';
+    Group,
+    List,
+    useMantineColorScheme
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { keyframes } from '@emotion/react';
 import { BiRefresh } from 'react-icons/bi';
 import { getPrivateApiStatus } from '../utils/IpcUtils';
 
@@ -19,17 +18,18 @@ const spin = keyframes`
 
 
 export const PrivateApiStatus = (): JSX.Element => {
-    const [showProgress, setShowProgress] = useBoolean();
+    const { colorScheme } = useMantineColorScheme();
+    const [showProgress, setShowProgress] = useDisclosure();
     const [status, setStatus] = useState((): NodeJS.Dict<any> | null => {
         return null;
     });
 
     const refreshStatus = () => {
-        setShowProgress.on();
+        setShowProgress.open();
         getPrivateApiStatus().then(status => {
             // I like longer spinning
             setTimeout(() => {
-                setShowProgress.off();
+                setShowProgress.close();
             }, 1000);
             
             if (!status) return;
@@ -43,29 +43,28 @@ export const PrivateApiStatus = (): JSX.Element => {
 
     const connected = status?.connected === null ? '...' : (status?.connected ?? false) ? 'Yes' : 'No';
     return (
-        <Box border='1px solid' borderColor={useColorModeValue('gray.200', 'gray.700')} borderRadius='xl' p={3} width='325px'>
-            <Stack direction='row' align='center'>
-                <Text fontSize='lg' fontWeight='bold'>Private API Status</Text>
+        <Box p={12} w='325px' style={{ border: '1px solid', borderColor: colorScheme === 'dark' ? 'gray.7' : 'gray.2', borderRadius: 'xl' }}>
+            <Group align='center'>
+                <Text fz='lg' fw='bold'>Private API Status</Text>
                 <Box
-                    _hover={{ cursor: 'pointer' }}
-                    animation={showProgress ? `${spin} infinite 1s linear` : undefined}
+                    style={{ animation: showProgress ? `${spin} infinite 1s linear` : undefined }}
                     onClick={refreshStatus}
                 >
                     <BiRefresh />
                 </Box>
-            </Stack>
-            <UnorderedList mt={2} ml={8}>
-                <ListItem>
-                    <Text fontSize='md'><strong>Connected</strong>:&nbsp;
-                        <Box as='span'>{connected}</Box>
+            </Group>
+            <List mt={8} ml={32}>
+                <List.Item>
+                    <Text fz='md'><strong>Connected</strong>:&nbsp;
+                        <Box>{connected}</Box>
                     </Text>
-                </ListItem>
-                <ListItem>
-                    <Text fontSize='md'><strong>Port</strong>:&nbsp;
-                        <Box as='span'>{status?.port ?? '...'}</Box>
+                </List.Item>
+                <List.Item>
+                    <Text fz='md'><strong>Port</strong>:&nbsp;
+                        <Box>{status?.port ?? '...'}</Box>
                     </Text>
-                </ListItem>
-            </UnorderedList>
+                </List.Item>
+            </List>
         </Box>
     );
 };

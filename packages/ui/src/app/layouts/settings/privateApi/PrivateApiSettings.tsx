@@ -3,18 +3,18 @@ import {
     Divider,
     Stack,
     Text,
-    Spacer
-} from 'lib/ui';
+    Box
+} from '@mantine/core';
 import { PrivateApiField } from '../../../components/fields/PrivateApiField';
 
 
 export const PrivateApiSettings = (): JSX.Element => {
     return (
         <section>
-            <Stack direction='column' p={5}>
-                <Text fontSize='2xl'>Private API</Text>
+            <Stack p={20}>
+                <Text fz='2xl'>Private API</Text>
                 <Divider orientation='horizontal' />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <PrivateApiField />
             </Stack>
         </section>

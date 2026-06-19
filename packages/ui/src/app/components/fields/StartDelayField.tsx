@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-    FormControl,
-    FormLabel,
-    FormHelperText,
-    Input,
-    IconButton,
-    FormErrorMessage,
+    Box,
+    Text,
+    TextInput,
+    ActionIcon,
     Flex
-} from 'lib/ui';
+} from '@mantine/core';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -62,34 +60,36 @@ export const StartDelayField = ({ helpText }: StartDelayFieldProps): JSX.Element
     };
 
     return (
-        <FormControl isInvalid={hasDelayError}>
-            <FormLabel htmlFor='start_delay'>Start Delay (Seconds)</FormLabel>
-            <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                <Input
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='start_delay'>Start Delay (Seconds)</Text>
+            <Flex direction='row' justify='flex-start' align='center'>
+                <TextInput
                     id='start_delay'
                     type='number'
-                    maxWidth="5em"
+                    maw="5em"
                     value={newStartDelay}
                     onChange={(e: any) => {
                         if (hasDelayError) setDelayError('');
                         setStartDelay(Number.parseInt(e.target.value));
                     }}
                 />
-                <IconButton
-                    ml={3}
-                    verticalAlign='top'
+                <ActionIcon
+                    ml={12}
+                    variant="subtle"
+                    style={{ verticalAlign: 'top' }}
                     aria-label='Save Start Delay'
-                    icon={<AiOutlineSave />}
                     onClick={() => saveStartDelay(newStartDelay)}
-                />
+                >
+                    <AiOutlineSave />
+                </ActionIcon>
             </Flex>
             {!hasDelayError ? (
-                <FormHelperText>
+                <Text fz="xs" c="dimmed">
                     {helpText ?? 'Enter the number of seconds to delay the server start by. This is useful on older hardware.'}
-                </FormHelperText>
+                </Text>
             ) : (
-                <FormErrorMessage>{startDelayError}</FormErrorMessage>
+                <Text fz="xs" c="red">{startDelayError}</Text>
             )}
-        </FormControl>
+        </Box>
     );
 };

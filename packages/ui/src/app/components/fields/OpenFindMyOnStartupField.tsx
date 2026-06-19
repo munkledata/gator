@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-    FormControl,
-    FormHelperText,
+    Box,
     Checkbox,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 
@@ -16,17 +15,16 @@ export const OpenFindMyOnStartupField = ({ helpText }: OpenFindMyOnStartupFieldP
     const openFindMyOnStartup: boolean = (useAppSelector(state => state.config.open_findmy_on_startup) ?? false);
 
     return (
-        <FormControl>
-            <Checkbox id='open_findmy_on_startup' isChecked={openFindMyOnStartup}  onChange={onCheckboxToggle}>Open FindMy App on Startup</Checkbox>
-            <FormHelperText>
+        <Box>
+            <Checkbox id='open_findmy_on_startup' checked={openFindMyOnStartup} onChange={onCheckboxToggle} label='Open FindMy App on Startup' />
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         When enabled, BlueBubbles will automatically open, then hide the FindMy app when the server starts.
                         This is to trigger the fetch of locations from the FindMy app so the server can cache them for clients.
                     </Text>
                 )}
-            </FormHelperText>
-        </FormControl>
+            </Text>
+        </Box>
     );
 };
-

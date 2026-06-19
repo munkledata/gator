@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-    FormControl,
-    FormHelperText,
-    Checkbox,
-    Text
-} from 'lib/ui';
+    Box,
+    Text,
+    Checkbox
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 
@@ -16,9 +15,9 @@ export const AutoCaffeinateField = ({ helpText }: AutoCaffeinateFieldProps): JSX
     const keepAwake: boolean = (useAppSelector(state => state.config.auto_caffeinate) ?? false);
 
     return (
-        <FormControl>
-            <Checkbox id='auto_caffeinate' isChecked={keepAwake}  onChange={onCheckboxToggle}>Keep macOS Awake</Checkbox>
-            <FormHelperText>
+        <Box>
+            <Checkbox id='auto_caffeinate' checked={keepAwake} onChange={onCheckboxToggle} label="Keep macOS Awake" />
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         When enabled, you mac will not fall asleep due to inactivity or a screen screen saver.
@@ -26,8 +25,7 @@ export const AutoCaffeinateField = ({ helpText }: AutoCaffeinateFieldProps): JSX
                         Make sure your computer does not go to sleep when the lid is closed.
                     </Text>
                 )}
-            </FormHelperText>
-        </FormControl>
+            </Text>
+        </Box>
     );
 };
-

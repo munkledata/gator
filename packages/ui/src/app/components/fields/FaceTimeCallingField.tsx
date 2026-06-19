@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-    FormControl,
-    FormHelperText,
+    Box,
     Checkbox,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 
@@ -16,9 +15,9 @@ export const FaceTimeCallingField = ({ helpText }: ExperimentalFaceTimeFeaturesF
     const experimentalFeatures: boolean = (useAppSelector(state => state.config.facetime_calling) ?? false);
 
     return (
-        <FormControl>
-            <Checkbox id='facetime_calling' isChecked={experimentalFeatures}  onChange={onCheckboxToggle}>FaceTime Calling (Experimental)</Checkbox>
-            <FormHelperText>
+        <Box>
+            <Checkbox id='facetime_calling' checked={experimentalFeatures} label="FaceTime Calling (Experimental)" onChange={onCheckboxToggle} />
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         When enabled, the server will detect incoming FaceTime calls and forward
@@ -27,8 +26,8 @@ export const FaceTimeCallingField = ({ helpText }: ExperimentalFaceTimeFeaturesF
                         for you to join with.
                     </Text>
                 )}
-            </FormHelperText>
-        </FormControl>
+            </Text>
+        </Box>
     );
 };
 

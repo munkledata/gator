@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-    FormControl,
-    FormHelperText,
-    Checkbox,
-    Text
-} from 'lib/ui';
+    Box,
+    Text,
+    Checkbox
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 
@@ -16,16 +15,15 @@ export const UseOledDarkModeField = ({ helpText }: UseOledDarkModeFieldProps): J
     const oledDark: boolean = (useAppSelector(state => state.config.use_oled_dark_mode) ?? false);
 
     return (
-        <FormControl>
-            <Checkbox id='use_oled_dark_mode' isChecked={oledDark} onChange={onCheckboxToggle}>Use OLED Black Dark Mode</Checkbox>
-            <FormHelperText>
+        <Box>
+            <Checkbox id='use_oled_dark_mode' checked={oledDark} onChange={onCheckboxToggle} label='Use OLED Black Dark Mode' />
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         Enabling this will set the dark mode theme to OLED black
                     </Text>
                 )}
-            </FormHelperText>
-        </FormControl>
+            </Text>
+        </Box>
     );
 };
-

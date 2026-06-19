@@ -1,10 +1,10 @@
 import React from 'react';
 import {
-    Select,
+    NativeSelect,
     Flex,
-    FormControl,
+    Box,
 
-} from 'lib/ui';
+} from '@mantine/core';
 
 
 export interface TimeframeDropdownFieldProps {
@@ -14,11 +14,11 @@ export interface TimeframeDropdownFieldProps {
 
 export const TimeframeDropdownField = ({ selectedDays = 30 * 6, onChange }: TimeframeDropdownFieldProps): JSX.Element => {
     return (
-        <FormControl width="fit-content">
-            <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                <Select
-                    maxWidth="16em"
-                    mr={3}
+        <Box w="fit-content">
+            <Flex direction='row' justify='flex-start' align='center'>
+                <NativeSelect
+                    maw="16em"
+                    mr={12}
                     value={String(selectedDays)}
                     onChange={(e: any) => {
                         if (onChange) {
@@ -30,8 +30,8 @@ export const TimeframeDropdownField = ({ selectedDays = 30 * 6, onChange }: Time
                     <option value='365'>Past Year</option>
                     <option value='180'>Past 6 Months</option>
                     <option value='30'>Past Month</option>
-                </Select>
+                </NativeSelect>
             </Flex>
-        </FormControl>
+        </Box>
     );
 };

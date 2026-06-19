@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-    FormControl,
-    FormHelperText,
-    Checkbox,
-    Text
-} from 'lib/ui';
+    Box,
+    Text,
+    Checkbox
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 
@@ -16,16 +15,15 @@ export const AutoStartField = ({ helpText }: AutoStartFieldProps): JSX.Element =
     const autoStart: boolean = (useAppSelector(state => state.config.auto_start) ?? false);
 
     return (
-        <FormControl>
-            <Checkbox id='auto_start' isChecked={autoStart}  onChange={onCheckboxToggle}>Startup with macOS</Checkbox>
-            <FormHelperText>
+        <Box>
+            <Checkbox id='auto_start' checked={autoStart} onChange={onCheckboxToggle} label="Startup with macOS" />
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         When enabled, BlueBubbles will start automatically when you login.
                     </Text>
                 )}
-            </FormHelperText>
-        </FormControl>
+            </Text>
+        </Box>
     );
 };
-

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text, Divider, Stack } from 'lib/ui';
+import { Box, Text, Divider, Group } from '@mantine/core';
 import { ConnectionSettings } from './connection/ConnectionSettings';
 import { FeatureSettings } from './features/FeatureSettings';
 import { PrivateApiSettings } from './privateApi/PrivateApiSettings';
@@ -13,25 +13,25 @@ import { AttachmentCacheBox } from 'app/components/AttachmentCacheBox';
 export const SettingsLayout = (): JSX.Element => {
     return (
         <section>
-            <Box p={3} borderRadius={10}>  
+            <Box p={12} style={{ borderRadius: 10 }}>
                 <ConnectionSettings />
                 <PrivateApiSettings />
                 <FeatureSettings />
                 <UpdateSettings />
                 <ThemeSettings />
-                <Stack direction='row' align='flex-start' flexWrap='wrap' p={5}>
+                <Group align='flex-start' p={20} style={{ flexWrap: 'wrap' }}>
                     <Box>
-                        <Text fontSize='2xl'>Permission Status</Text>
-                        <Divider orientation='horizontal' my={3}/>
+                        <Text fz='2xl'>Permission Status</Text>
+                        <Divider orientation='horizontal' my={12}/>
                         <PermissionRequirements />
                     </Box>
-                    <Box pl={5}>
-                        <Text fontSize='2xl'>Attachment Management</Text>
-                        <Divider orientation='horizontal' my={3}/>
+                    <Box pl={20}>
+                        <Text fz='2xl'>Attachment Management</Text>
+                        <Divider orientation='horizontal' my={12}/>
                         <AttachmentCacheBox />
                     </Box>
-                </Stack>
-                
+                </Group>
+
                 <ResetSettings />
             </Box>
         </section>

@@ -3,18 +3,18 @@ import {
     Divider,
     Stack,
     Text,
-    Spacer
-} from 'lib/ui';
+    Box
+} from '@mantine/core';
 import { UseOledDarkModeField } from '../../../components/fields/OledDarkThemeField';
 
 
 export const ThemeSettings = (): JSX.Element => {
     return (
         <section>
-            <Stack direction='column' p={5}>
-                <Text fontSize='2xl'>Theme Settings</Text>
+            <Stack p={20}>
+                <Text fz='2xl'>Theme Settings</Text>
                 <Divider orientation='horizontal' />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <UseOledDarkModeField />
             </Stack>
         </section>

@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-    FormControl,
-    FormHelperText,
+    Box,
     Checkbox,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 
@@ -16,16 +15,15 @@ export const AutoInstallUpdatesField = ({ helpText }: AutoInstallUpdatesFieldPro
     const autoInstall: boolean = (useAppSelector(state => state.config.auto_install_updates) ?? false);
 
     return (
-        <FormControl>
-            <Checkbox id='auto_install_updates' isChecked={autoInstall} onChange={onCheckboxToggle}>Auto Install / Apply Updates</Checkbox>
-            <FormHelperText>
+        <Box>
+            <Checkbox id='auto_install_updates' checked={autoInstall} onChange={onCheckboxToggle} label="Auto Install / Apply Updates" />
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         When enabled, BlueBubbles will auto-install the latest available version when an update is detected
                     </Text>
                 )}
-            </FormHelperText>
-        </FormControl>
+            </Text>
+        </Box>
     );
 };
-

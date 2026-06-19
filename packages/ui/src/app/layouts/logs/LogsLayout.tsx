@@ -1,20 +1,15 @@
 import React, { useRef, useState } from 'react';
-import { Box, Divider, Flex, Spacer, Stack, Text } from 'lib/ui';
 import {
+    Box,
+    Divider,
+    Flex,
+    Stack,
+    Text,
     Menu,
-    MenuButton,
-    MenuList,
-    MenuItem,
     Button,
     Checkbox,
-    Popover,
-    PopoverCloseButton,
-    PopoverContent,
-    PopoverHeader,
-    PopoverBody,
-    PopoverArrow,
-    PopoverTrigger
-} from 'lib/ui';
+    Popover
+} from '@mantine/core';
 import { BsChevronDown, BsBootstrapReboot, BsTerminal } from 'react-icons/bs';
 import { VscDebugRestart } from 'react-icons/vsc';
 import { AiOutlineClear, AiOutlineInfoCircle } from 'react-icons/ai';
@@ -59,7 +54,7 @@ const confirmationActions: ConfirmationItems = {
         message: (
             'Are you sure you want to restart via terminal?<br /><br />' +
             'Doing so will stop the server, close the server, then ' +
-            'restart it in a terminal window. ' + 
+            'restart it in a terminal window. ' +
             'This may help with debugging by allowing you to view the raw server logs.'
         ),
         func: restartViaTerminal
@@ -110,22 +105,20 @@ export const LogsLayout = (): JSX.Element => {
     };
 
     return (
-        <Box p={3} borderRadius={10}>
-            <Flex flexDirection="column">
-                <Stack direction='column' p={5}>
-                    <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                        <Text fontSize='2xl'>Controls</Text>
-                        <Popover trigger='hover'>
-                            <PopoverTrigger>
-                                <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+        <Box p={12} style={{ borderRadius: 10 }}>
+            <Flex style={{ flexDirection: 'column' }}>
+                <Stack p={20}>
+                    <Flex style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                        <Text fz='2xl'>Controls</Text>
+                        <Popover withArrow>
+                            <Popover.Target>
+                                <Box ml={8}>
                                     <AiOutlineInfoCircle />
                                 </Box>
-                            </PopoverTrigger>
-                            <PopoverContent>
-                                <PopoverArrow />
-                                <PopoverCloseButton />
-                                <PopoverHeader>Information</PopoverHeader>
-                                <PopoverBody>
+                            </Popover.Target>
+                            <Popover.Dropdown>
+                                <Text fw={600} mb="xs">Information</Text>
+                                <Box>
                                     <Text>
                                         This page will allow you to perform debugging actions on your BlueBubbles server.
                                         As many of you know, software is not perfect, and there will always be edge cases
@@ -133,109 +126,109 @@ export const LogsLayout = (): JSX.Element => {
                                         take the required actions to solve an issue. It also allows you to "see" into what
                                         the server is doing in the background.
                                     </Text>
-                                </PopoverBody>
-                            </PopoverContent>
+                                </Box>
+                            </Popover.Dropdown>
                         </Popover>
                     </Flex>
                     <Divider orientation='horizontal' />
-                    <Flex flexDirection="row" justifyContent="flex-start">
+                    <Flex style={{ flexDirection: 'row', justifyContent: 'flex-start' }}>
                         <Menu>
-                            <MenuButton
-                                as={Button}
-                                rightIcon={<BsChevronDown />}
-                                width="12em"
-                                mr={5}
-                            >
-                                Manage
-                            </MenuButton>
-                            <MenuList>
-                                <MenuItem icon={<VscDebugRestart />} onClick={() => confirm('restartServices')}>
+                            <Menu.Target>
+                                <Button
+                                    variant="default"
+                                    rightSection={<BsChevronDown />}
+                                    w="12em"
+                                    mr={20}
+                                >
+                                    Manage
+                                </Button>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                                <Menu.Item leftSection={<VscDebugRestart />} onClick={() => confirm('restartServices')}>
                                     Restart Services
-                                </MenuItem>
-                                <MenuItem icon={<BsBootstrapReboot />} onClick={() => confirm('fullRestart')}>
+                                </Menu.Item>
+                                <Menu.Item leftSection={<BsBootstrapReboot />} onClick={() => confirm('fullRestart')}>
                                     Full Restart
-                                </MenuItem>
-                                <MenuItem icon={<FiExternalLink />} onClick={() => openLogLocation()}>
+                                </Menu.Item>
+                                <Menu.Item leftSection={<FiExternalLink />} onClick={() => openLogLocation()}>
                                     Open Log Location
-                                </MenuItem>
-                                <MenuItem icon={<GoFileSubmodule />} onClick={() => openAppLocation()}>
+                                </Menu.Item>
+                                <Menu.Item leftSection={<GoFileSubmodule />} onClick={() => openAppLocation()}>
                                     Open App Location
-                                </MenuItem>
-                                <MenuItem icon={<FiCopy />} onClick={() => copyBinaryPath()}>
+                                </Menu.Item>
+                                <Menu.Item leftSection={<FiCopy />} onClick={() => copyBinaryPath()}>
                                     Copy Binary Path
-                                </MenuItem>
-                                <MenuItem icon={<AiOutlineClear />} onClick={() => store.dispatch(clearLogs())}>
+                                </Menu.Item>
+                                <Menu.Item leftSection={<AiOutlineClear />} onClick={() => store.dispatch(clearLogs())}>
                                     Clear Logs
-                                </MenuItem>
-                            </MenuList>
+                                </Menu.Item>
+                            </Menu.Dropdown>
                         </Menu>
                         <Menu>
-                            <MenuButton
-                                as={Button}
-                                rightIcon={<BsChevronDown />}
-                                width="12em"
-                                mr={5}
-                            >
-                                Debug Actions
-                            </MenuButton>
-                            <MenuList>
-                                <MenuItem icon={<BsTerminal />} onClick={() => confirm('restartViaTerminal')}>
+                            <Menu.Target>
+                                <Button
+                                    variant="default"
+                                    rightSection={<BsChevronDown />}
+                                    w="12em"
+                                    mr={20}
+                                >
+                                    Debug Actions
+                                </Button>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                                <Menu.Item leftSection={<BsTerminal />} onClick={() => confirm('restartViaTerminal')}>
                                     Restart via Terminal
-                                </MenuItem>
-                                <MenuItem icon={<AiOutlineClear />} onClick={() => confirm('clearEventCache')}>
+                                </Menu.Item>
+                                <Menu.Item leftSection={<AiOutlineClear />} onClick={() => confirm('clearEventCache')}>
                                     Clear Event Cache
-                                </MenuItem>
-                            </MenuList>
+                                </Menu.Item>
+                            </Menu.Dropdown>
                         </Menu>
-                        
+
                     </Flex>
                 </Stack>
-                <Stack direction='column' p={5}>
-                    <Text fontSize='2xl'>Debug Logs</Text>
+                <Stack p={20}>
+                    <Text fz='2xl'>Debug Logs</Text>
                     <Divider orientation='horizontal' />
-                    <Spacer />
-                    <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                        <Checkbox onChange={(e: any) => toggleDebugMode(e)} isChecked={showDebug}>Show Debug Logs</Checkbox>
-                        <Popover trigger='hover'>
-                            <PopoverTrigger>
-                                <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+                    <Box style={{ flex: 1 }} />
+                    <Flex style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                        <Checkbox onChange={(e: any) => toggleDebugMode(e)} checked={showDebug} label="Show Debug Logs" />
+                        <Popover withArrow>
+                            <Popover.Target>
+                                <Box ml={8}>
                                     <AiOutlineInfoCircle />
                                 </Box>
-                            </PopoverTrigger>
-                            <PopoverContent>
-                                <PopoverArrow />
-                                <PopoverCloseButton />
-                                <PopoverHeader>Information</PopoverHeader>
-                                <PopoverBody>
+                            </Popover.Target>
+                            <Popover.Dropdown>
+                                <Text fw={600} mb="xs">Information</Text>
+                                <Box>
                                     <Text>
                                         Enabling this option will show DEBUG level logs. Leaving
                                         this disabled will only INFO, WARN, and ERROR level logs.
                                     </Text>
-                                </PopoverBody>
-                            </PopoverContent>
+                                </Box>
+                            </Popover.Dropdown>
                         </Popover>
-                        <Box ml={5} />
-                        <Checkbox onChange={(e: any) => toggleMessagesAppLogs(e)} isChecked={showMessagesAppLogs}>Show Messages App Logs</Checkbox>
-                        <Popover trigger='hover'>
-                            <PopoverTrigger>
-                                <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+                        <Box ml={20} />
+                        <Checkbox onChange={(e: any) => toggleMessagesAppLogs(e)} checked={showMessagesAppLogs} label="Show Messages App Logs" />
+                        <Popover withArrow>
+                            <Popover.Target>
+                                <Box ml={8}>
                                     <AiOutlineInfoCircle />
                                 </Box>
-                            </PopoverTrigger>
-                            <PopoverContent>
-                                <PopoverArrow />
-                                <PopoverCloseButton />
-                                <PopoverHeader>Information</PopoverHeader>
-                                <PopoverBody>
+                            </Popover.Target>
+                            <Popover.Dropdown>
+                                <Text fw={600} mb="xs">Information</Text>
+                                <Box>
                                     <Text>
                                         Enabling this option will show logs coming from the Messages app.
                                         This is disabled by default, as it can be quite verbose.
                                     </Text>
-                                </PopoverBody>
-                            </PopoverContent>
+                                </Box>
+                            </Popover.Dropdown>
                         </Popover>
                     </Flex>
-                    <Spacer />
+                    <Box style={{ flex: 1 }} />
                     <LogsTable logs={logs} />
                 </Stack>
             </Flex>

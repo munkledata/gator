@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-    FormControl,
-    FormLabel,
-    FormHelperText,
-    Input,
-    IconButton,
-    FormErrorMessage,
-    useBoolean,
+    Box,
+    TextInput,
+    ActionIcon,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -22,7 +19,7 @@ export interface ZrokTokenFieldProps {
 export const ZrokTokenField = ({ helpText }: ZrokTokenFieldProps): JSX.Element => {
     const dispatch = useAppDispatch();
     const zrokToken: string = (useAppSelector(state => state.config.zrok_token) ?? '');
-    const [showZrokToken, setShowZrokToken] = useBoolean();
+    const [showZrokToken, setShowZrokToken] = useDisclosure();
     const [newZrokToken, setNewZrokToken] = useState(zrokToken);
     const [zrokTokenError, setZrokTokenError] = useState('');
     const hasZrokTokenError: boolean = (zrokTokenError ?? '').length > 0;
@@ -56,43 +53,47 @@ export const ZrokTokenField = ({ helpText }: ZrokTokenFieldProps): JSX.Element =
     };
 
     return (
-        <FormControl isInvalid={hasZrokTokenError}>
-            <FormLabel htmlFor='zrok_key'>Zrok Token (Required)</FormLabel>
-            <Input
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='zrok_key'>Zrok Token (Required)</Text>
+            <TextInput
                 id='password'
                 type={showZrokToken ? 'text' : 'password'}
-                maxWidth="20em"
+                maw="20em"
                 value={newZrokToken}
                 onChange={(e: any) => {
                     if (hasZrokTokenError) setZrokTokenError('');
                     setNewZrokToken(e.target.value);
                 }}
             />
-            <IconButton
-                ml={3}
-                verticalAlign='top'
+            <ActionIcon
+                ml={12}
+                style={{ verticalAlign: 'top' }}
+                variant="subtle"
                 aria-label='View Zrok token'
-                icon={showZrokToken ? <AiFillEye /> : <AiFillEyeInvisible />}
                 onClick={() => setShowZrokToken.toggle()}
-            />
-            <IconButton
-                ml={3}
-                verticalAlign='top'
+            >
+                {showZrokToken ? <AiFillEye /> : <AiFillEyeInvisible />}
+            </ActionIcon>
+            <ActionIcon
+                ml={12}
+                style={{ verticalAlign: 'top' }}
+                variant="subtle"
                 aria-label='Save Zrok token'
-                icon={<AiOutlineSave />}
                 onClick={() => saveZrokToken(newZrokToken)}
-            />
+            >
+                <AiOutlineSave />
+            </ActionIcon>
             {!hasZrokTokenError ? (
-                <FormHelperText>
+                <Text fz="xs" c="dimmed">
                     {helpText ?? (
                         <Text>
                             A Zrok Token is required to use the Zrok proxy service. If you do not have one, you can sign up for a free account within BlueBubbles.
                         </Text>
                     )}
-                </FormHelperText>
+                </Text>
             ) : (
-                <FormErrorMessage>{zrokTokenError}</FormErrorMessage>
+                <Text fz="xs" c="red">{zrokTokenError}</Text>
             )}
-        </FormControl>
+        </Box>
     );
 };

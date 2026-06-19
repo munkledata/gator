@@ -3,18 +3,18 @@ import {
     Divider,
     Stack,
     Text,
-    Spacer
-} from 'lib/ui';
+    Box
+} from '@mantine/core';
 import { PollIntervalField } from '../../../components/fields/PollIntervalField';
 
 
 export const DatabaseSettings = (): JSX.Element => {
     return (
         <section>
-            <Stack direction='column' p={5}>
-                <Text fontSize='2xl'>Database Settings</Text>
+            <Stack p={20}>
+                <Text fz='2xl'>Database Settings</Text>
                 <Divider orientation='horizontal' />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <PollIntervalField />
             </Stack>
         </section>

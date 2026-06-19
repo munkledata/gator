@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-    FormControl,
-    FormLabel,
-    FormHelperText,
-    Input,
-    IconButton,
-    FormErrorMessage,
-    useBoolean
-} from 'lib/ui';
+    Box,
+    Text,
+    TextInput,
+    ActionIcon
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { setConfig } from '../../slices/ConfigSlice';
@@ -23,7 +21,7 @@ export const ServerPasswordField = ({ helpText, errorOnEmpty = false }: ServerPa
     const dispatch = useAppDispatch();
 
     const password: string = (useAppSelector(state => state.config.password) ?? '');
-    const [showPassword, setShowPassword] = useBoolean();
+    const [showPassword, setShowPassword] = useDisclosure(false);
     const [newPassword, setNewPassword] = useState(password);
     const [passwordError, setPasswordError] = useState('');
     const hasPasswordError: boolean = (passwordError?? '').length > 0;
@@ -62,39 +60,43 @@ export const ServerPasswordField = ({ helpText, errorOnEmpty = false }: ServerPa
     };
 
     return (
-        <FormControl isInvalid={hasPasswordError}>
-            <FormLabel htmlFor='password'>Server Password</FormLabel>
-            <Input
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='password'>Server Password</Text>
+            <TextInput
                 id='password'
                 type={showPassword ? 'text' : 'password'}
-                maxWidth="20em"
+                maw="20em"
                 value={newPassword}
                 onChange={(e: any) => {
                     if (hasPasswordError) setPasswordError('');
                     setNewPassword(e.target.value);
                 }}
             />
-            <IconButton
-                ml={3}
-                verticalAlign='top'
+            <ActionIcon
+                ml={12}
+                variant="subtle"
+                style={{ verticalAlign: 'top' }}
                 aria-label='View password'
-                icon={showPassword ? <AiFillEye /> : <AiFillEyeInvisible />}
                 onClick={() => setShowPassword.toggle()}
-            />
-            <IconButton
-                ml={3}
-                verticalAlign='top'
+            >
+                {showPassword ? <AiFillEye /> : <AiFillEyeInvisible />}
+            </ActionIcon>
+            <ActionIcon
+                ml={12}
+                variant="subtle"
+                style={{ verticalAlign: 'top' }}
                 aria-label='Save password'
-                icon={<AiOutlineSave />}
                 onClick={() => savePassword(newPassword)}
-            />
+            >
+                <AiOutlineSave />
+            </ActionIcon>
             {!hasPasswordError ? (
-                <FormHelperText>
+                <Text fz="xs" c="dimmed">
                     {helpText ?? 'Enter a password to use for clients to authenticate with the server'}
-                </FormHelperText>
+                </Text>
             ) : (
-                <FormErrorMessage>{passwordError}</FormErrorMessage>
+                <Text fz="xs" c="red">{passwordError}</Text>
             )}
-        </FormControl>
+        </Box>
     );
 };

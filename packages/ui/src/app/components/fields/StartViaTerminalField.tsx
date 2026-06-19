@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-    FormControl,
-    FormHelperText,
+    Box,
     Checkbox,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 
@@ -17,16 +16,16 @@ export const StartViaTerminalField = ({ helpText }: StartViaTerminalFieldProps):
     const startViaTerminal: boolean = (useAppSelector(state => state.config.start_via_terminal) ?? false);
 
     return (
-        <FormControl>
-            <Checkbox id='start_via_terminal' isChecked={startViaTerminal} onChange={onCheckboxToggle}>Always Start via Terminal</Checkbox>
-            <FormHelperText>
+        <Box>
+            <Checkbox id='start_via_terminal' checked={startViaTerminal} onChange={onCheckboxToggle} label="Always Start via Terminal" />
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         When BlueBubbles starts up, it will auto-reload itself in terminal mode.
                         When in terminal, type "help" for command information.
                     </Text>
                 )}
-            </FormHelperText>
-        </FormControl>
+            </Text>
+        </Box>
     );
 };

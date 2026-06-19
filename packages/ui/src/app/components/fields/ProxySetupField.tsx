@@ -1,15 +1,12 @@
 import React, { useRef, useState } from 'react';
 import {
-    Select,
+    NativeSelect,
     Flex,
-    FormControl,
-    FormLabel,
-    FormHelperText,
-    useBoolean,
-    IconButton,
+    Box,
     Text,
-
-} from 'lib/ui';
+    ActionIcon,
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { onSelectChange } from '../../actions/ConfigActions';
 import { DynamicDnsDialog } from '../modals/DynamicDnsDialog';
@@ -50,20 +47,20 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
     const proxyService: string = (useAppSelector(state => state.config.proxy_service) ?? '').toLowerCase().replace(' ', '-');
     const address: string = useAppSelector(state => state.config.server_address) ?? '';
     const port: number = useAppSelector(state => state.config.socket_port) ?? 1234;
-    const [dnsModalOpen, setDnsModalOpen] = useBoolean();
-    const [zrokModalOpen, setZrokModalOpen] = useBoolean();
+    const [dnsModalOpen, setDnsModalOpen] = useDisclosure();
+    const [zrokModalOpen, setZrokModalOpen] = useDisclosure();
     const [requiresConfirmation, confirm] = useState((): string | null => {
         return null;
     });
 
     return (
-        <FormControl>
-            <FormLabel htmlFor='proxy_service'>Proxy Setup</FormLabel>
-            <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                <Select
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='proxy_service'>Proxy Setup</Text>
+            <Flex direction='row' justify='flex-start' align='center'>
+                <NativeSelect
                     id='proxy_service'
-                    maxWidth="16em"
-                    mr={3}
+                    maw="16em"
+                    mr={12}
                     value={proxyService}
                     onChange={(e: any) => {
                         if (!e.target.value || e.target.value.length === 0) return;
@@ -71,10 +68,10 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                         let shouldSave = true;
                         if (e.target.value === 'dynamic-dns') {
                             shouldSave = false;
-                            setDnsModalOpen.on();
+                            setDnsModalOpen.open();
                         } else if (e.target.value === 'zrok') {
                             shouldSave = false;
-                            setZrokModalOpen.on();
+                            setZrokModalOpen.open();
                         } else if (e.target.value === 'cloudflare') {
                             confirm('confirmation');
                         } else if (e.target.value === 'lan-url') {
@@ -90,31 +87,35 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                     <option value='zrok'>Zrok</option>
                     <option value='dynamic-dns'>Dynamic DNS / Custom URL</option>
                     <option value='lan-url'>LAN URL</option>
-                </Select>
+                </NativeSelect>
                 {(proxyService === 'dynamic-dns')
                     ? (
-                        <IconButton
-                            mr={3}
+                        <ActionIcon
+                            variant="subtle"
+                            mr={12}
                             aria-label='Set address'
-                            icon={<AiOutlineEdit />}
-                            onClick={() => setDnsModalOpen.on()}
-                        />
+                            onClick={() => setDnsModalOpen.open()}
+                        >
+                            <AiOutlineEdit />
+                        </ActionIcon>
                     ) : null}
                 {(showAddress) ? (
                     <>
-                        <Text fontSize="md" color="grey">Address: {address}</Text>
-                        <IconButton
-                            ml={3}
+                        <Text fz="md" c="grey">Address: {address}</Text>
+                        <ActionIcon
+                            variant="subtle"
+                            ml={12}
                             aria-label='Copy address'
-                            icon={<BiCopy />}
                             onClick={() => copyToClipboard(address)}
-                        />
+                        >
+                            <BiCopy />
+                        </ActionIcon>
                     </>
                 ) : null}
             </Flex>
-            <FormHelperText>
+            <Text fz="xs" c="dimmed">
                 {helpText ?? 'Select a proxy service to use to make your server internet-accessible. Without one selected, your server will only be accessible on your local network'}
-            </FormHelperText>
+            </Text>
 
             <DynamicDnsDialog
                 modalRef={dnsRef}
@@ -124,7 +125,7 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                 }}
                 isOpen={dnsModalOpen}
                 port={port as number}
-                onClose={() => setDnsModalOpen.off()}
+                onClose={() => setDnsModalOpen.close()}
             />
 
             <ZrokSetupDialog
@@ -134,7 +135,7 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                     dispatch(setConfig({ name: 'zrok_token', value: token }));
                 }}
                 isOpen={zrokModalOpen}
-                onClose={() => setZrokModalOpen.off()}
+                onClose={() => setZrokModalOpen.close()}
             />
 
             <ConfirmationDialog
@@ -149,6 +150,6 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                 }}
                 isOpen={requiresConfirmation !== null}
             />
-        </FormControl>
+        </Box>
     );
 };

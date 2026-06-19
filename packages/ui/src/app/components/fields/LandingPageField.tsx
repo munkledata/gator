@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-    FormControl,
-    FormLabel,
-    FormHelperText,
-    FormErrorMessage,
-    Flex
-} from 'lib/ui';
+import { Box, Text, Flex } from '@mantine/core';
 import FilePicker from '../FilePicker';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { showSuccessToast } from '../../utils/ToastUtils';
@@ -44,9 +38,9 @@ export const LandingPageField = (): JSX.Element => {
     };
 
     return (
-        <FormControl isInvalid={hasError}>
-            <FormLabel htmlFor='socket_port'>Custom Landing Page</FormLabel>
-            <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='socket_port'>Custom Landing Page</Text>
+            <Flex direction='row' justify='flex-start' align='center'>
                 <FilePicker
                     accept='text/html'
                     placeholder={(landingPath.length === 0) ? 'Click to select an HTML file' : 'Click to select an HTML new file'}
@@ -74,12 +68,12 @@ export const LandingPageField = (): JSX.Element => {
                 />
             </Flex>
             {!hasError ? (
-                <FormHelperText>
+                <Text fz="xs" c="dimmed">
                     Selected: { landingPath.length === 0 ? 'No custom landing page set' : landingPath }
-                </FormHelperText>
+                </Text>
             ) : (
-                <FormErrorMessage>{landingPathError}</FormErrorMessage>
+                <Text fz="xs" c="red">{landingPathError}</Text>
             )}
-        </FormControl>
+        </Box>
     );
 };

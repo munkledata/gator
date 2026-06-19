@@ -3,18 +3,18 @@ import {
     Divider,
     Stack,
     Text,
-    Spacer
-} from 'lib/ui';
+    Box
+} from '@mantine/core';
 import { CheckForUpdatesField } from '../../../components/fields/CheckForUpdatesField';
 
 
 export const UpdateSettings = (): JSX.Element => {
     return (
         <section>
-            <Stack direction='column' p={5}>
-                <Text fontSize='2xl'>Update Settings</Text>
+            <Stack p={20}>
+                <Text fz='2xl'>Update Settings</Text>
                 <Divider orientation='horizontal' />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <CheckForUpdatesField />
             </Stack>
         </section>

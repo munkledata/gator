@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-    FormControl,
-    FormHelperText,
+    Box,
     Checkbox,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 
@@ -16,16 +15,15 @@ export const StartMinimizedField = ({ helpText }: StartMinimizedFieldProps): JSX
     const startMinimized: boolean = (useAppSelector(state => state.config.start_minimized) ?? false);
 
     return (
-        <FormControl>
-            <Checkbox id='start_minimized' isChecked={startMinimized}  onChange={onCheckboxToggle}>Start Minimized</Checkbox>
-            <FormHelperText>
+        <Box>
+            <Checkbox id='start_minimized' checked={startMinimized} onChange={onCheckboxToggle} label="Start Minimized" />
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         When enabled, the BlueBubbles Server will be minimized after starting up.
                     </Text>
                 )}
-            </FormHelperText>
-        </FormControl>
+            </Text>
+        </Box>
     );
 };
-

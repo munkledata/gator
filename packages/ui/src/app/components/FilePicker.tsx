@@ -1,6 +1,6 @@
-import { Input, InputGroup } from 'lib/ui';
+import { Box, TextInput, Button } from '@mantine/core';
+import type { ButtonProps } from '@mantine/core';
 type InputGroupProps = any;
-import { Button, ButtonProps, InputRightAddon } from 'lib/ui';
 import React from 'react';
 import PropTypes from 'prop-types';
 
@@ -91,7 +91,7 @@ class FilePicker extends React.Component<FilePickerProps, FilePickerState> {
         } = this.props;
 
         return (
-            <InputGroup {...inputGroupProps}>
+            <Box {...inputGroupProps}>
                 <input
                     type="file"
                     ref={this.inputRef}
@@ -102,12 +102,11 @@ class FilePicker extends React.Component<FilePickerProps, FilePickerState> {
                     data-testid={placeholder}
                 />
 
-                <Input
+                <TextInput
                     placeholder={placeholder}
                     {...{
                         ...inputProps,
                         readOnly: true,
-                        isReadOnly: true,
                         value: this.state.files.map(f => f.name).join(', '),
                         onClick: this.handleOnInputClick
                     }}
@@ -119,7 +118,7 @@ class FilePicker extends React.Component<FilePickerProps, FilePickerState> {
                         onButtonClick={this.handleOnClearClick}
                     />
                 )}
-            </InputGroup>
+            </Box>
         );
     };
 }
@@ -133,11 +132,11 @@ const ClearButton: React.FC<ClearButtonProps> = ({
     onButtonClick,
     buttonProps
 }) => (
-    <InputRightAddon background={'transparent'} borderColor={'transparent'}>
+    <Box bg={'transparent'} style={{ borderColor: 'transparent' }}>
         <Button {...buttonProps} onClick={onButtonClick}>
             {clearButtonLabel ?? 'Clear'}
         </Button>
-    </InputRightAddon>
+    </Box>
 );
 
 ClearButton.propTypes = {

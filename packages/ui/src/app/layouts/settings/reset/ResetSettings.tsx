@@ -1,11 +1,11 @@
 import React, { useRef, useState } from 'react';
 import {
+    Box,
     Divider,
     Stack,
     Text,
-    Spacer,
     Button
-} from 'lib/ui';
+} from '@mantine/core';
 import { store } from '../../../store';
 import { toggleTutorialCompleted, resetApp } from '../../../actions/GeneralActions';
 import { ConfirmationDialog } from '../../../components/modals/ConfirmationDialog';
@@ -41,17 +41,17 @@ export const ResetSettings = (): JSX.Element => {
         return null;
     });
     return (
-        <Stack direction='column' p={5}>
-            <Text fontSize='2xl'>Danger Zone</Text>
+        <Stack p={20}>
+            <Text fz='2xl'>Danger Zone</Text>
             <Divider orientation='horizontal' />
-            <Spacer />
+            <Box style={{ flex: 1 }} />
             <Button
                 onClick={() => confirm('resetTutorial')}
             >
                 Reset Tutorial
             </Button>
             <Button
-                colorScheme={'red'}
+                color={'red'}
                 onClick={() => confirm('resetApp')}
             >
                 Reset App
