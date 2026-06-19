@@ -1,20 +1,13 @@
 import React, { useState } from 'react';
 import {
-    AlertDialog,
-    AlertDialogOverlay,
-    AlertDialogBody,
-    AlertDialogContent,
-    AlertDialogFooter,
-    AlertDialogHeader,
+    Modal,
+    Box,
+    Group,
     Button,
-    UnorderedList,
-    ListItem,
-    Input,
-    FormControl,
-    FormErrorMessage,
-    FormLabel,
+    List,
+    TextInput,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
 type FocusableElement = HTMLElement;
 
 
@@ -40,80 +33,76 @@ export const DynamicDnsDialog = ({
     const isInvalid = (error ?? '').length > 0;
 
     return (
-        <AlertDialog
-            isOpen={isOpen}
-            leastDestructiveRef={modalRef}
+        <Modal
+            opened={isOpen}
             onClose={() => onClose()}
+            withCloseButton={false}
         >
-            <AlertDialogOverlay>
-                <AlertDialogContent>
-                    <AlertDialogHeader fontSize='lg' fontWeight='bold'>
-                        Set Dynamic DNS / Custom URL
-                    </AlertDialogHeader>
+            <Text fw={600} fz="lg">
+                Set Dynamic DNS / Custom URL
+            </Text>
 
-                    <AlertDialogBody>
-                        <Text>Enter your Dynamic DNS or Custom URL, including the schema and port. Here are some examples:</Text>
-                        <br />
-                        <UnorderedList>
-                            <ListItem>http://thequickbrownfox.ddns.net:{port}</ListItem>
-                            <ListItem>http://bluebubbles.no-ip.org:{port}</ListItem>
-                        </UnorderedList>
-                        <br />
-                        <Text>If you plan to use your own custom certificate, please remember to use <strong>"https://"</strong> as your URL scheme</Text>
-                        <br />
-                        <FormControl isInvalid={isInvalid}>
-                            <FormLabel htmlFor='address'>Dynamic DNS / Custom URL</FormLabel>
-                            <Input
-                                id='address'
-                                type='text'
-                                maxWidth="20em"
-                                value={address}
-                                placeholder={`http://<your DNS>:${port}`}
-                                onChange={(e: any) => {
-                                    setError('');
-                                    setAddress(e.target.value);
-                                }}
-                            />
-                            {isInvalid ? (
-                                <FormErrorMessage>{error}</FormErrorMessage>
-                            ) : null}
-                        </FormControl>
-                        
-                    </AlertDialogBody>
+            <Box>
+                <Text>Enter your Dynamic DNS or Custom URL, including the schema and port. Here are some examples:</Text>
+                <br />
+                <List>
+                    <List.Item>http://thequickbrownfox.ddns.net:{port}</List.Item>
+                    <List.Item>http://bluebubbles.no-ip.org:{port}</List.Item>
+                </List>
+                <br />
+                <Text>If you plan to use your own custom certificate, please remember to use <strong>"https://"</strong> as your URL scheme</Text>
+                <br />
+                <Box>
+                    <Text component="label" fw={500} fz="sm" mb={4} htmlFor='address'>Dynamic DNS / Custom URL</Text>
+                    <TextInput
+                        id='address'
+                        type='text'
+                        maw="20em"
+                        value={address}
+                        placeholder={`http://<your DNS>:${port}`}
+                        onChange={(e: any) => {
+                            setError('');
+                            setAddress(e.target.value);
+                        }}
+                    />
+                    {isInvalid ? (
+                        <Text fz="xs" c="red">{error}</Text>
+                    ) : null}
+                </Box>
 
-                    <AlertDialogFooter>
-                        <Button
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => {
-                                if (onCancel) onCancel();
-                                onClose();
-                            }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            ml={3}
-                            bg='brand.primary'
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => {
-                                if (address.length === 0) {
-                                    setError('Please enter a Dynamic DNS address!');
-                                    return;
-                                } else if (!address.startsWith('http://') && !address.startsWith('https://')) {
-                                    setError('Please enter a valid Dynamic DNS URL (including http:// or https://)!');
-                                    return;
-                                }
-                                
+            </Box>
 
-                                if (onConfirm) onConfirm(address);
-                                onClose();
-                            }}
-                        >
-                            Save
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialogOverlay>
-        </AlertDialog>
+            <Group justify="flex-end" mt="md">
+                <Button
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => {
+                        if (onCancel) onCancel();
+                        onClose();
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button
+                    ml={12}
+                    bg='brand'
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => {
+                        if (address.length === 0) {
+                            setError('Please enter a Dynamic DNS address!');
+                            return;
+                        } else if (!address.startsWith('http://') && !address.startsWith('https://')) {
+                            setError('Please enter a valid Dynamic DNS URL (including http:// or https://)!');
+                            return;
+                        }
+
+
+                        if (onConfirm) onConfirm(address);
+                        onClose();
+                    }}
+                >
+                    Save
+                </Button>
+            </Group>
+        </Modal>
     );
 };

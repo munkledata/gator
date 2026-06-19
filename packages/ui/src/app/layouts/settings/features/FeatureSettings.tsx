@@ -3,14 +3,9 @@ import {
     Divider,
     Stack,
     Text,
-    Spacer,
     Accordion,
-    AccordionItem,
-    AccordionButton,
-    AccordionPanel,
-    AccordionIcon,
     Box
-} from 'lib/ui';
+} from '@mantine/core';
 import { AutoStartMethodField } from '../../../components/fields/AutoStartMethodField';
 import { AutoCaffeinateField } from '../../../components/fields/AutoCaffeinateField';
 import { DockBadgeField } from '../../../components/fields/DockBadgeField';
@@ -26,42 +21,41 @@ import { AutoLockMacField } from 'app/components/fields/AutoLockMacField';
 export const FeatureSettings = (): JSX.Element => {
     return (
         <section>
-            <Stack direction='column' p={5}>
-                <Text fontSize='2xl'>Features</Text>
+            <Stack p={20}>
+                <Text fz='2xl'>Features</Text>
                 <Divider orientation='horizontal' />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <OpenFindMyOnStartupField />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <AutoCaffeinateField />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <AutoStartMethodField />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <StartMinimizedField />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <AutoLockMacField />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <DockBadgeField />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <HideDockIconField />
-                <Spacer />
+                <Box style={{ flex: 1 }} />
                 <StartDelayField />
-                <Spacer />
-                <Accordion allowMultiple>
-                    <AccordionItem>
-                        <AccordionButton>
-                            <Box flex='1' textAlign='left' width="15em">
+                <Box style={{ flex: 1 }} />
+                <Accordion multiple>
+                    <Accordion.Item value="advanced-feature-settings">
+                        <Accordion.Control>
+                            <Box style={{ flex: '1' }} ta='left' w="15em">
                                 Advanced Feature Settings
                             </Box>
-                            <AccordionIcon />
-                        </AccordionButton>
-                        <AccordionPanel pb={4}>
-                            <Stack direction='column'>
+                        </Accordion.Control>
+                        <Accordion.Panel pb={16}>
+                            <Stack>
                                 <StartViaTerminalField />
-                                <Spacer />
+                                <Box style={{ flex: 1 }} />
                                 <LandingPageField />
                             </Stack>
-                        </AccordionPanel>
-                    </AccordionItem>
+                        </Accordion.Panel>
+                    </Accordion.Item>
                 </Accordion>
             </Stack>
         </section>

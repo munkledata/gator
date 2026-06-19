@@ -1,16 +1,9 @@
 import React from 'react';
 import {
     Table,
-    Thead,
-    Tbody,
-    Tr,
-    Th,
-    Td,
-    TableCaption,
-    Icon,
     Flex,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
 import { BiErrorAlt } from 'react-icons/bi';
 import { AiOutlineWarning, AiOutlineInfoCircle } from 'react-icons/ai';
 import { BsCheckAll } from 'react-icons/bs';
@@ -25,40 +18,41 @@ const AlertTypeIcon: NodeJS.Dict<IconType> = {
 
 export const NotificationsTable = ({ notifications }: { notifications: Array<NotificationItem> }): JSX.Element => {
     return (
-        <Table variant="striped" colorScheme="blue" size="md">
-            <TableCaption>
+        <Table>
+            <Table.Caption>
                 Alerts are normal to have. As long as the server recovers,
                 you have nothing to worry about. Alerts are mostly helpful when you
                 are experiencing an issue and want to see if any errors have occured.
-            </TableCaption>
-            <Thead>
-                <Tr>
-                    <Th>Type</Th>
-                    <Th>Notification</Th>
-                    <Th isNumeric>Time / Read</Th>
-                </Tr>
-            </Thead>
-            <Tbody>
-                {notifications.map(item => (
-                    <Tr key={item.id} color={(item?.read ?? false) ? 'gray.400' : 'current'}>
-                        <Td verticalAlign='baseline'>
-                            <Icon
-                                ml={2}
-                                fontSize="24"
-                                as={AlertTypeIcon[item.type] ?? AiOutlineWarning}
-                            />
-                        </Td>
-                        <Td verticalAlign='baseline'>{item.message}</Td>
-                        <Td isNumeric verticalAlign='baseline'>
-                            <Flex flexDirection="row" justifyContent='flex-end' alignItems='center'>
-                                <Text mr={1}>{item.timestamp.toLocaleString()}</Text>
-                                {(item?.read ?? false) ? <BsCheckAll fontSize={24} /> : null}
-                            </Flex>
-                            
-                        </Td>
-                    </Tr>
-                ))}
-            </Tbody>
+            </Table.Caption>
+            <Table.Thead>
+                <Table.Tr>
+                    <Table.Th>Type</Table.Th>
+                    <Table.Th>Notification</Table.Th>
+                    <Table.Th>Time / Read</Table.Th>
+                </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+                {notifications.map(item => {
+                    const AlertIcon = AlertTypeIcon[item.type] ?? AiOutlineWarning;
+                    return (
+                        <Table.Tr key={item.id} c={(item?.read ?? false) ? 'gray.4' : 'current'}>
+                            <Table.Td style={{ verticalAlign: 'baseline' }}>
+                                <AlertIcon
+                                    size={24}
+                                />
+                            </Table.Td>
+                            <Table.Td style={{ verticalAlign: 'baseline' }}>{item.message}</Table.Td>
+                            <Table.Td style={{ verticalAlign: 'baseline' }}>
+                                <Flex direction="row" justify="flex-end" align="center">
+                                    <Text mr={4}>{item.timestamp.toLocaleString()}</Text>
+                                    {(item?.read ?? false) ? <BsCheckAll fontSize={24} /> : null}
+                                </Flex>
+
+                            </Table.Td>
+                        </Table.Tr>
+                    );
+                })}
+            </Table.Tbody>
         </Table>
     );
 };

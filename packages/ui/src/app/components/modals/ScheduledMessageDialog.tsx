@@ -1,21 +1,14 @@
 import { invoke } from 'lib/apiClient';
 import React, { useEffect, useState } from 'react';
 import {
-    AlertDialog,
-    AlertDialogOverlay,
-    AlertDialogBody,
-    AlertDialogContent,
-    AlertDialogFooter,
-    AlertDialogHeader,
+    Modal,
+    Box,
+    Group,
+    Text,
     Button,
-    Input,
-    FormControl,
-    FormErrorMessage,
-    FormLabel,
-    RadioGroup,
-    Stack,
+    TextInput,
     Radio
-} from 'lib/ui';
+} from '@mantine/core';
 type FocusableElement = HTMLElement;
 import { ScheduledMessageItem } from '../tables/ScheduledMessagesTable';
 import { Options, Select } from 'lib/select';
@@ -37,7 +30,7 @@ const toLocalIsoString = (date: Date | null) => {
     const pad = (num: number) => {
         return (num < 10 ? '0' : '') + num;
     };
-  
+
     return date.getFullYear() +
         '-' + pad(date.getMonth() + 1) +
         '-' + pad(date.getDate()) +
@@ -106,216 +99,212 @@ export const ScheduledMessageDialog = ({
     };
 
     return (
-        <AlertDialog
-            isOpen={isOpen}
-            leastDestructiveRef={modalRef}
+        <Modal
+            opened={isOpen}
             onClose={() => onClose()}
+            withCloseButton={false}
         >
-            <AlertDialogOverlay>
-                <AlertDialogContent>
-                    <AlertDialogHeader fontSize='lg' fontWeight='bold'>
-                        Schedule a Message
-                    </AlertDialogHeader>
+            <Text fw='bold' fz='lg'>
+                Schedule a Message
+            </Text>
 
-                    <AlertDialogBody>
-                        <FormControl mt={5}>
-                            <FormLabel>Type</FormLabel>
-                            <Select
-                                size='md'
-                                options={scheduledMessageTypeOptions as unknown as Options<string>}
-                                value={type}
-                                onChange={setType}
-                            />
-                        </FormControl>
-                        <FormControl mt={5}>
-                            <RadioGroup onChange={setChatType} value={chatType}>
-                                <Stack direction='row'>
-                                    <Radio value='dm'>Direct Message</Radio>
-                                    <Radio value='group'>Group Chat</Radio>
-                                </Stack>
-                            </RadioGroup>
-                        </FormControl>
-                        {chatType === 'dm' ? (
-                            <FormControl isInvalid={hasGuidError} mt={5}>
-                                <FormLabel htmlFor='message'>Phone Number / Chat GUID</FormLabel>
-                                <Input
-                                    id='chatGuid'
-                                    type='text'
-                                    value={chatGuid ?? ''}
-                                    placeholder=''
-                                    onChange={(e: any) => {
-                                        setGuidError('');
-                                        setChatGuid(e.target.value);
-                                    }}
-                                />
-                                {hasGuidError ? (
-                                    <FormErrorMessage>{guidError}</FormErrorMessage>
-                                ) : null}
-                            </FormControl>
+            <Box>
+                <Box mt={20}>
+                    <Text component="label" fw={500} fz="sm" mb={4}>Type</Text>
+                    <Select
+                        size='md'
+                        options={scheduledMessageTypeOptions as unknown as Options<string>}
+                        value={type}
+                        onChange={setType}
+                    />
+                </Box>
+                <Box mt={20}>
+                    <Radio.Group onChange={setChatType} value={chatType}>
+                        <Group>
+                            <Radio value='dm' label='Direct Message' />
+                            <Radio value='group' label='Group Chat' />
+                        </Group>
+                    </Radio.Group>
+                </Box>
+                {chatType === 'dm' ? (
+                    <Box mt={20}>
+                        <Text component="label" fw={500} fz="sm" mb={4} htmlFor='message'>Phone Number / Chat GUID</Text>
+                        <TextInput
+                            id='chatGuid'
+                            type='text'
+                            value={chatGuid ?? ''}
+                            placeholder=''
+                            onChange={(e: any) => {
+                                setGuidError('');
+                                setChatGuid(e.target.value);
+                            }}
+                        />
+                        {hasGuidError ? (
+                            <Text fz="xs" c="red">{guidError}</Text>
                         ) : null}
-                        {chatType === 'group' ? (
-                            <FormControl mt={5}>
-                                <FormLabel>Select Group Chat</FormLabel>
-                                <Select
-                                    size='md'
-                                    options={groups as unknown as Options<string>}
-                                    value={selectedGroup}
-                                    onChange={(e: any) => {
-                                        setSelectedGroup(e);
-                                        setChatGuid((e as any).value);
-                                    }}
-                                />
-                            </FormControl>
-                        ) : null}
-                        <FormControl isInvalid={hasMessageError} mt={5}>
-                            <FormLabel htmlFor='message'>Message</FormLabel>
-                            <Input
-                                id='message'
-                                type='text'
-                                value={message}
-                                placeholder='Good morning :)'
+                    </Box>
+                ) : null}
+                {chatType === 'group' ? (
+                    <Box mt={20}>
+                        <Text component="label" fw={500} fz="sm" mb={4}>Select Group Chat</Text>
+                        <Select
+                            size='md'
+                            options={groups as unknown as Options<string>}
+                            value={selectedGroup}
+                            onChange={(e: any) => {
+                                setSelectedGroup(e);
+                                setChatGuid((e as any).value);
+                            }}
+                        />
+                    </Box>
+                ) : null}
+                <Box mt={20}>
+                    <Text component="label" fw={500} fz="sm" mb={4} htmlFor='message'>Message</Text>
+                    <TextInput
+                        id='message'
+                        type='text'
+                        value={message}
+                        placeholder='Good morning :)'
+                        onChange={(e: any) => {
+                            setMessageError('');
+                            setMessage(e.target.value);
+                        }}
+                    />
+                    {hasMessageError ? (
+                        <Text fz="xs" c="red">{messageError}</Text>
+                    ) : null}
+                </Box>
+                <Box mt={20}>
+                    <Text component="label" fw={500} fz="sm" mb={4}>Schedule Type</Text>
+                    <Select
+                        size='md'
+                        options={scheduleTypeOptions as unknown as Options<string>}
+                        value={scheduleType}
+                        onChange={setScheduleType}
+                    />
+                </Box>
+                <Box mt={20}>
+                    <Text component="label" fw={500} fz="sm" mb={4} htmlFor='scheduledFor'>Scheduled For</Text>
+                    <TextInput
+                        id='scheduledFor'
+                        type='datetime-local'
+                        defaultValue={toLocalIsoString(scheduledFor)}
+                        onChange={(e: any) => {
+                            setDateError('');
+                            if (e.target.value.length !== 0) {
+                                let date;
+
+                                try {
+                                    date = new Date(e.target.value);
+                                } catch (e) {
+                                    setDateError('Invalid date');
+                                    return;
+                                }
+
+                                setScheduledFor(date);
+                            }
+                        }}
+                    />
+                    {hasDateError ? (
+                        <Text fz="xs" c="red">{dateError}</Text>
+                    ) : null}
+                </Box>
+                {scheduleType.value === 'recurring' ? (
+                    <>
+                        <Box mt={20}>
+                            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='scheduleInterval'>Every</Text>
+                            <TextInput
+                                id='scheduleInterval'
+                                type='number'
+                                value={interval ?? 1}
                                 onChange={(e: any) => {
-                                    setMessageError('');
-                                    setMessage(e.target.value);
+                                    setIntervalValue(Number.parseInt(e.target.value));
                                 }}
                             />
-                            {hasMessageError ? (
-                                <FormErrorMessage>{messageError}</FormErrorMessage>
+                            {hasIntervalError ? (
+                                <Text fz="xs" c="red">{intervalError}</Text>
                             ) : null}
-                        </FormControl>
-                        <FormControl mt={5}>
-                            <FormLabel>Schedule Type</FormLabel>
+                        </Box>
+                        <Box mt={20}>
                             <Select
                                 size='md'
-                                options={scheduleTypeOptions as unknown as Options<string>}
-                                value={scheduleType}
-                                onChange={setScheduleType}
+                                options={intervalTypeOpts as unknown as Options<string>}
+                                value={intervalType}
+                                onChange={setIntervalType}
                             />
-                        </FormControl>
-                        <FormControl isInvalid={hasDateError} mt={5}>
-                            <FormLabel htmlFor='scheduledFor'>Scheduled For</FormLabel>
-                            <Input
-                                id='scheduledFor'
-                                type='datetime-local'
-                                defaultValue={toLocalIsoString(scheduledFor)}
-                                onChange={(e: any) => {
-                                    setDateError('');
-                                    if (e.target.value.length !== 0) {
-                                        let date;
+                        </Box>
+                    </>
+                ) : null}
+            </Box>
 
-                                        try {
-                                            date = new Date(e.target.value);
-                                        } catch (e) {
-                                            setDateError('Invalid date');
-                                            return;
-                                        }
+            <Group justify="flex-end" mt="md">
+                <Button
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => {
+                        if (onCancel) onCancel();
+                        _onClose();
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button
+                    ml={12}
+                    bg='brand'
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => {
+                        if (chatGuid.length === 0) {
+                            setGuidError('Please enter a phone number or chat GUID!');
+                            return;
+                        }
 
-                                        setScheduledFor(date);
-                                    }
-                                }}
-                            />
-                            {hasDateError ? (
-                                <FormErrorMessage>{dateError}</FormErrorMessage>
-                            ) : null}
-                        </FormControl>
-                        {scheduleType.value === 'recurring' ? (
-                            <>
-                                <FormControl isInvalid={hasIntervalError} mt={5}>
-                                    <FormLabel htmlFor='scheduleInterval'>Every</FormLabel>
-                                    <Input
-                                        id='scheduleInterval'
-                                        type='number'
-                                        value={interval ?? 1}
-                                        onChange={(e: any) => {
-                                            setIntervalValue(Number.parseInt(e.target.value));
-                                        }}
-                                    />
-                                    {hasIntervalError ? (
-                                        <FormErrorMessage>{intervalError}</FormErrorMessage>
-                                    ) : null}
-                                </FormControl>
-                                <FormControl mt={5}>
-                                    <Select
-                                        size='md'
-                                        options={intervalTypeOpts as unknown as Options<string>}
-                                        value={intervalType}
-                                        onChange={setIntervalType}
-                                    />
-                                </FormControl>
-                            </>
-                        ) : null}
-                    </AlertDialogBody>
+                        let guid = chatGuid;
+                        if (chatType === 'dm' && !guid.includes(';-;')) {
+                            guid = `iMessage;-;${guid}`;
+                        }
 
-                    <AlertDialogFooter>
-                        <Button
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => {
-                                if (onCancel) onCancel();
-                                _onClose();
-                            }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            ml={3}
-                            bg='brand.primary'
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => {
-                                if (chatGuid.length === 0) {
-                                    setGuidError('Please enter a phone number or chat GUID!');
-                                    return;
+                        if (message.length === 0) {
+                            setMessageError('Please enter a message to send!');
+                            return;
+                        }
+
+                        const now = new Date();
+                        if (!scheduledFor || scheduledFor < now) {
+                            setDateError('Please enter a date in the future!');
+                            return;
+                        }
+
+                        if (!interval) {
+                            setIntervalError('Please enter a valid interval!');
+                            return;
+                        } else if (interval < 1) {
+                            setIntervalError('Interval must be > 0!');
+                            return;
+                        }
+
+                        if (onCreate) {
+                            onCreate({
+                                id: null,
+                                type: type?.value ?? 'send-message',
+                                payload: {
+                                    chatGuid: guid,
+                                    message,
+                                    method: usePrivateApi ? 'private-api' : 'apple-script'
+                                },
+                                scheduledFor: scheduledFor.getTime(),
+                                schedule: {
+                                    type: scheduleType.value,
+                                    interval: interval ?? 1,
+                                    intervalType: intervalType.value
                                 }
+                            });
+                        }
 
-                                let guid = chatGuid;
-                                if (chatType === 'dm' && !guid.includes(';-;')) {
-                                    guid = `iMessage;-;${guid}`;
-                                }
-
-                                if (message.length === 0) {
-                                    setMessageError('Please enter a message to send!');
-                                    return;
-                                }
-
-                                const now = new Date();
-                                if (!scheduledFor || scheduledFor < now) {
-                                    setDateError('Please enter a date in the future!');
-                                    return;
-                                }
-
-                                if (!interval) {
-                                    setIntervalError('Please enter a valid interval!');
-                                    return;
-                                } else if (interval < 1) {
-                                    setIntervalError('Interval must be > 0!');
-                                    return;
-                                }
-
-                                if (onCreate) {
-                                    onCreate({
-                                        id: null,
-                                        type: type?.value ?? 'send-message',
-                                        payload: {
-                                            chatGuid: guid,
-                                            message,
-                                            method: usePrivateApi ? 'private-api' : 'apple-script'
-                                        },
-                                        scheduledFor: scheduledFor.getTime(),
-                                        schedule: {
-                                            type: scheduleType.value,
-                                            interval: interval ?? 1,
-                                            intervalType: intervalType.value
-                                        }
-                                    });
-                                }
-
-                                _onClose();
-                            }}
-                        >
-                            Create
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialogOverlay>
-        </AlertDialog>
+                        _onClose();
+                    }}
+                >
+                    Create
+                </Button>
+            </Group>
+        </Modal>
     );
 };

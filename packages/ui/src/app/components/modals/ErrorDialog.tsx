@@ -1,15 +1,12 @@
 import React from 'react';
 import {
-    AlertDialog,
-    AlertDialogOverlay,
-    AlertDialogBody,
-    AlertDialogContent,
-    AlertDialogFooter,
-    AlertDialogHeader,
+    Modal,
+    Box,
+    Group,
+    Text,
     Button,
-    ListItem,
-    UnorderedList
-} from 'lib/ui';
+    List
+} from '@mantine/core';
 type FocusableElement = HTMLElement;
 
 export type ErrorItem = {
@@ -37,39 +34,35 @@ export const ErrorDialog = ({
     onClose
 }: ErrorDialogProps): JSX.Element => {
     return (
-        <AlertDialog
-            isOpen={isOpen}
-            leastDestructiveRef={modalRef}
+        <Modal
+            opened={isOpen}
             onClose={() => onClose()}
+            withCloseButton={false}
         >
-            <AlertDialogOverlay>
-                <AlertDialogContent>
-                    <AlertDialogHeader fontSize='lg' fontWeight='bold'>
-                        {title}
-                    </AlertDialogHeader>
+            <Text fw="bold" fz="lg">
+                {title}
+            </Text>
 
-                    <AlertDialogBody>
-                        {errorsPrefix}
-                        <br />
-                        <br />
-                        <UnorderedList>
-                            {errors.map(e => {
-                                return <ListItem key={e.id}>{e.message}</ListItem>;
-                            })}
-                        </UnorderedList>
-                        
-                    </AlertDialogBody>
+            <Box>
+                {errorsPrefix}
+                <br />
+                <br />
+                <List>
+                    {errors.map(e => {
+                        return <List.Item key={e.id}>{e.message}</List.Item>;
+                    })}
+                </List>
 
-                    <AlertDialogFooter>
-                        <Button
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => onClose()}
-                        >
-                            {closeButtonText}
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialogOverlay>
-        </AlertDialog>
+            </Box>
+
+            <Group justify="flex-end" mt="md">
+                <Button
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => onClose()}
+                >
+                    {closeButtonText}
+                </Button>
+            </Group>
+        </Modal>
     );
 };

@@ -1,18 +1,11 @@
 import React, { useRef, useState } from 'react';
 import {
     Table,
-    Thead,
-    Tbody,
-    Tr,
-    Th,
-    Td,
-    TableCaption,
     Box,
-    Icon,
-    GridItem,
+    Grid,
     Tooltip,
-    Stack,
-} from 'lib/ui';
+    Group,
+} from '@mantine/core';
 import { FiTrash } from 'react-icons/fi';
 import { AiOutlineEdit } from 'react-icons/ai';
 import { remove, WebhookItem } from '../../slices/WebhooksSlice';
@@ -27,38 +20,38 @@ export const WebhooksTable = ({ webhooks }: { webhooks: Array<WebhookItem> }): J
     const [selectedId, setSelectedId] = useState(undefined as number | undefined);
     return (
         <Box>
-            <Table variant="striped" colorScheme="blue">
-                <TableCaption>These are callbacks to receive events from the BlueBubbles Server</TableCaption>
-                <Thead>
-                    <Tr>
-                        <Th>URL</Th>
-                        <Th>Event Subscriptions</Th>
-                        <Th isNumeric>Actions</Th>
-                    </Tr>
-                </Thead>
-                <Tbody>
+            <Table>
+                <Table.Caption>These are callbacks to receive events from the BlueBubbles Server</Table.Caption>
+                <Table.Thead>
+                    <Table.Tr>
+                        <Table.Th>URL</Table.Th>
+                        <Table.Th>Event Subscriptions</Table.Th>
+                        <Table.Th>Actions</Table.Th>
+                    </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
                     {webhooks.map(item => (
-                        <Tr key={item.id}>
-                            <Td>{item.url}</Td>
-                            <Td>{JSON.parse(item.events).map((e: string) => webhookEventValueToLabel(e)).join(', ')}</Td>
-                            <Td isNumeric>
-                                <Stack direction="row" justifyContent="end">
-                                    <Tooltip label='Edit' placement='bottom'>
-                                        <GridItem _hover={{ cursor: 'pointer' }} onClick={() => setSelectedId(item.id)} marginRight={1}>
-                                            <Icon as={AiOutlineEdit} />
-                                        </GridItem>
+                        <Table.Tr key={item.id}>
+                            <Table.Td>{item.url}</Table.Td>
+                            <Table.Td>{JSON.parse(item.events).map((e: string) => webhookEventValueToLabel(e)).join(', ')}</Table.Td>
+                            <Table.Td>
+                                <Group style={{ justifyContent: 'end' }}>
+                                    <Tooltip label='Edit' position='bottom' withArrow>
+                                        <Grid.Col onClick={() => setSelectedId(item.id)}>
+                                            <AiOutlineEdit />
+                                        </Grid.Col>
                                     </Tooltip>
 
-                                    <Tooltip label='Delete' placement='bottom'>
-                                        <GridItem _hover={{ cursor: 'pointer' }} onClick={() => dispatch(remove(item.id))} marginLeft={1}>
-                                            <Icon as={FiTrash} />
-                                        </GridItem>
+                                    <Tooltip label='Delete' position='bottom' withArrow>
+                                        <Grid.Col onClick={() => dispatch(remove(item.id))}>
+                                            <FiTrash />
+                                        </Grid.Col>
                                     </Tooltip>
-                                </Stack>
-                            </Td>
-                        </Tr>
+                                </Group>
+                            </Table.Td>
+                        </Table.Tr>
                     ))}
-                </Tbody>
+                </Table.Tbody>
             </Table>
 
             <AddWebhookDialog

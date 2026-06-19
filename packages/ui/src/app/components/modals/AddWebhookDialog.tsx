@@ -1,18 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-    AlertDialog,
-    AlertDialogOverlay,
-    AlertDialogBody,
-    AlertDialogContent,
-    AlertDialogFooter,
-    AlertDialogHeader,
+    Box,
     Button,
-    Input,
-    FormControl,
-    FormErrorMessage,
-    FormLabel,
+    Group,
+    Modal,
+    TextInput,
     Text
-} from 'lib/ui';
+} from '@mantine/core';
 import { Select as MultiSelect } from 'lib/select';
 type FocusableElement = HTMLElement;
 import { webhookEventOptions } from '../../constants';
@@ -59,95 +53,91 @@ export const AddWebhookDialog = ({
     }, [existingId]);
 
     return (
-        <AlertDialog
-            isOpen={isOpen}
-            leastDestructiveRef={modalRef}
+        <Modal
+            opened={isOpen}
             onClose={() => onClose()}
+            withCloseButton={false}
         >
-            <AlertDialogOverlay>
-                <AlertDialogContent>
-                    <AlertDialogHeader fontSize='lg' fontWeight='bold'>
-                        Add a new Webhook
-                    </AlertDialogHeader>
+            <Text fw={600} fz="lg">
+                Add a new Webhook
+            </Text>
 
-                    <AlertDialogBody>
-                        <Text>Enter a URL to receive a POST request callback when an event occurs</Text>
-                        <FormControl isInvalid={isUrlInvalid} mt={5}>
-                            <FormLabel htmlFor='url'>URL</FormLabel>
-                            <Input
-                                id='url'
-                                type='text'
-                                value={url}
-                                placeholder='https://<your URL path>'
-                                onChange={(e: any) => {
-                                    setUrlError('');
-                                    setUrl(e.target.value);
-                                }}
-                            />
-                            {isUrlInvalid ? (
-                                <FormErrorMessage>{urlError}</FormErrorMessage>
-                            ) : null}
-                        </FormControl>
-                        <FormControl isInvalid={isEventsError} mt={5}>
-                            <FormLabel htmlFor='permissions'>Event Subscriptions</FormLabel>
-                            <MultiSelect
-                                size='md'
-                                isMulti={true}
-                                options={webhookEventOptions}
-                                value={selectedEvents}
-                                onChange={(newValues: any) => {
-                                    setEventsError('');
-                                    setSelectedEvents(newValues as Array<MultiSelectValue>);
-                                }}
-                            />
-                            {isEventsError ? (
-                                <FormErrorMessage>{eventsError}</FormErrorMessage>
-                            ) : null}
-                        </FormControl>
-                        
-                    </AlertDialogBody>
+            <Box>
+                <Text>Enter a URL to receive a POST request callback when an event occurs</Text>
+                <Box mt={20}>
+                    <Text component="label" fw={500} fz="sm" mb={4} htmlFor='url'>URL</Text>
+                    <TextInput
+                        id='url'
+                        type='text'
+                        value={url}
+                        placeholder='https://<your URL path>'
+                        onChange={(e: any) => {
+                            setUrlError('');
+                            setUrl(e.target.value);
+                        }}
+                    />
+                    {isUrlInvalid ? (
+                        <Text fz="xs" c="red">{urlError}</Text>
+                    ) : null}
+                </Box>
+                <Box mt={20}>
+                    <Text component="label" fw={500} fz="sm" mb={4} htmlFor='permissions'>Event Subscriptions</Text>
+                    <MultiSelect
+                        size='md'
+                        isMulti={true}
+                        options={webhookEventOptions}
+                        value={selectedEvents}
+                        onChange={(newValues: any) => {
+                            setEventsError('');
+                            setSelectedEvents(newValues as Array<MultiSelectValue>);
+                        }}
+                    />
+                    {isEventsError ? (
+                        <Text fz="xs" c="red">{eventsError}</Text>
+                    ) : null}
+                </Box>
 
-                    <AlertDialogFooter>
-                        <Button
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => {
-                                if (onCancel) onCancel();
-                                setUrl('');
-                                onClose();
-                            }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            ml={3}
-                            bg='brand.primary'
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => {
-                                if (url.length === 0) {
-                                    setUrlError('Please enter a webhook URL!');
-                                    return;
-                                }
+            </Box>
 
-                                if (selectedEvents.length === 0) {
-                                    setEventsError('Please select at least 1 event to subscribe to!');
-                                    return;
-                                }
+            <Group justify="flex-end" mt="md">
+                <Button
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => {
+                        if (onCancel) onCancel();
+                        setUrl('');
+                        onClose();
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button
+                    ml={12}
+                    bg='brand'
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => {
+                        if (url.length === 0) {
+                            setUrlError('Please enter a webhook URL!');
+                            return;
+                        }
 
-                                if (existingId) {
-                                    dispatch(update({ id: existingId, url, events: selectedEvents }));
-                                } else {
-                                    dispatch(create({ url, events: selectedEvents }));
-                                }
+                        if (selectedEvents.length === 0) {
+                            setEventsError('Please select at least 1 event to subscribe to!');
+                            return;
+                        }
 
-                                setUrl('');
-                                onClose();
-                            }}
-                        >
-                            Save
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialogOverlay>
-        </AlertDialog>
+                        if (existingId) {
+                            dispatch(update({ id: existingId, url, events: selectedEvents }));
+                        } else {
+                            dispatch(create({ url, events: selectedEvents }));
+                        }
+
+                        setUrl('');
+                        onClose();
+                    }}
+                >
+                    Save
+                </Button>
+            </Group>
+        </Modal>
     );
 };

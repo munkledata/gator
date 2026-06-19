@@ -1,25 +1,17 @@
 import React, { useState } from 'react';
 import {
-    Spacer,
     Box,
     Divider,
     Flex,
     SimpleGrid,
     Stack,
     Text,
-    IconButton,
+    ActionIcon,
     Popover,
-    PopoverCloseButton,
-    PopoverContent,
-    PopoverHeader,
-    PopoverBody,
-    PopoverArrow,
-    PopoverTrigger,
-    UnorderedList,
-    ListItem,
-    SkeletonText,
+    List,
+    Skeleton,
     Tooltip
-} from 'lib/ui';
+} from '@mantine/core';
 import QRCode from 'react-qr-code';
 import { AiOutlineInfoCircle, AiOutlineQrcode } from 'react-icons/ai';
 
@@ -52,148 +44,146 @@ export const HomeLayout = (): JSX.Element => {
         !address.startsWith('http://127.0.0.1');
 
     return (
-        <Box p={3} borderRadius={10}>
-            <Flex flexDirection="column">
-                <Stack direction='column' p={5}>
-                    <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                        <Text fontSize='2xl'>Server Information</Text>
-                        <Popover trigger='hover'>
-                            <PopoverTrigger>
-                                <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+        <Box p={12} style={{ borderRadius: 10 }}>
+            <Flex style={{ flexDirection: 'column' }}>
+                <Stack p={20}>
+                    <Flex style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                        <Text fz='2xl'>Server Information</Text>
+                        <Popover withArrow>
+                            <Popover.Target>
+                                <Box ml={8}>
                                     <AiOutlineInfoCircle />
                                 </Box>
-                            </PopoverTrigger>
-                            <PopoverContent>
-                                <PopoverArrow />
-                                <PopoverCloseButton />
-                                <PopoverHeader>Information</PopoverHeader>
-                                <PopoverBody>
+                            </Popover.Target>
+                            <Popover.Dropdown>
+                                <Text fw={600} mb="xs">Information</Text>
+                                <Box>
                                     <Text>
                                         This page will detail your current connection details. This includes your&nbsp;
                                         server address and your local port.
                                     </Text>
                                     <br />
-                                    <UnorderedList>
-                                        <ListItem><strong>Server Address:</strong> This is the address that your clients will connect to</ListItem>
-                                        <ListItem><strong>Local Port:</strong> This is the port that the HTTP server is running on, 
+                                    <List>
+                                        <List.Item><strong>Server Address:</strong> This is the address that your clients will connect to</List.Item>
+                                        <List.Item><strong>Local Port:</strong> This is the port that the HTTP server is running on,
                                             and the port you will use when port forwarding&nbsp;
                                             for a dynamic DNS
-                                        </ListItem>
-                                    </UnorderedList>
-                                </PopoverBody>
-                            </PopoverContent>
+                                        </List.Item>
+                                    </List>
+                                </Box>
+                            </Popover.Dropdown>
                         </Popover>
                     </Flex>
                     <Divider orientation='horizontal' />
-                    <Spacer />
-                    <Flex flexDirection="row" justifyContent="space-between">
+                    <Box style={{ flex: 1 }} />
+                    <Flex style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Stack>
-                            <Flex flexDirection="row" alignItems='center'>
-                                <Text fontSize='md' fontWeight='bold' mr={2}>Server URL: </Text>
+                            <Flex style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Text fz='md' fw='bold' mr={8}>Server URL: </Text>
                                 {(!address) ? (
-                                    <SkeletonText noOfLines={1} />
+                                    <Skeleton height={8} radius="sm" />
                                 ) : (
-                                    <Text fontSize='md'>{address}</Text>
+                                    <Text fz='md'>{address}</Text>
                                 )}
                                 {shouldWarnUrl ? (
-                                    <Tooltip label='Your connection is not secure! Connecting to any server over HTTP could compromise your data! Your messages could be intercepted by a man-in-the-middle attack. Consider setting up an SSL certificate or changing your setup.'>
-                                        <Box marginRight={1} marginLeft={3}>
+                                    <Tooltip label='Your connection is not secure! Connecting to any server over HTTP could compromise your data! Your messages could be intercepted by a man-in-the-middle attack. Consider setting up an SSL certificate or changing your setup.' withArrow>
+                                        <Box mr={4} ml={12}>
                                             <IoIosWarning color='orange' />
                                         </Box>
                                     </Tooltip>
                                 ) : null}
-                                <Tooltip label='Copy Address'>
-                                    <IconButton
-                                        ml={3}
+                                <Tooltip label='Copy Address' withArrow>
+                                    <ActionIcon
+                                        variant="subtle"
+                                        ml={12}
                                         size='md'
                                         aria-label='Copy Address'
-                                        icon={<BiCopy size='22px' />}
                                         onClick={() => copyToClipboard(address)}
-                                    />
+                                    >
+                                        <BiCopy size='22px' />
+                                    </ActionIcon>
                                 </Tooltip>
-                                <Popover placement='bottom' isLazy={true}>
-                                    <PopoverTrigger>
-                                        <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }} >
-                                            <Tooltip label='Show QR Code'>
-                                                <IconButton
-                                                    ml={1}
+                                <Popover position='bottom' withArrow>
+                                    <Popover.Target>
+                                        <Box ml={8} >
+                                            <Tooltip label='Show QR Code' withArrow>
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    ml={4}
                                                     size='md'
                                                     aria-label='Show QR Code'
-                                                    icon={<AiOutlineQrcode size='24px' />}
-                                                />
+                                                >
+                                                    <AiOutlineQrcode size='24px' />
+                                                </ActionIcon>
                                             </Tooltip>
                                         </Box>
-                                    </PopoverTrigger>
-                                    <PopoverContent>
-                                        <PopoverArrow />
-                                        <PopoverCloseButton />
-                                        <PopoverHeader>QR Code</PopoverHeader>
-                                        <PopoverBody>
-                                            <Flex justifyContent='center' flexDirection='column' alignItems='center'>
+                                    </Popover.Target>
+                                    <Popover.Dropdown>
+                                        <Text fw={600} mb="xs">QR Code</Text>
+                                        <Box>
+                                            <Flex style={{ justifyContent: 'center', flexDirection: 'column', alignItems: 'center' }}>
                                                 <Text>
                                                     Your QR Code contains your server configuration so that clients can connect.
                                                     Your QR Code should remain <strong>private</strong> as it contains sensitive information!
                                                 </Text>
-                                                <Box border="5px solid" borderColor='white' mt={4} height='266px' width='266px' borderRadius='lg' mb={3}>
+                                                <Box mt={16} h='266px' w='266px' mb={12} style={{ border: '5px solid', borderColor: 'white', borderRadius: 'lg' }}>
                                                     {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
                                                     {/* @ts-ignore: ts2876 */}
                                                     {(qrCode) ? <QRCode value={qrCode as string} /> : null}
                                                 </Box>
                                             </Flex>
-                                        </PopoverBody>
-                                    </PopoverContent>
+                                        </Box>
+                                    </Popover.Dropdown>
                                 </Popover>
                             </Flex>
-                            <Flex flexDirection="row">
-                                <Text fontSize='md' fontWeight='bold' mr={2}>Local Port: </Text>
+                            <Flex style={{ flexDirection: 'row' }}>
+                                <Text fz='md' fw='bold' mr={8}>Local Port: </Text>
                                 {(!port) ? (
-                                    <SkeletonText noOfLines={1} />
+                                    <Skeleton height={8} radius="sm" />
                                 ) : (
-                                    <Text fontSize='md'>{port}</Text>
+                                    <Text fz='md'>{port}</Text>
                                 )}
                             </Flex>
-                            <Flex flexDirection="row" pt={2}>
-                                <Text fontSize='md' fontWeight='bold' mr={2}>iMessage Email: </Text>
+                            <Flex pt={8} style={{ flexDirection: 'row' }}>
+                                <Text fz='md' fw='bold' mr={8}>iMessage Email: </Text>
                                 {(!iMessageEmail) ? (
-                                    <SkeletonText noOfLines={1} />
+                                    <Skeleton height={8} radius="sm" />
                                 ) : (
-                                    <Text fontSize='md'>{iMessageEmail.length === 0 ? 'Not Detected!' : iMessageEmail}</Text>
+                                    <Text fz='md'>{iMessageEmail.length === 0 ? 'Not Detected!' : iMessageEmail}</Text>
                                 )}
                             </Flex>
-                            <Flex flexDirection="row" pt={2}>
-                                <Text fontSize='md' fontWeight='bold' mr={2}>Computer ID: </Text>
+                            <Flex pt={8} style={{ flexDirection: 'row' }}>
+                                <Text fz='md' fw='bold' mr={8}>Computer ID: </Text>
                                 {(!computerId) ? (
-                                    <SkeletonText noOfLines={1} />
+                                    <Skeleton height={8} radius="sm" />
                                 ) : (
-                                    <Text fontSize='md'>{computerId}</Text>
+                                    <Text fz='md'>{computerId}</Text>
                                 )}
                             </Flex>
                         </Stack>
                         <Divider orientation="vertical" />
                     </Flex>
                 </Stack>
-                <Stack direction='column' pl={5} pr={5} pb={5} pt={2}>
-                    <Flex flexDirection='row' justifyContent='space-between' alignItems='center'>
-                        <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                            <Text fontSize='2xl' minW="fit-content">iMessage Highlights</Text>
-                            <Popover trigger='hover'>
-                                <PopoverTrigger>
-                                    <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+                <Stack pl={20} pr={20} pb={20} pt={8}>
+                    <Flex style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Flex style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                            <Text fz='2xl' miw="fit-content">iMessage Highlights</Text>
+                            <Popover withArrow>
+                                <Popover.Target>
+                                    <Box ml={8}>
                                         <AiOutlineInfoCircle />
                                     </Box>
-                                </PopoverTrigger>
-                                <PopoverContent>
-                                    <PopoverArrow />
-                                    <PopoverCloseButton />
-                                    <PopoverHeader>Information</PopoverHeader>
-                                    <PopoverBody>
+                                </Popover.Target>
+                                <Popover.Dropdown>
+                                    <Text fw={600} mb="xs">Information</Text>
+                                    <Box>
                                         <Text>
                                             These are just some fun stats that I included to give you a quick "snapshot"
                                             of your iMessage history on the Mac Device. This does not include messages that
                                             are on Apple's servers, only what is local to this device.
                                         </Text>
-                                    </PopoverBody>
-                                </PopoverContent>
+                                    </Box>
+                                </Popover.Dropdown>
                             </Popover>
                         </Flex>
                         <TimeframeDropdownField
@@ -204,9 +194,9 @@ export const HomeLayout = (): JSX.Element => {
                         />
                     </Flex>
                     <Divider orientation='horizontal' />
-                    <Spacer />
+                    <Box style={{ flex: 1 }} />
                     { /* Delays are so older systems do not freeze when requesting data from the databases */ }
-                    <SimpleGrid columns={3} spacing={5}>
+                    <SimpleGrid cols={3}>
                         <TotalMessagesStatBox pastDays={statDays} />
                         <TopGroupStatBox delay={200} pastDays={statDays} />
                         <BestFriendStatBox delay={400} pastDays={statDays} />

@@ -1,17 +1,11 @@
 import React, { useRef, useState } from 'react';
 import {
     Table,
-    Thead,
-    Tbody,
-    Tr,
-    Th,
-    Td,
     Badge,
-    useBoolean,
-    Icon,
     Box,
     Tooltip
-} from 'lib/ui';
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { AiOutlineEdit } from 'react-icons/ai';
 import { MdOutlineEditOff } from 'react-icons/md';
 import { ContactDialog } from '../modals/ContactDialog';
@@ -52,21 +46,21 @@ export const ContactsTable = ({
     onAddressDelete?: (contactAddressId: number) => void;
 }): JSX.Element => {
     const dialogRef = useRef(null);
-    const [dialogOpen, setDialogOpen] = useBoolean();
+    const [dialogOpen, setDialogOpen] = useDisclosure();
     const [selectedContact, setSelectedContact] = useState(null as any | null);
 
     return (
         <Box>
-            <Table variant="striped" colorScheme="blue" size='sm'>
-                <Thead>
-                    <Tr>
-                        <Th>Edit</Th>
-                        <Th>Avatar</Th>
-                        <Th>Display Name</Th>
-                        <Th isNumeric>Addresses</Th>
-                    </Tr>
-                </Thead>
-                <Tbody>
+            <Table>
+                <Table.Thead>
+                    <Table.Tr>
+                        <Table.Th>Edit</Table.Th>
+                        <Table.Th>Avatar</Table.Th>
+                        <Table.Th>Display Name</Table.Th>
+                        <Table.Th>Addresses</Table.Th>
+                    </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
                     {contacts.map(item => {
                         const name = (item.displayName && item.displayName.length > 0)
                             ? item.displayName
@@ -76,43 +70,43 @@ export const ContactsTable = ({
                             ...(item.emails ?? []).map(e => e.address)
                         ];
                         return (
-                            <Tr key={`${item.sourceType}-${item.id}-${name}-${addresses.join('_')}`}>
-                                <Td _hover={{ cursor: (item?.sourceType === 'api') ? 'auto' : 'pointer' }} onClick={() => {
+                            <Table.Tr key={`${item.sourceType}-${item.id}-${name}-${addresses.join('_')}`}>
+                                <Table.Td onClick={() => {
                                     if (item?.sourceType === 'api') return;
                                     setSelectedContact(item);
-                                    setDialogOpen.on();
+                                    setDialogOpen.open();
                                 }}>
                                     {(item?.sourceType === 'api') ? (
-                                        <Tooltip label="Not Editable" hasArrow aria-label='not editable tooltip'>
+                                        <Tooltip label="Not Editable" withArrow aria-label='not editable tooltip'>
                                             <span>
-                                                <Icon as={MdOutlineEditOff} />
+                                                <MdOutlineEditOff />
                                             </span>
                                         </Tooltip>
                                     ): (
-                                        <Tooltip label="Click to Edit" hasArrow aria-label='editable tooltip'>
+                                        <Tooltip label="Click to Edit" withArrow aria-label='editable tooltip'>
                                             <span>
-                                                <Icon as={AiOutlineEdit} />
+                                                <AiOutlineEdit />
                                             </span>
                                         </Tooltip>
                                     )}
-                                </Td>
-                                <Td>
-                                    <Box ml={3}>
+                                </Table.Td>
+                                <Table.Td>
+                                    <Box ml={12}>
                                         {(item?.avatar && item.avatar.length > 0) ? (
                                             <ImageFromData data={item.avatar} height={24} width={24} style={{ borderRadius: 24 }} />
                                         ) : (
                                             <Badge>N/A</Badge>
                                         )}
                                     </Box>
-                                </Td>
-                                <Td>{name}</Td>
-                                <Td isNumeric>{addresses.map((addr) => (
-                                    <Badge ml={2} key={`${name}-${addr}-${addresses.length}`}>{addr}</Badge>
-                                ))}</Td>
-                            </Tr>
+                                </Table.Td>
+                                <Table.Td>{name}</Table.Td>
+                                <Table.Td>{addresses.map((addr) => (
+                                    <Badge ml={8} key={`${name}-${addr}-${addresses.length}`}>{addr}</Badge>
+                                ))}</Table.Td>
+                            </Table.Tr>
                         );
                     })}
-                </Tbody>
+                </Table.Tbody>
             </Table>
 
             <ContactDialog
@@ -126,7 +120,7 @@ export const ContactsTable = ({
                 onAddressDelete={onAddressDelete}
                 onClose={() => {
                     setSelectedContact(null);
-                    setDialogOpen.off();
+                    setDialogOpen.close();
                 }}
             />
         </Box>

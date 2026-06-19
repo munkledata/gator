@@ -1,16 +1,10 @@
 import React from 'react';
 import {
     Table,
-    Thead,
-    Tbody,
-    Tr,
-    Th,
-    Td,
     Text,
-    Icon,
     Box,
     Tooltip
-} from 'lib/ui';
+} from '@mantine/core';
 import { AiOutlineCheck } from 'react-icons/ai';
 import { MdErrorOutline } from 'react-icons/md';
 import { IoIosTimer } from 'react-icons/io';
@@ -74,20 +68,20 @@ export const ScheduledMessagesTable = ({
 }): JSX.Element => {
     return (
         <Box>
-            <Table variant="striped" colorScheme="blue" size='sm'>
-                <Thead>
-                    <Tr>
-                        <Th alignContent='left'>Status</Th>
-                        <Th>Type</Th>
-                        <Th>Message</Th>
-                        <Th>Scheduled For</Th>
-                        <Th>Schedule Type</Th>
-                        <Th isNumeric>Delete</Th>
-                    </Tr>
-                </Thead>
-                <Tbody>
+            <Table>
+                <Table.Thead>
+                    <Table.Tr>
+                        <Table.Th style={{ alignContent: 'left' }}>Status</Table.Th>
+                        <Table.Th>Type</Table.Th>
+                        <Table.Th>Message</Table.Th>
+                        <Table.Th>Scheduled For</Table.Th>
+                        <Table.Th>Schedule Type</Table.Th>
+                        <Table.Th>Delete</Table.Th>
+                    </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
                     {messages.map(item => {
-                        const icon = statusMap[item.status as string].icon;
+                        const StatusIcon = statusMap[item.status as string].icon;
                         let label = statusMap[item.status as string]?.label;
                         if (item.error) {
                             label = item.error;
@@ -104,43 +98,43 @@ export const ScheduledMessagesTable = ({
 
                         const chatText = `Sending to ${item.payload.chatGuid}`;
                         return (
-                            <Tr key={item.id}>
-                                <Td alignContent='left'>
-                                    <Tooltip label={label} hasArrow aria-label={label.toLowerCase()}>
+                            <Table.Tr key={item.id}>
+                                <Table.Td style={{ alignContent: 'left' }}>
+                                    <Tooltip label={label} withArrow aria-label={label.toLowerCase()}>
                                         <span>
-                                            <Icon ml={5} as={icon} />
+                                            <StatusIcon />
                                         </span>
                                     </Tooltip>
-                                </Td>
-                                <Td>
+                                </Table.Td>
+                                <Table.Td>
                                     <Text>{item.type}</Text>
-                                </Td>
-                                <Td>
-                                    <Tooltip label={chatText} hasArrow aria-label={chatText.toLowerCase()}>
+                                </Table.Td>
+                                <Table.Td>
+                                    <Tooltip label={chatText} withArrow aria-label={chatText.toLowerCase()}>
                                         <Text>{item.payload.message}</Text>
                                     </Tooltip>
-                                </Td>
-                                <Td><Text>{date.toLocaleString()}</Text></Td>
-                                <Td alignContent='left'>
-                                    <Tooltip label={freq} hasArrow aria-label={freq.toLowerCase()}>
+                                </Table.Td>
+                                <Table.Td><Text>{date.toLocaleString()}</Text></Table.Td>
+                                <Table.Td style={{ alignContent: 'left' }}>
+                                    <Tooltip label={freq} withArrow aria-label={freq.toLowerCase()}>
                                         <Text>{item.schedule.type === 'once' ? 'one-time' : item.schedule.type}</Text>
                                     </Tooltip>
-                                </Td>
-                                <Td isNumeric _hover={{ cursor: 'pointer' }} onClick={async () => {
+                                </Table.Td>
+                                <Table.Td onClick={async () => {
                                     if (onDelete && item.id) {
                                         onDelete(Number.parseInt(item.id));
                                     }
                                 }}>
-                                    <Tooltip label="Delete" hasArrow aria-label='delete'>
+                                    <Tooltip label="Delete" withArrow aria-label='delete'>
                                         <span>
-                                            <Icon as={BsTrash} />
+                                            <BsTrash />
                                         </span>
                                     </Tooltip>
-                                </Td>
-                            </Tr>
+                                </Table.Td>
+                            </Table.Tr>
                         );
                     })}
-                </Tbody>
+                </Table.Tbody>
             </Table>
         </Box>
     );

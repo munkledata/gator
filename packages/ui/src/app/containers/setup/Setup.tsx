@@ -50,7 +50,7 @@ const NavBar = (): JSX.Element => {
                 <Text fz="1xl" ml={8}>BlueBubbles</Text>
             </Flex>
             <Flex justify="flex-end">
-                <Group gap={4}>
+                <Group>
                     <Tooltip label="Website Home" aria-label="website-tip" withArrow>
                         <Anchor href="https://bluebubbles.app" style={{ textDecoration: 'none' }} target="_blank">
                             <ActionIcon size="lg" variant="ghost" aria-label="website"><AiOutlineHome /></ActionIcon>

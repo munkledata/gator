@@ -1,20 +1,14 @@
 import React, { useState } from 'react';
 import {
-    AlertDialog,
-    AlertDialogOverlay,
-    AlertDialogBody,
-    AlertDialogContent,
-    AlertDialogFooter,
-    AlertDialogHeader,
+    Modal,
+    Box,
+    Group,
     Button,
-    Input,
-    FormControl,
-    FormErrorMessage,
-    FormLabel,
+    TextInput,
     Text,
-    IconButton,
-    useBoolean
-} from 'lib/ui';
+    ActionIcon
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { useAppSelector } from '../../hooks';
 type FocusableElement = HTMLElement;
 import { registerZrokEmail, setZrokToken } from 'app/utils/IpcUtils';
@@ -42,7 +36,7 @@ export const ZrokSetupDialog = ({
     const [token, setToken] = useState(zrokToken);
     const [emailError, setEmailError] = useState('');
     const [tokenError, setTokenError] = useState('');
-    const [showToken, setShowToken] = useBoolean();
+    const [showToken, setShowToken] = useDisclosure();
     const [registerDisabled, setRegisterDisabled] = useState(false);
     const isEmailInvalid = (emailError ?? '').length > 0;
     const isTokenInvalid = (tokenError ?? '').length > 0;
@@ -53,138 +47,136 @@ export const ZrokSetupDialog = ({
     };
 
     return (
-        <AlertDialog
-            isOpen={isOpen}
-            leastDestructiveRef={modalRef}
+        <Modal
+            opened={isOpen}
+            withCloseButton={false}
             onClose={() => closeProxy()}
         >
-            <AlertDialogOverlay>
-                <AlertDialogContent>
-                    <AlertDialogHeader fontSize='lg' fontWeight='bold'>
-                        Register Your Zrok Account
-                    </AlertDialogHeader>
+            <Text fw="bold" fz="lg">
+                Register Your Zrok Account
+            </Text>
 
-                    <AlertDialogBody>
-                        <Text>In order to use Zrok, you must create a <i>free</i> account, which will generate a token for you.</Text>
-                        <br />
-                        <Text>
-                            If you have not done so yet, enter your email address below to create an account. <b>You will receive an Email
-                            giving you a link to register your account.</b> Use it to create an account and get your token.
-                        </Text>
-                        <br />
-                        <FormControl  isInvalid={isEmailInvalid}>
-                            <FormLabel htmlFor='address'>Email Address</FormLabel>
-                            
-                            <Input
-                                id='zrok_email'
-                                type='email'
-                                placeholder="tim.apple@gmail.com"
-                                maxWidth="16em"
-                                mr={3}
-                                value={email}
-                                onChange={(e: any) => {
-                                    setEmailError('');
-                                    setEmail(e.target.value);
-                                }}
-                            />
-                            <Button
-                                mt={'-2px'}
-                                isDisabled={registerDisabled}
-                                onClick={async () => {
-                                    setEmailError('');
-                                    if (email.trim().length === 0) {
-                                        return setEmailError('Please enter an email address!');
-                                    }
+            <Box>
+                <Text>In order to use Zrok, you must create a <i>free</i> account, which will generate a token for you.</Text>
+                <br />
+                <Text>
+                    If you have not done so yet, enter your email address below to create an account. <b>You will receive an Email
+                    giving you a link to register your account.</b> Use it to create an account and get your token.
+                </Text>
+                <br />
+                <Box>
+                    <Text component="label" fw={500} fz="sm" mb={4} htmlFor='address'>Email Address</Text>
 
-                                    // Validate that it's a valid email
-                                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                                    if (!emailRegex.test(email)) {
-                                        return setEmailError('Please enter a valid email address!');
-                                    }
-        
-                                    try {
-                                        await registerZrokEmail(email);
-                                        showSuccessToast({
-                                            title: 'Success',
-                                            description: 'Successully registered your email! Check your inbox for the registration link.'
-                                        });
-                                        setRegisterDisabled(true);
-                                    } catch (ex: any) {
-                                        const err = ex?.message ?? String(ex);
-                                        setEmailError(err.substring(err.indexOf(':') + 1).trim());
-                                    }
-                                }}
-                            >Register</Button>
-                            {isEmailInvalid ? (
-                                <FormErrorMessage>{emailError}</FormErrorMessage>
-                            ) : null}
-                        </FormControl>
-                        <br />
-                        <Text>Save your token somewhere safe, then paste it into the field below.</Text>
-                        <br />
-                        <FormControl  isInvalid={isTokenInvalid}>
-                            <FormLabel htmlFor='address'>Token</FormLabel>
-                            
-                            <Input
-                                id='zrok_token'
-                                maxWidth="16em"
-                                type={showToken ? 'text' : 'password'}
-                                mr={3}
-                                value={token}
-                                onChange={(e: any) => {
-                                    setTokenError('');
-                                    setToken(e.target.value);
-                                }}
-                            />
-                            <IconButton
-                                verticalAlign='top'
-                                aria-label='View token'
-                                icon={showToken ? <AiFillEye /> : <AiFillEyeInvisible />}
-                                onClick={() => setShowToken.toggle()}
-                            />
-                            {isTokenInvalid ? (
-                                <FormErrorMessage>{tokenError}</FormErrorMessage>
-                            ) : null}
-                        </FormControl>
-                        <br />
-                    </AlertDialogBody>
+                    <TextInput
+                        id='zrok_email'
+                        type='email'
+                        placeholder="tim.apple@gmail.com"
+                        maw="16em"
+                        mr={12}
+                        value={email}
+                        onChange={(e: any) => {
+                            setEmailError('');
+                            setEmail(e.target.value);
+                        }}
+                    />
+                    <Button
+                        mt={'-2px'}
+                        disabled={registerDisabled}
+                        onClick={async () => {
+                            setEmailError('');
+                            if (email.trim().length === 0) {
+                                return setEmailError('Please enter an email address!');
+                            }
 
-                    <AlertDialogFooter>
-                        <Button
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => {
-                                if (onCancel) onCancel();
-                                closeProxy();
-                            }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            ml={3}
-                            bg='brand.primary'
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={async () => {
-                                setTokenError('');
-                                if (token.length === 0) {
-                                    setTokenError('Please enter an Auth Token!');
-                                    return;
-                                }
-                                
-                                try {
-                                    await setZrokToken(token);
-                                    if (onConfirm) onConfirm(token);
-                                    closeProxy();
-                                } catch (ex: any) {
-                                    const err = ex?.message ?? String(ex);
-                                    setTokenError(err.substring(err.indexOf(':') + 1).trim());
-                                }
-                            }}
-                        >
-                            Save
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialogOverlay>
-        </AlertDialog>
+                            // Validate that it's a valid email
+                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                            if (!emailRegex.test(email)) {
+                                return setEmailError('Please enter a valid email address!');
+                            }
+
+                            try {
+                                await registerZrokEmail(email);
+                                showSuccessToast({
+                                    title: 'Success',
+                                    description: 'Successully registered your email! Check your inbox for the registration link.'
+                                });
+                                setRegisterDisabled(true);
+                            } catch (ex: any) {
+                                const err = ex?.message ?? String(ex);
+                                setEmailError(err.substring(err.indexOf(':') + 1).trim());
+                            }
+                        }}
+                    >Register</Button>
+                    {isEmailInvalid ? (
+                        <Text fz="xs" c="red">{emailError}</Text>
+                    ) : null}
+                </Box>
+                <br />
+                <Text>Save your token somewhere safe, then paste it into the field below.</Text>
+                <br />
+                <Box>
+                    <Text component="label" fw={500} fz="sm" mb={4} htmlFor='address'>Token</Text>
+
+                    <TextInput
+                        id='zrok_token'
+                        maw="16em"
+                        type={showToken ? 'text' : 'password'}
+                        mr={12}
+                        value={token}
+                        onChange={(e: any) => {
+                            setTokenError('');
+                            setToken(e.target.value);
+                        }}
+                    />
+                    <ActionIcon
+                        variant="subtle"
+                        style={{ verticalAlign: 'top' }}
+                        aria-label='View token'
+                        onClick={() => setShowToken.toggle()}
+                    >
+                        {showToken ? <AiFillEye /> : <AiFillEyeInvisible />}
+                    </ActionIcon>
+                    {isTokenInvalid ? (
+                        <Text fz="xs" c="red">{tokenError}</Text>
+                    ) : null}
+                </Box>
+                <br />
+            </Box>
+
+            <Group justify="flex-end" mt="md">
+                <Button
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => {
+                        if (onCancel) onCancel();
+                        closeProxy();
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button
+                    ml={12}
+                    bg='brand'
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={async () => {
+                        setTokenError('');
+                        if (token.length === 0) {
+                            setTokenError('Please enter an Auth Token!');
+                            return;
+                        }
+
+                        try {
+                            await setZrokToken(token);
+                            if (onConfirm) onConfirm(token);
+                            closeProxy();
+                        } catch (ex: any) {
+                            const err = ex?.message ?? String(ex);
+                            setTokenError(err.substring(err.indexOf(':') + 1).trim());
+                        }
+                    }}
+                >
+                    Save
+                </Button>
+            </Group>
+        </Modal>
     );
 };

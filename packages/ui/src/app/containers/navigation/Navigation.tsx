@@ -2,36 +2,25 @@ import React from 'react';
 import { HashRouter as Router, Routes, Route, Link as RouterLink, useLocation } from 'react-router-dom';
 import type { AnyAction } from '@reduxjs/toolkit';
 import {
-    IconButton,
+    ActionIcon,
     Box,
     CloseButton,
     Flex,
-    HStack,
-    Icon,
-    useColorModeValue,
-    Link,
+    Group,
+    Anchor,
     Drawer,
-    DrawerContent,
     Text,
-    useDisclosure,
-    BoxProps,
-    FlexProps,
     Tooltip,
-    DrawerOverlay,
-    DrawerHeader,
-    DrawerBody,
     Switch,
-    FormControl,
-    useColorMode,
-    Spacer,
+    useMantineColorScheme,
     Menu,
-    MenuButton,
-    MenuItem,
-    MenuList,
     Button,
     Badge,
-    Divider
-} from 'lib/ui';
+    Divider,
+    BoxProps,
+    FlexProps
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { FiHome, FiSettings, FiMenu, FiBell, FiGithub, FiMessageCircle, FiTrash } from 'react-icons/fi';
 import { FaDiscord, FaGoogle } from 'react-icons/fa';
 import { AiOutlineBug, AiOutlineHome, AiOutlineApi, AiOutlineHeart, AiOutlineDownload } from 'react-icons/ai';
@@ -94,37 +83,34 @@ const closeNotification = (closeFunc: () => void, dispatch: React.Dispatch<AnyAc
 };
 
 export const Navigation = (): JSX.Element => {
-    const { isOpen, onOpen, onClose } = useDisclosure();
-    const {
-        isOpen: isNotificationsOpen,
-        onOpen: onNotificationOpen,
-        onClose: onNotificationClose
-    } = useDisclosure();
+    const [isOpen, { open: onOpen, close: onClose }] = useDisclosure();
+    const [
+        isNotificationsOpen,
+        { open: onNotificationOpen, close: onNotificationClose }
+    ] = useDisclosure();
 
     const notifications: Array<NotificationItem> = useAppSelector(state => state.notificationStore.notifications);
     const unreadCount = notifications.filter(e => !e.read).length;
     const dispatch = useAppDispatch();
 
     return (
-        <Box minH="100vh">
+        <Box mih="100vh">
             <Router>
-                <SidebarContent onClose={() => onClose} display={{ base: 'none', md: 'block' }} />
+                <SidebarContent onClose={() => onClose} />
                 <Drawer
-                    autoFocus={false}
-                    isOpen={isOpen}
-                    placement="left"
+                    opened={isOpen}
+                    position="left"
                     onClose={onClose}
-                    returnFocusOnClose={false}
-                    onOverlayClick={onClose}
                     size="full"
+                    {...{ autoFocus: false, returnFocusOnClose: false, onOverlayClick: onClose } as any}
                 >
-                    <DrawerContent>
+                    <Box>
                         <SidebarContent onClose={onClose} />
-                    </DrawerContent>
+                    </Box>
                 </Drawer>
                 {/* mobilenav */}
                 <MobileNav onOpen={onOpen} onNotificationOpen={onNotificationOpen} unreadCount={unreadCount} />
-                <Box ml={{ base: 0, md: 60 }} p="2">
+                <Box ml={60} p="2">
                     <Routes>
                         <Route path="/settings" element={<SettingsLayout />} />
                         <Route path="/logs" element={<LogsLayout />} />
@@ -139,37 +125,40 @@ export const Navigation = (): JSX.Element => {
                 </Box>
             </Router>
 
-            <Drawer onClose={() => closeNotification(onNotificationClose, dispatch)} isOpen={isNotificationsOpen} size="lg">
-                <DrawerOverlay />
-                <DrawerContent  maxW="75%" minWidth="600px">
-                    <DrawerHeader>Notifications / Alerts ({unreadCount})</DrawerHeader>
-                    <DrawerBody overflowWrap='break-word'>
-                        <Menu>
-                            <MenuButton
-                                as={Button}
-                                rightIcon={<BsChevronDown />}
-                                width="12em"
-                                mr={5}
-                                mb={4}
+            <Drawer
+                onClose={() => closeNotification(onNotificationClose, dispatch)}
+                opened={isNotificationsOpen}
+                size="lg"
+                title={`Notifications / Alerts (${unreadCount})`}
+            >
+                <Box style={{ overflowWrap: 'break-word' }}>
+                    <Menu>
+                        <Menu.Target>
+                            <Button
+                                variant="default"
+                                rightSection={<BsChevronDown />}
+                                w="12em"
+                                mr={20}
+                                mb={16}
                             >
                                 Manage
-                            </MenuButton>
-                            <MenuList>
-                                <MenuItem icon={<FiTrash />} onClick={() => {
-                                    dispatch(clearAlerts({ showToast: true }));
-                                }}>
-                                    Clear Alerts
-                                </MenuItem>
-                                <MenuItem icon={<BsCheckAll />} onClick={() => {
-                                    dispatch(readAll());
-                                }}>
-                                    Mark All as Read
-                                </MenuItem>
-                            </MenuList>
-                        </Menu>
-                        <NotificationsTable notifications={notifications} />
-                    </DrawerBody>
-                </DrawerContent>
+                            </Button>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                            <Menu.Item leftSection={<FiTrash />} onClick={() => {
+                                dispatch(clearAlerts({ showToast: true }));
+                            }}>
+                                Clear Alerts
+                            </Menu.Item>
+                            <Menu.Item leftSection={<BsCheckAll />} onClick={() => {
+                                dispatch(readAll());
+                            }}>
+                                Mark All as Read
+                            </Menu.Item>
+                        </Menu.Dropdown>
+                    </Menu>
+                    <NotificationsTable notifications={notifications} />
+                </Box>
             </Drawer>
         </Box>
     );
@@ -179,21 +168,25 @@ interface SidebarProps extends BoxProps {
     onClose: () => void;
 }
 
-const SidebarContent = ({ onClose, ...rest }: SidebarProps) => {
+const SidebarContent = ({ onClose, display, ...rest }: SidebarProps) => {
+    const { colorScheme } = useMantineColorScheme();
     return (
         <Box
-            borderRight="1px"
-            borderRightColor={useColorModeValue('gray.200', 'gray.700')}
-            minW='16em'
-            w={{ base: 'full', md: 60 }}
+            miw='16em'
+            w={60}
             pos="fixed"
             h="full"
+            style={{
+                borderRight: '1px',
+                borderRightColor: (colorScheme === 'dark' ? 'gray.700' : 'gray.200'),
+                display
+            } as unknown as React.CSSProperties}
             {...rest}
         >
-            <Flex h="20" alignItems="center" mx="6" justifyContent="flex-start">
+            <Flex h="20" align="center" mx="6" justify="flex-start">
                 <img src={logo} className="logo" alt="logo" height={48} />
-                <Text fontSize="1xl" ml={2}>BlueBubbles</Text>
-                <CloseButton display={{ base: 'flex', md: 'none' }} onClick={onClose} />
+                <Text fz="1xl" ml={8}>BlueBubbles</Text>
+                <CloseButton style={{ display: { base: 'flex', md: 'none' } } as unknown as React.CSSProperties} onClick={onClose} />
             </Flex>
             {LinkItems.map(link => (
                 <RouterLink key={link.name} to={link.to}>
@@ -209,32 +202,23 @@ interface NavItemProps extends FlexProps {
     to: string;
     children: string | number;
 }
-const NavItem = ({ icon, to, children, ...rest }: NavItemProps) => {
+const NavItem = ({ icon: IconComp, to, children, ...rest }: NavItemProps) => {
     const location = useLocation();
     return (
         <Flex
             align="center"
             p="4"
             mx="4"
-            borderRadius="lg"
             role="group"
-            cursor="pointer"
-            _hover={{
-                bg: 'brand.primary',
-                color: 'white'
+            c={location.pathname === to ? 'brand' : 'current'}
+            style={{
+                borderRadius: 'lg',
+                cursor: 'pointer'
             }}
-            color={location.pathname === to ? 'brand.primary' : 'current'}
             {...rest}
         >
-            {icon && (
-                <Icon
-                    mr="4"
-                    fontSize="16"
-                    _groupHover={{
-                        color: 'white'
-                    }}
-                    as={icon}
-                />
+            {IconComp && (
+                <IconComp {...{ mr: '4', fontSize: '16' } as any} />
             )}
             {children}
         </Flex>
@@ -247,132 +231,152 @@ interface MobileProps extends FlexProps {
     unreadCount: number;
 }
 const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileProps) => {
-    const { colorMode, toggleColorMode } = useColorMode();
+    const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+    const colorMode = colorScheme === 'auto' ? 'light' : colorScheme;
     const useOled = useAppSelector(state => state.config.use_oled_dark_mode ?? false);
     const updateAvailable: boolean = (useAppSelector(state => state.config.update_available?.show) ?? false);
     const updateVersion: string = (useAppSelector(state => state.config.update_available?.version) ?? '');
-    const bgColor = (colorMode === 'light') ? 'white' : (useOled ? 'black' : 'gray.800');
+    const bgColor = (colorMode === 'light') ? 'white' : (useOled ? 'black' : 'gray.8');
 
     return (
         <Flex
-            ml={{ base: 0, md: 255 }}
-            px={{ base: 4, md: 4 }}
-            height="20"
-            alignItems="center"
-            borderBottomWidth="1px"
-            borderBottomColor={useColorModeValue('gray.200', 'gray.700')}
-            justifyContent={{ base: 'space-between', md: 'flex-end' }}
-            backgroundColor={bgColor}
-            position="sticky"
-            top="0"
-            zIndex="sticky"
+            ml={255}
+            px={4}
+            h="20"
+            align="center"
+            bg={bgColor}
+            style={{
+                borderBottomWidth: '1px',
+                borderBottomColor: (colorScheme === 'dark' ? 'gray.700' : 'gray.200'),
+                justifyContent: { base: 'space-between', md: 'flex-end' },
+                position: 'sticky',
+                top: '0',
+                zIndex: 'sticky'
+            } as unknown as React.CSSProperties}
             {...rest}
         >
-            <IconButton
-                display={{ base: 'flex', md: 'none' }}
+            <ActionIcon
                 onClick={onOpen}
                 variant="outline"
                 aria-label="open menu"
-                icon={<FiMenu />}
-            />
+                style={{ display: { base: 'flex', md: 'none' } } as unknown as React.CSSProperties}
+            >
+                <FiMenu />
+            </ActionIcon>
 
-            <Text display={{ base: 'flex', md: 'none' }} fontSize="2xl" fontFamily="monospace" fontWeight="bold">
+            <Text fz="2xl" fw="bold" style={{ display: { base: 'flex', md: 'none' } } as unknown as React.CSSProperties} {...{ fontFamily: 'monospace' } as any}>
                 <img style={{ minWidth: '48px' }} src={logo} className="logo-small" alt="logo" />
             </Text>
 
-            <HStack spacing={{ base: '0', md: '1' }}>
+            <Group>
                 {(updateAvailable) ? (
-                    <Box position='relative' float='left'>
-                        <Tooltip label="Update Available" aria-label="update-tip">
-                            <IconButton
+                    <Box style={{ position: 'relative', float: 'left' }}>
+                        <Tooltip label="Update Available" aria-label="update-tip" withArrow>
+                            <ActionIcon
                                 size="lg"
                                 variant="ghost"
                                 aria-label="update"
-                                icon={<AiOutlineDownload />}
                                 onClick={downloadAndInstallUpdate}
-                            />
+                            >
+                                <AiOutlineDownload />
+                            </ActionIcon>
                         </Tooltip>
                         <Badge
-                            borderRadius='lg'
                             variant='solid'
-                            colorScheme='green'
-                            position='absolute'
-                            margin={0}
-                            top={2}
-                            right={8}
-                            zIndex={2}
-                            fontSize={10}
+                            color='green'
+                            m={0}
+                            fz={10}
+                            style={{
+                                borderRadius: 'lg',
+                                position: 'absolute',
+                                top: 2,
+                                right: 8,
+                                zIndex: 2
+                            }}
                         >v{updateVersion}</Badge>
                     </Box>
                 ): null}
-                <Tooltip label="Website Home" aria-label="website-tip">
-                    <Link href="https://bluebubbles.app" style={{ textDecoration: 'none' }} target="_blank">
-                        <IconButton size="lg" variant="ghost" aria-label="website" icon={<AiOutlineHome />} />
-                    </Link>
+                <Tooltip label="Website Home" aria-label="website-tip" withArrow>
+                    <Anchor href="https://bluebubbles.app" style={{ textDecoration: 'none' }} target="_blank">
+                        <ActionIcon size="lg" variant="ghost" aria-label="website">
+                            <AiOutlineHome />
+                        </ActionIcon>
+                    </Anchor>
                 </Tooltip>
-                <Tooltip label="BlueBubbles Web" aria-label="web-tip">
-                    <Link href="https://bluebubbles.app/web" style={{ textDecoration: 'none' }} target="_blank">
-                        <IconButton size="lg" variant="ghost" aria-label="bluebubbles web" icon={<FiMessageCircle />} />
-                    </Link>
+                <Tooltip label="BlueBubbles Web" aria-label="web-tip" withArrow>
+                    <Anchor href="https://bluebubbles.app/web" style={{ textDecoration: 'none' }} target="_blank">
+                        <ActionIcon size="lg" variant="ghost" aria-label="bluebubbles web">
+                            <FiMessageCircle />
+                        </ActionIcon>
+                    </Anchor>
                 </Tooltip>
-                <Tooltip label="Sponsor Us" aria-label="sponsor-tip">
-                    <Link href="https://github.com/sponsors/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
-                        <IconButton size="lg" variant="ghost" aria-label="donate" icon={<AiOutlineHeart />} />
-                    </Link>
+                <Tooltip label="Sponsor Us" aria-label="sponsor-tip" withArrow>
+                    <Anchor href="https://github.com/sponsors/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
+                        <ActionIcon size="lg" variant="ghost" aria-label="donate">
+                            <AiOutlineHeart />
+                        </ActionIcon>
+                    </Anchor>
                 </Tooltip>
-                <Tooltip label="Support Us" aria-label="donate-tip">
-                    <Link href="https://bluebubbles.app/donate" style={{ textDecoration: 'none' }} target="_blank">
-                        <IconButton size="lg" variant="ghost" aria-label="donate" icon={<MdOutlineAttachMoney />} />
-                    </Link>
+                <Tooltip label="Support Us" aria-label="donate-tip" withArrow>
+                    <Anchor href="https://bluebubbles.app/donate" style={{ textDecoration: 'none' }} target="_blank">
+                        <ActionIcon size="lg" variant="ghost" aria-label="donate">
+                            <MdOutlineAttachMoney />
+                        </ActionIcon>
+                    </Anchor>
                 </Tooltip>
-                <Tooltip label="Join our Discord" aria-label="discord-tip">
-                    <Link href="https://discord.gg/yC4wr38" style={{ textDecoration: 'none' }} target="_blank">
-                        <IconButton size="lg" variant="ghost" aria-label="discord" icon={<FaDiscord />} />
-                    </Link>
+                <Tooltip label="Join our Discord" aria-label="discord-tip" withArrow>
+                    <Anchor href="https://discord.gg/yC4wr38" style={{ textDecoration: 'none' }} target="_blank">
+                        <ActionIcon size="lg" variant="ghost" aria-label="discord">
+                            <FaDiscord />
+                        </ActionIcon>
+                    </Anchor>
                 </Tooltip>
-                <Tooltip label="Read our Source Code" aria-label="github-tip">
-                    <Link href="https://github.com/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
-                        <IconButton size="lg" variant="ghost" aria-label="github" icon={<FiGithub />} />
-                    </Link>
+                <Tooltip label="Read our Source Code" aria-label="github-tip" withArrow>
+                    <Anchor href="https://github.com/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
+                        <ActionIcon size="lg" variant="ghost" aria-label="github">
+                            <FiGithub />
+                        </ActionIcon>
+                    </Anchor>
                 </Tooltip>
-                <Box position='relative' float='left'>
-                    <IconButton
+                <Box style={{ position: 'relative', float: 'left' }}>
+                    <ActionIcon
                         size="lg"
-                        verticalAlign='middle'
-                        zIndex={1}
                         variant="ghost"
                         aria-label="notifications"
-                        icon={<FiBell />}
                         onClick={() => onNotificationOpen()}
-                    />
+                        style={{ verticalAlign: 'middle', zIndex: 1 }}
+                    >
+                        <FiBell />
+                    </ActionIcon>
                     {(unreadCount > 0) ? (
                         <Badge
-                            borderRadius={10}
                             variant='solid'
-                            colorScheme='red'
-                            position='absolute'
-                            margin={0}
-                            top={1}
-                            right={1}
-                            zIndex={2}
-                            minWidth={5}
-                            minHeight={5}
-                            textAlign={'center'}
-                            paddingTop='1px'
+                            color='red'
+                            m={0}
+                            miw={5}
+                            mih={5}
+                            ta={'center'}
+                            style={{
+                                borderRadius: 10,
+                                position: 'absolute',
+                                top: 1,
+                                right: 1,
+                                zIndex: 2
+                            }}
                         >{unreadCount}</Badge>
                     ) : null}
                 </Box>
-                <Spacer />
-                <Divider orientation="vertical" width={1} height={15} borderColor='gray' />
-                <Spacer />
-                <Spacer />
-                <Spacer />
-                <FormControl display='flex' alignItems='center'>
-                    <Box mr={2}><MdOutlineDarkMode size={20} /></Box>
-                    <Switch id='theme-mode-toggle' onChange={toggleColorMode} isChecked={colorMode === 'light'} />
-                    <Box ml={2}><MdOutlineLightMode size={20} /></Box>
-                </FormControl>
-            </HStack>
+                <Box style={{ flex: 1 }} />
+                <Divider orientation="vertical" w={1} h={15} style={{ borderColor: 'gray' }} />
+                <Box style={{ flex: 1 }} />
+                <Box style={{ flex: 1 }} />
+                <Box style={{ flex: 1 }} />
+                <Box style={{ display: 'flex', alignItems: 'center' }}>
+                    <Box mr={8}><MdOutlineDarkMode size={20} /></Box>
+                    <Switch id='theme-mode-toggle' onChange={toggleColorScheme} checked={colorMode === 'light'} />
+                    <Box ml={8}><MdOutlineLightMode size={20} /></Box>
+                </Box>
+            </Group>
         </Flex>
     );
 };

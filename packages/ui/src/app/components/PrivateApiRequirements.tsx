@@ -1,21 +1,14 @@
 import React from 'react';
 import {
-    useBoolean,
     Box,
     Text,
-    Stack,
-    ListItem,
+    Group,
+    List,
     Popover,
-    PopoverArrow,
-    PopoverBody,
-    PopoverCloseButton,
-    PopoverContent,
-    PopoverHeader,
-    PopoverTrigger,
-    UnorderedList,
-    useColorModeValue,
-    keyframes
-} from 'lib/ui';
+    useMantineColorScheme
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { keyframes } from '@emotion/react';
 import { BiRefresh } from 'react-icons/bi';
 import { useAppSelector } from '../hooks';
 import { AiOutlineInfoCircle } from 'react-icons/ai';
@@ -38,63 +31,61 @@ const spin = keyframes`
 
 export const PrivateApiRequirements = (): JSX.Element => {
     const requirements: Array<RequirementsItem> = (useAppSelector(state => state.config.private_api_requirements) ?? []);
-    const [showProgress, setShowProgress] = useBoolean();
+    const [showProgress, { open: showProgressOn, close: showProgressOff }] = useDisclosure();
+    const { colorScheme } = useMantineColorScheme();
 
     const refreshRequirements = () => {
-        setShowProgress.on();
+        showProgressOn();
         getPrivateApiRequirements().then(requirements => {
             // I like longer spinning
             setTimeout(() => {
-                setShowProgress.off();
+                showProgressOff();
             }, 1000);
-            
+
             if (!requirements) return;
             store.dispatch(setConfig({ name: 'private_api_requirements', value: requirements }));
         });
     };
 
     return (
-        <Box border='1px solid' borderColor={useColorModeValue('gray.200', 'gray.700')} borderRadius='xl' p={3} width='325px'>
-            <Stack direction='row' align='center'>
-                <Text fontSize='lg' fontWeight='bold'>Private API Requirements</Text>
+        <Box style={{ border: '1px solid', borderColor: colorScheme === 'dark' ? 'gray.7' : 'gray.2', borderRadius: 'xl' }} p={12} w='325px'>
+            <Group align='center'>
+                <Text fz='lg' fw='bold'>Private API Requirements</Text>
                 <Box
-                    _hover={{ cursor: 'pointer' }}
-                    animation={showProgress ? `${spin} infinite 1s linear` : undefined}
                     onClick={refreshRequirements}
+                    style={{ cursor: 'pointer', animation: showProgress ? `${spin} infinite 1s linear` : undefined }}
                 >
                     <BiRefresh />
                 </Box>
-            </Stack>
-            <UnorderedList mt={2} ml={8}>
+            </Group>
+            <List mt={8} ml={32}>
                 {requirements.map(e => (
-                    <ListItem key={e.name}>
-                        <Stack direction='row' align='center'>
-                            <Text fontSize='md'><strong>{e.name}</strong>:&nbsp;
-                                <Box as='span' color={e.pass ? 'green' : 'red'}>{e.pass ? 'Pass' : 'Fail'}</Box>
+                    <List.Item key={e.name}>
+                        <Group align='center'>
+                            <Text fz='md'><strong>{e.name}</strong>:&nbsp;
+                                <Box c={e.pass ? 'green' : 'red'}>{e.pass ? 'Pass' : 'Fail'}</Box>
                             </Text>
                             {(!e.pass) ? (
-                                <Popover trigger='hover'>
-                                    <PopoverTrigger>
-                                        <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+                                <Popover withArrow {...{ trigger: 'hover' }}>
+                                    <Popover.Target>
+                                        <Box ml={8} style={{ cursor: 'pointer' }}>
                                             <AiOutlineInfoCircle />
                                         </Box>
-                                    </PopoverTrigger>
-                                    <PopoverContent>
-                                        <PopoverArrow />
-                                        <PopoverCloseButton />
-                                        <PopoverHeader>How to Fix</PopoverHeader>
-                                        <PopoverBody>
+                                    </Popover.Target>
+                                    <Popover.Dropdown>
+                                        <Text fw={600} mb='xs'>How to Fix</Text>
+                                        <Box>
                                             <Text>
                                                 {e.solution}
                                             </Text>
-                                        </PopoverBody>
-                                    </PopoverContent>
+                                        </Box>
+                                    </Popover.Dropdown>
                                 </Popover>
                             ): null}
-                        </Stack>
-                    </ListItem>
+                        </Group>
+                    </List.Item>
                 ))}
-            </UnorderedList>
+            </List>
         </Box>
     );
 };

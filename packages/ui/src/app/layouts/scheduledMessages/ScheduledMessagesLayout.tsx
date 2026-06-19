@@ -7,21 +7,11 @@ import {
     Stack,
     Text,
     Popover,
-    PopoverCloseButton,
-    PopoverContent,
-    PopoverHeader,
-    PopoverBody,
-    PopoverArrow,
-    PopoverTrigger,
-    useBoolean,
-    CircularProgress,
+    Loader,
     Menu,
-    MenuButton,
-    MenuDivider,
-    Button,
-    MenuList,
-    MenuItem
-} from 'lib/ui';
+    Button
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import {
     Pagination,
     usePagination,
@@ -56,10 +46,10 @@ const normalizeMessage = (message: any) => {
 };
 
 export const ScheduledMessagesLayout = (): JSX.Element => {
-    const [isLoading, setIsLoading] = useBoolean(true);
+    const [isLoading, setIsLoading] = useDisclosure(true);
     const [messages, setMessages] = useState([] as any[]);
     const dialogRef = useRef(null);
-    const [dialogOpen, setDialogOpen] = useBoolean();
+    const [dialogOpen, setDialogOpen] = useDisclosure();
     const alertRef = useRef(null);
     const [requiresConfirmation, confirm] = useState((): string | null => {
         return null;
@@ -78,9 +68,9 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
     const loadMessages = (showToast = false) => {
         invoke('get-scheduled-messages').then((msgList: any[]) => {
             setMessages(msgList.map(normalizeMessage));
-            setIsLoading.off();
+            setIsLoading.close();
         }).catch(() => {
-            setIsLoading.off();
+            setIsLoading.close();
         });
 
         if (showToast) {
@@ -109,11 +99,11 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
         };
 
         if (isLoading) {
-            return wrap(<CircularProgress isIndeterminate />);
+            return wrap(<Loader />);
         }
 
         if (messages.length === 0) {
-            return wrap(<Text fontSize="md">You have not scheduled any messages</Text>);
+            return wrap(<Text fz="md">You have not scheduled any messages</Text>);
         }
 
         return null;
@@ -168,48 +158,49 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
     };
 
     return (
-        <Box p={3} borderRadius={10}>
-            <Stack direction='column' p={5}>
-                <Text fontSize='2xl'>Controls</Text>
+        <Box p={12} style={{ borderRadius: 10 }}>
+            <Stack p={20}>
+                <Text fz='2xl'>Controls</Text>
                 <Divider orientation='horizontal' />
                 <Box>
                     <Menu>
-                        <MenuButton
-                            as={Button}
-                            rightIcon={<BsChevronDown />}
-                            width="12em"mr={5}
-                        >
-                            Manage
-                        </MenuButton>
-                        <MenuList>
-                            <MenuItem icon={<AiOutlinePlus />} onClick={() => setDialogOpen.on()}>
+                        <Menu.Target>
+                            <Button
+                                variant="default"
+                                rightSection={<BsChevronDown />}
+                                w="12em"
+                                mr={20}
+                            >
+                                Manage
+                            </Button>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                            <Menu.Item leftSection={<AiOutlinePlus />} onClick={() => setDialogOpen.open()}>
                                 Create New
-                            </MenuItem>
-                            <MenuItem icon={<BiRefresh />} onClick={() => loadMessages(true)}>
+                            </Menu.Item>
+                            <Menu.Item leftSection={<BiRefresh />} onClick={() => loadMessages(true)}>
                                 Refresh List
-                            </MenuItem>
-                            <MenuDivider />
-                            <MenuItem icon={<FiTrash />} onClick={() => confirm('clearScheduledMessages')}>
+                            </Menu.Item>
+                            <Menu.Divider />
+                            <Menu.Item leftSection={<FiTrash />} onClick={() => confirm('clearScheduledMessages')}>
                                 Delete All
-                            </MenuItem>
-                        </MenuList>
+                            </Menu.Item>
+                        </Menu.Dropdown>
                     </Menu>
                 </Box>
             </Stack>
-            <Stack direction='column' p={5}>
-                <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                    <Text fontSize='2xl'>Scheduled Messages ({messages.length})</Text>
-                    <Popover trigger='hover'>
-                        <PopoverTrigger>
-                            <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+            <Stack p={20}>
+                <Flex direction='row' justify='flex-start' align='center'>
+                    <Text fz='2xl'>Scheduled Messages ({messages.length})</Text>
+                    <Popover withArrow>
+                        <Popover.Target>
+                            <Box ml={8}>
                                 <AiOutlineInfoCircle />
                             </Box>
-                        </PopoverTrigger>
-                        <PopoverContent>
-                            <PopoverArrow />
-                            <PopoverCloseButton />
-                            <PopoverHeader>Information</PopoverHeader>
-                            <PopoverBody>
+                        </Popover.Target>
+                        <Popover.Dropdown>
+                            <Text fw={600} mb="xs">Information</Text>
+                            <Box>
                                 <Text>
                                     These are your scheduled messages. They are messages that are scheduled
                                     to be sent at a later date. You can create a scheduled message by clicking
@@ -217,12 +208,12 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
                                     connected devices will be able to schedule messages, and they will show up
                                     here to be fulfilled by the server.
                                 </Text>
-                            </PopoverBody>
-                        </PopoverContent>
+                            </Box>
+                        </Popover.Dropdown>
                     </Popover>
                 </Flex>
                 <Divider orientation='horizontal' />
-                <Flex justifyContent="center" alignItems="center">
+                <Flex justify="center" align="center">
                     {getEmptyContent()}
                 </Flex>
                 {(messages.length > 0) ? (
@@ -243,7 +234,7 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
                         pt={2}
                     >
                         <PaginationPreviousButton />
-                        <Box ml={1}></Box>
+                        <Box ml={4}></Box>
                         <PaginationPageGroup flexWrap="wrap" justifyContent="center">
                             {pages.map((page: number) => (
                                 <PaginationPage 
@@ -255,7 +246,7 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
                                 />
                             ))}
                         </PaginationPageGroup>
-                        <Box ml={1}></Box>
+                        <Box ml={4}></Box>
                         <PaginationNextButton />
                     </PaginationContainer>
                 </Pagination>
@@ -276,7 +267,7 @@ export const ScheduledMessagesLayout = (): JSX.Element => {
                 isOpen={dialogOpen}
                 onCreate={onCreate}
                 onClose={() => {
-                    setDialogOpen.off();
+                    setDialogOpen.close();
                 }}
             />
         </Box>

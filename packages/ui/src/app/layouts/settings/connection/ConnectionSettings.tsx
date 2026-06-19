@@ -3,22 +3,11 @@ import {
     Divider,
     Stack,
     Text,
-    Spacer,
+    Box,
     Flex,
     Accordion,
-    AccordionItem,
-    AccordionButton,
-    AccordionPanel,
-    AccordionIcon,
-    Box,
     Popover,
-    PopoverCloseButton,
-    PopoverContent,
-    PopoverHeader,
-    PopoverBody,
-    PopoverArrow,
-    PopoverTrigger,
-} from 'lib/ui';
+} from '@mantine/core';
 import {  AiOutlineInfoCircle } from 'react-icons/ai';
 import { useAppSelector } from '../../../hooks';
 import { ProxySetupField } from '../../../components/fields/ProxySetupField';
@@ -37,40 +26,38 @@ export const ConnectionSettings = (): JSX.Element => {
     const zrokReserved: boolean = (useAppSelector(state => state.config.zrok_reserve_tunnel) ?? false);
 
     return (
-        <Stack direction='column' p={5}>
-            <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                <Text fontSize='2xl'>Connection Settings</Text>
-                <Popover trigger='hover'>
-                    <PopoverTrigger>
-                        <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+        <Stack p={20}>
+            <Flex direction='row' justify='flex-start' align='center'>
+                <Text fz='2xl'>Connection Settings</Text>
+                <Popover withArrow>
+                    <Popover.Target>
+                        <Box ml={8}>
                             <AiOutlineInfoCircle />
                         </Box>
-                    </PopoverTrigger>
-                    <PopoverContent>
-                        <PopoverArrow />
-                        <PopoverCloseButton />
-                        <PopoverHeader>Information</PopoverHeader>
-                        <PopoverBody>
+                    </Popover.Target>
+                    <Popover.Dropdown>
+                        <Text fw={600} mb="xs">Information</Text>
+                        <Box>
                             <Text>
                                 These settings will determine how your clients will connect to the server
                             </Text>
-                        </PopoverBody>
-                    </PopoverContent>
+                        </Box>
+                    </Popover.Dropdown>
                 </Popover>
             </Flex>
             <Divider orientation='horizontal' />
-            <Spacer />
+            <Box style={{ flex: 1 }} />
             <ProxySetupField />
 
             {(proxyService === 'zrok') ? (
                 <>
-                    <Spacer />
+                    <Box style={{ flex: 1 }} />
                     <ZrokTokenField />
-                    <Spacer />
+                    <Box style={{ flex: 1 }} />
                     <ZrokReserveTunnelField />
                     {zrokReserved ? (
                         <>
-                            <Spacer />
+                            <Box style={{ flex: 1 }} />
                             <ZrokReservedNameField />
                         </>
                     ) : null}
@@ -78,28 +65,27 @@ export const ConnectionSettings = (): JSX.Element => {
                 </>
             ) : null}
 
-            
-            <Spacer />
+
+            <Box style={{ flex: 1 }} />
             <Divider orientation='horizontal' />
             <ServerPasswordField />
             <LocalPortField />
 
-            <Spacer />
+            <Box style={{ flex: 1 }} />
             {(['dynamic-dns', 'lan-url'].includes(proxyService)) ? (
-                <Accordion allowMultiple>
-                    <AccordionItem>
-                        <AccordionButton>
-                            <Box flex='1' textAlign='left' width="15em">
+                <Accordion multiple>
+                    <Accordion.Item value="advanced-connection-settings">
+                        <Accordion.Control>
+                            <Box ta="left" w="15em" style={{ flex: '1' }}>
                                 Advanced Connection Settings
                             </Box>
-                            <AccordionIcon />
-                        </AccordionButton>
-                        <AccordionPanel pb={4}>
+                        </Accordion.Control>
+                        <Accordion.Panel pb={16}>
                             {/* <EncryptCommunicationsField />
                             <Box m={15} /> */}
                             <UseHttpsField />
-                        </AccordionPanel>
-                    </AccordionItem>
+                        </Accordion.Panel>
+                    </Accordion.Item>
                 </Accordion>
             ) : null}
         </Stack>

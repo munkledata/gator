@@ -1,21 +1,14 @@
 import React from 'react';
 import {
-    useBoolean,
     Box,
     Text,
-    Stack,
-    ListItem,
+    Group,
+    List,
     Popover,
-    PopoverArrow,
-    PopoverBody,
-    PopoverCloseButton,
-    PopoverContent,
-    PopoverHeader,
-    PopoverTrigger,
-    UnorderedList,
-    useColorModeValue,
-    keyframes
-} from 'lib/ui';
+    useMantineColorScheme
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { keyframes } from '@emotion/react';
 import { BiRefresh } from 'react-icons/bi';
 import { useAppSelector } from '../hooks';
 import { AiOutlineInfoCircle } from 'react-icons/ai';
@@ -38,16 +31,17 @@ const spin = keyframes`
 
 
 export const PermissionRequirements = (): JSX.Element => {
+    const { colorScheme } = useMantineColorScheme();
     const permissions: Array<RequirementsItem> = (useAppSelector(state => state.config.permissions) ?? []);
-    const [showProgress, setShowProgress] = useBoolean();
-    const [showAccessibilityProgress, setShowAccessibilityProgress] = useBoolean();
+    const [showProgress, setShowProgress] = useDisclosure();
+    const [showAccessibilityProgress, setShowAccessibilityProgress] = useDisclosure();
 
     const refreshRequirements = () => {
-        setShowProgress.on();
+        setShowProgress.open();
         checkPermissions().then(permissions => {
             // I like longer spinning
             setTimeout(() => {
-                setShowProgress.off();
+                setShowProgress.close();
             }, 1000);
 
             if (!permissions) return;
@@ -56,50 +50,46 @@ export const PermissionRequirements = (): JSX.Element => {
     };
 
     return (
-        <Box border='1px solid' borderColor={useColorModeValue('gray.200', 'gray.700')} borderRadius='xl' p={3} width='350px'>
-            <Stack direction='row' align='center'>
-                <Text fontSize='lg' fontWeight='bold'>macOS Permissions</Text>
+        <Box style={{ border: '1px solid', borderColor: colorScheme === 'dark' ? 'gray.7' : 'gray.2', borderRadius: 'xl' }} p={12} w='350px'>
+            <Group align='center'>
+                <Text fz='lg' fw='bold'>macOS Permissions</Text>
                 <Box
-                    _hover={{ cursor: 'pointer' }}
-                    animation={showProgress ? `${spin} infinite 1s linear` : undefined}
+                    style={{ animation: showProgress ? `${spin} infinite 1s linear` : undefined }}
                     onClick={refreshRequirements}
                 >
                     <BiRefresh />
                 </Box>
-            </Stack>
-            <UnorderedList mt={2} ml={8}>
+            </Group>
+            <List mt={8} ml={32}>
                 {permissions.map(e => (
-                    <ListItem key={e.name}>
-                        <Stack direction='row' align='center'>
-                            <Text fontSize='md'><strong>{e.name}</strong>:&nbsp;
-                                <Box as='span' color={e.pass ? 'green' : 'red'}>{e.pass ? 'Pass' : 'Fail'}</Box>
+                    <List.Item key={e.name}>
+                        <Group align='center'>
+                            <Text fz='md'><strong>{e.name}</strong>:&nbsp;
+                                <Box c={e.pass ? 'green' : 'red'}>{e.pass ? 'Pass' : 'Fail'}</Box>
                             </Text>
                             {(!e.pass) ? (
                                 <>
-                                    <Popover trigger='hover'>
-                                        <PopoverTrigger>
-                                            <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+                                    <Popover withArrow>
+                                        <Popover.Target>
+                                            <Box ml={8}>
                                                 <AiOutlineInfoCircle />
                                             </Box>
-                                        </PopoverTrigger>
-                                        <PopoverContent>
-                                            <PopoverArrow />
-                                            <PopoverCloseButton />
-                                            <PopoverHeader>How to Fix</PopoverHeader>
-                                            <PopoverBody>
+                                        </Popover.Target>
+                                        <Popover.Dropdown>
+                                            <Text fw={600} mb="xs">How to Fix</Text>
+                                            <Box>
                                                 <Text>
                                                     {e.solution}
                                                 </Text>
-                                            </PopoverBody>
-                                        </PopoverContent>
+                                            </Box>
+                                        </Popover.Dropdown>
                                     </Popover>
                                     <Box
-                                        _hover={{ cursor: 'pointer' }}
-                                        animation={showAccessibilityProgress ? `${spin} infinite 1s linear` : undefined}
+                                        style={{ animation: showAccessibilityProgress ? `${spin} infinite 1s linear` : undefined }}
                                         onClick={() => {
-                                            setShowAccessibilityProgress.on();
+                                            setShowAccessibilityProgress.open();
                                             setTimeout(() => {
-                                                setShowAccessibilityProgress.off();
+                                                setShowAccessibilityProgress.close();
                                             }, 1000);
 
                                             if (e.name === 'Accessibility') {
@@ -113,10 +103,10 @@ export const PermissionRequirements = (): JSX.Element => {
                                     </Box>
                                 </>
                             ): null}
-                        </Stack>
-                    </ListItem>
+                        </Group>
+                    </List.Item>
                 ))}
-            </UnorderedList>
+            </List>
         </Box>
     );
 };

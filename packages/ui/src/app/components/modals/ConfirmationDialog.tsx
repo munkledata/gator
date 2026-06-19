@@ -1,13 +1,5 @@
 import React from 'react';
-import {
-    AlertDialog,
-    AlertDialogOverlay,
-    AlertDialogBody,
-    AlertDialogContent,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    Button
-} from 'lib/ui';
+import { Modal, Box, Group, Text, Button } from '@mantine/core';
 type FocusableElement = HTMLElement;
 
 
@@ -48,47 +40,43 @@ export const ConfirmationDialog = ({
 }: ConfirmationDialogProps): JSX.Element => {
     const bodyTxt = mapText(body);
     return (
-        <AlertDialog
-            isOpen={isOpen}
-            leastDestructiveRef={modalRef}
+        <Modal
+            opened={isOpen}
             onClose={() => onClose()}
+            withCloseButton={false}
         >
-            <AlertDialogOverlay>
-                <AlertDialogContent>
-                    <AlertDialogHeader fontSize='lg' fontWeight='bold'>
-                        {title}
-                    </AlertDialogHeader>
+            <Text fw='bold' fz='lg'>
+                {title}
+            </Text>
 
-                    <AlertDialogBody>
-                        {bodyTxt}
-                    </AlertDialogBody>
+            <Box>
+                {bodyTxt}
+            </Box>
 
-                    <AlertDialogFooter>
-                        {declineText ? (
-                            <Button
-                                ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                                onClick={() => {
-                                    if (onDecline) onDecline();
-                                    onClose();
-                                }}
-                            >
-                                {declineText}
-                            </Button>
-                        ): null}
-                        <Button
-                            ml={3}
-                            colorScheme='red'
-                            ref={modalRef as React.LegacyRef<HTMLButtonElement> | undefined}
-                            onClick={() => {
-                                if (onAccept) onAccept();
-                                onClose();
-                            }}
-                        >
-                            {acceptText}
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialogOverlay>
-        </AlertDialog>
+            <Group justify="flex-end" mt="md">
+                {declineText ? (
+                    <Button
+                        ref={modalRef as React.Ref<HTMLButtonElement>}
+                        onClick={() => {
+                            if (onDecline) onDecline();
+                            onClose();
+                        }}
+                    >
+                        {declineText}
+                    </Button>
+                ): null}
+                <Button
+                    ml={12}
+                    color='red'
+                    ref={modalRef as React.Ref<HTMLButtonElement>}
+                    onClick={() => {
+                        if (onAccept) onAccept();
+                        onClose();
+                    }}
+                >
+                    {acceptText}
+                </Button>
+            </Group>
+        </Modal>
     );
 };

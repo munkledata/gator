@@ -6,18 +6,9 @@ import {
     Stack,
     Text,
     Menu,
-    MenuButton,
-    MenuList,
-    MenuItem,
     Button,
     Popover,
-    PopoverCloseButton,
-    PopoverContent,
-    PopoverHeader,
-    PopoverBody,
-    PopoverArrow,
-    PopoverTrigger,
-} from 'lib/ui';
+} from '@mantine/core';
 import { BsChevronDown } from 'react-icons/bs';
 import { FiTrash } from 'react-icons/fi';
 import { BiRefresh } from 'react-icons/bi';
@@ -83,58 +74,59 @@ export const DevicesLayout = (): JSX.Element => {
     }, []);
 
     return (
-        <Box p={3} borderRadius={10}>
-            <Stack direction='column' p={5}>
-                <Text fontSize='2xl'>Controls</Text>
+        <Box p={12} style={{ borderRadius: 10 }}>
+            <Stack p={20}>
+                <Text fz='2xl'>Controls</Text>
                 <Divider orientation='horizontal' />
                 <Box>
                     <Menu>
-                        <MenuButton
-                            as={Button}
-                            rightIcon={<BsChevronDown />}
-                            width="12em"mr={5}
-                        >
-                            Manage
-                        </MenuButton>
-                        <MenuList>
-                            <MenuItem icon={<BiRefresh />} onClick={() => refreshDevices()}>
+                        <Menu.Target>
+                            <Button
+                                variant="default"
+                                rightSection={<BsChevronDown />}
+                                w="12em"
+                                mr={20}
+                            >
+                                Manage
+                            </Button>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                            <Menu.Item leftSection={<BiRefresh />} onClick={() => refreshDevices()}>
                                 Refresh Devices
-                            </MenuItem>
-                            <MenuItem icon={<FiTrash />} onClick={() => confirm('clearDevices')}>
+                            </Menu.Item>
+                            <Menu.Item leftSection={<FiTrash />} onClick={() => confirm('clearDevices')}>
                                 Clear Devices
-                            </MenuItem>
-                        </MenuList>
+                            </Menu.Item>
+                        </Menu.Dropdown>
                     </Menu>
                 </Box>
             </Stack>
-            <Stack direction='column' p={5}>
-                <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                    <Text fontSize='2xl'>Android Devices</Text>
-                    <Popover trigger='hover'>
-                        <PopoverTrigger>
-                            <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+            <Stack p={20}>
+                <Flex direction='row' justify='flex-start' align='center'>
+                    <Text fz='2xl'>Android Devices</Text>
+                    <Popover withArrow>
+                        <Popover.Target>
+                            <Box ml={8}>
                                 <AiOutlineInfoCircle />
                             </Box>
-                        </PopoverTrigger>
-                        <PopoverContent>
-                            <PopoverArrow />
-                            <PopoverCloseButton />
-                            <PopoverHeader>Information</PopoverHeader>
-                            <PopoverBody>
+                        </Popover.Target>
+                        <Popover.Dropdown>
+                            <Text fw={600} mb="xs">Information</Text>
+                            <Box>
                                 <Text>
                                     Here is where you'll find any devices that are registered with your BlueBubbles
                                     server to receive notifications and other messages. If you do not see your device
                                     here after setting up your app, please contact us for assistance.
                                 </Text>
-                            </PopoverBody>
-                        </PopoverContent>
+                            </Box>
+                        </Popover.Dropdown>
                     </Popover>
                 </Flex>
                 <Divider orientation='horizontal' />
                 {(devices.length === 0) ? (
-                    <Flex justifyContent="center" alignItems="center">
+                    <Flex justify="center" align="center">
                         <section style={{marginTop: 20}}>
-                            <Text fontSize="md">You have no devices registered with the server!</Text>
+                            <Text fz="md">You have no devices registered with the server!</Text>
                         </section>
                     </Flex>
                 ) : null}

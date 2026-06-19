@@ -1,36 +1,28 @@
 import React from 'react';
-import {
-    Table,
-    Thead,
-    Tbody,
-    Tr,
-    Th,
-    Td,
-    TableCaption
-} from 'lib/ui';
+import { Table } from '@mantine/core';
 import { DeviceItem } from '../../slices/DevicesSlice';
 
 
 export const DevicesTable = ({ devices }: { devices: Array<DeviceItem> }): JSX.Element => {
     return (
-        <Table variant="striped" colorScheme="blue" size='sm'>
-            <TableCaption>Devices registered for notifications over Google Play Services</TableCaption>
-            <Thead>
-                <Tr>
-                    <Th>Name</Th>
-                    <Th>ID</Th>
-                    <Th isNumeric>Last Active</Th>
-                </Tr>
-            </Thead>
-            <Tbody>
+        <Table>
+            <Table.Caption>Devices registered for notifications over Google Play Services</Table.Caption>
+            <Table.Thead>
+                <Table.Tr>
+                    <Table.Th>Name</Table.Th>
+                    <Table.Th>ID</Table.Th>
+                    <Table.Th>Last Active</Table.Th>
+                </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
                 {devices.map(item => (
-                    <Tr key={item.name}>
-                        <Td wordBreak='break-all'>{item.name}</Td>
-                        <Td wordBreak='break-all'>{`${item.id.substring(0, 100)}...`}</Td>
-                        <Td isNumeric>{new Date(item.lastActive).toLocaleString()}</Td>
-                    </Tr>
+                    <Table.Tr key={item.name}>
+                        <Table.Td style={{ wordBreak: 'break-all' }}>{item.name}</Table.Td>
+                        <Table.Td style={{ wordBreak: 'break-all' }}>{`${item.id.substring(0, 100)}...`}</Table.Td>
+                        <Table.Td>{new Date(item.lastActive).toLocaleString()}</Table.Td>
+                    </Table.Tr>
                 ))}
-            </Tbody>
+            </Table.Tbody>
         </Table>
     );
 };

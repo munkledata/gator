@@ -1,15 +1,10 @@
 import React, { useRef, useState } from 'react';
 import {
-    FormControl,
-    FormLabel,
-    FormHelperText,
+    Box,
     Text,
-    IconButton,
-    Popover,
-    PopoverBody,
-    PopoverContent,
-    PopoverTrigger
-} from 'lib/ui';
+    ActionIcon,
+    Popover
+} from '@mantine/core';
 import { ConfirmationItems, showSuccessToast } from '../../utils/ToastUtils';
 import { disableZrok, saveLanUrl } from 'app/utils/IpcUtils';
 import { setConfig } from 'app/slices/ConfigSlice';
@@ -47,30 +42,32 @@ export const ZrokDisableField = ({ helpText }: ZrokDisableFieldProps): JSX.Eleme
     });
 
     return (
-        <FormControl>
-            <FormLabel htmlFor='zrok_disable'>Zrok Management</FormLabel>
-            <Popover trigger='hover' placement='right'>
-                <PopoverTrigger>
-                    <IconButton
-                        verticalAlign='top'
+        <Box>
+            <Text component="label" fw={500} fz="sm" mb={4} htmlFor='zrok_disable'>Zrok Management</Text>
+            <Popover position='right' withArrow>
+                <Popover.Target>
+                    <ActionIcon
+                        variant="subtle"
+                        style={{ verticalAlign: 'top' }}
                         aria-label='Disable Zrok'
-                        icon={<MdDesktopAccessDisabled />}
                         onClick={() => confirm('disable')}
-                    />
-                </PopoverTrigger>
-                <PopoverContent width={'auto'}>
-                    <PopoverBody>
+                    >
+                        <MdDesktopAccessDisabled />
+                    </ActionIcon>
+                </Popover.Target>
+                <Popover.Dropdown w={'auto'}>
+                    <Box>
                         <Text>Disable Your Zrok Environment</Text>
-                    </PopoverBody>
-                </PopoverContent>
+                    </Box>
+                </Popover.Dropdown>
             </Popover>
-            <FormHelperText>
+            <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
                         If you are having issues with your Zrok environment, you can disable it using this button.
                     </Text>
                 )}
-            </FormHelperText>
+            </Text>
 
             <ConfirmationDialog
                 modalRef={alertRef}
@@ -81,6 +78,6 @@ export const ZrokDisableField = ({ helpText }: ZrokDisableFieldProps): JSX.Eleme
                 }}
                 isOpen={requiresConfirmation !== null}
             />
-        </FormControl>
+        </Box>
     );
 };

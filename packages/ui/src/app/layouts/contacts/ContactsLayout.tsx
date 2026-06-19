@@ -5,29 +5,17 @@ import {
     Divider,
     Flex,
     Stack,
+    Group,
     Text,
     Popover,
-    PopoverCloseButton,
-    PopoverContent,
-    PopoverHeader,
-    PopoverBody,
-    PopoverArrow,
-    PopoverTrigger,
-    useBoolean,
-    CircularProgress,
-    Input,
-    InputGroup,
-    InputLeftElement,
+    Loader,
+    TextInput,
     Menu,
-    MenuButton,
-    MenuDivider,
     Button,
-    MenuList,
-    MenuItem,
-    Spinner,
-    Link,
+    Anchor,
     Image
-} from 'lib/ui';
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import {
     Pagination,
     usePagination,
@@ -70,14 +58,14 @@ const getPermissionColor = (status: string | null): string => {
 
 export const ContactsLayout = (): JSX.Element => {
     const [search, setSearch] = useState('' as string);
-    const [isLoading, setIsLoading] = useBoolean(true);
+    const [isLoading, { close: setLoadingOff }] = useDisclosure(true);
     const [contacts, setContacts] = useState([] as any[]);
     const [permission, setPermission] = useState((): string | null => {
         return null;
     });
     const dialogRef = useRef(null);
     const inputFile = useRef(null);
-    const [dialogOpen, setDialogOpen] = useBoolean();
+    const [dialogOpen, { open: setDialogOpenOn, close: setDialogOpenOff }] = useDisclosure();
     const alertRef = useRef(null);
     const [requiresConfirmation, confirm] = useState((): string | null => {
         return null;
@@ -127,9 +115,9 @@ export const ContactsLayout = (): JSX.Element => {
                 e.id = String(e.id);
                 return e;
             }));
-            setIsLoading.off();
+            setLoadingOff();
         }).catch(() => {
-            setIsLoading.off();
+            setLoadingOff();
         });
 
         if (showToast) {
@@ -142,7 +130,7 @@ export const ContactsLayout = (): JSX.Element => {
 
     const getOauthIcon = () => {
         if (authStatus === ProgressStatus.IN_PROGRESS) {
-            return <Spinner size='md' speed='0.65s' />;
+            return <Loader size='md' speed='0.65s' />;
         } else if (authStatus === ProgressStatus.COMPLETED) {
             return <BsCheckAll size={24} color='green' />;
         }
@@ -176,11 +164,11 @@ export const ContactsLayout = (): JSX.Element => {
         };
 
         if (isLoading) {
-            return wrap(<CircularProgress isIndeterminate />);
+            return wrap(<Loader />);
         }
 
         if (contacts.length === 0) {
-            return wrap(<Text fontSize="md">BlueBubbles found no contacts in your Mac's Address Book!</Text>);
+            return wrap(<Text fz="md">BlueBubbles found no contacts in your Mac's Address Book!</Text>);
         }
 
         return null;
@@ -290,28 +278,31 @@ export const ContactsLayout = (): JSX.Element => {
     };
 
     return (
-        <Box p={3} borderRadius={10}>
-            <Stack direction='column' p={5}>
-                <Text fontSize='2xl'>Controls</Text>
+        <Box p={12} style={{ borderRadius: 10 }}>
+            <Stack p={20}>
+                <Text fz='2xl'>Controls</Text>
                 <Divider orientation='horizontal' />
                 <Box>
                     <Menu>
-                        <MenuButton
-                            as={Button}
-                            rightIcon={<BsChevronDown />}
-                            width="12em"mr={5}
-                        >
-                            Manage
-                        </MenuButton>
-                        <MenuList>
-                            <MenuItem icon={<BsPersonPlus />} onClick={() => setDialogOpen.on()}>
+                        <Menu.Target>
+                            <Button
+                                variant="default"
+                                rightSection={<BsChevronDown />}
+                                w="12em"
+                                mr={20}
+                            >
+                                Manage
+                            </Button>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                            <Menu.Item leftSection={<BsPersonPlus />} onClick={() => setDialogOpenOn()}>
                                 Add Contact
-                            </MenuItem>
-                            <MenuItem icon={<BiRefresh />} onClick={() => loadContacts(true)}>
+                            </Menu.Item>
+                            <Menu.Item leftSection={<BiRefresh />} onClick={() => loadContacts(true)}>
                                 Refresh Contacts
-                            </MenuItem>
-                            <MenuItem
-                                icon={<BiImport />}
+                            </Menu.Item>
+                            <Menu.Item
+                                leftSection={<BiImport />}
                                 onClick={() => {
                                     if (inputFile && inputFile.current) {
                                         (inputFile.current as HTMLElement).click();
@@ -334,56 +325,57 @@ export const ContactsLayout = (): JSX.Element => {
                                         loadContacts();
                                     }}
                                 />
-                            </MenuItem>
-                            <MenuDivider />
-                            <MenuItem icon={<FiTrash />} onClick={() => confirm('clearLocalContacts')}>
+                            </Menu.Item>
+                            <Menu.Divider />
+                            <Menu.Item leftSection={<FiTrash />} onClick={() => confirm('clearLocalContacts')}>
                                 Clear Local Contacts
-                            </MenuItem>
-                        </MenuList>
+                            </Menu.Item>
+                        </Menu.Dropdown>
                     </Menu>
                     <Menu>
-                        <MenuButton
-                            as={Button}
-                            rightIcon={<BsChevronDown />}
-                            width="12em"
-                            mr={5}
-                        >
-                            Permissions
-                        </MenuButton>
-                        <MenuList>
-                            <MenuItem icon={<BiRefresh />} onClick={() => refreshPermissionStatus()}>
+                        <Menu.Target>
+                            <Button
+                                variant="default"
+                                rightSection={<BsChevronDown />}
+                                w="12em"
+                                mr={20}
+                            >
+                                Permissions
+                            </Button>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                            <Menu.Item leftSection={<BiRefresh />} onClick={() => refreshPermissionStatus()}>
                                 Refresh Permission Status
-                            </MenuItem>
+                            </Menu.Item>
                             {(permission !== null && permission !== 'Authorized') ? (
-                                <MenuItem icon={<BsUnlockFill />} onClick={() => requestContactPermission()}>
+                                <Menu.Item leftSection={<BsUnlockFill />} onClick={() => requestContactPermission()}>
                                     Request Permission
-                                </MenuItem>
+                                </Menu.Item>
                             ) : null}
-                        </MenuList>
+                        </Menu.Dropdown>
                     </Menu>
-                    <Text as="span" verticalAlign="middle">
-                        Status: <Text as="span" color={getPermissionColor(permission)}>
+                    <Text style={{ verticalAlign: 'middle' }}>
+                        Status: <Text c={getPermissionColor(permission)}>
                             {permission ? permission : 'Checking...'}
                         </Text>
                     </Text>
                 </Box>
             </Stack>
-            <Box ml={5} mr={5}>
-                <Text fontSize='md'>
+            <Box ml={20} mr={20}>
+                <Text fz='md'>
                     Using the button below, you can authorize BlueBubbles to access your Google Contacts. This will allow BlueBubbles to
                     download your contacts + avatars from Google, and serve them to any connected clients.
                 </Text>
-                <Link
+                <Anchor
                     href={oauthUrl}
                     target="_blank"
-                    _hover={{ textDecoration: 'none' }}
                 >
-                    <Stack direction='row' alignItems='center'>
+                    <Group align='center'>
                         <Button
-                            pl={10}
-                            pr={10}
-                            mt={4}
-                            leftIcon={<Image src={GoogleIcon} mr={1} width={5} />}
+                            pl={40}
+                            pr={40}
+                            mt={16}
+                            leftSection={<Image src={GoogleIcon} mr={4} w={5} />}
                             variant='outline'
                             onClick={() => {
                                 restartOauthService();
@@ -391,43 +383,41 @@ export const ContactsLayout = (): JSX.Element => {
                         >
                             Continue with Google
                         </Button>
-                        <Box pt={3} pl={2}>
+                        <Box pt={12} pl={8}>
                             {getOauthIcon()}
                         </Box>
-                    </Stack>
-                </Link>
+                    </Group>
+                </Anchor>
             </Box>
-            <Stack direction='column' p={5}>
-                <Flex flexDirection='row' justifyContent='flex-start' alignItems='center'>
-                    <Text fontSize='2xl'>Contacts ({filteredContacts.length})</Text>
-                    <Popover trigger='hover'>
-                        <PopoverTrigger>
-                            <Box ml={2} _hover={{ color: 'brand.primary', cursor: 'pointer' }}>
+            <Stack p={20}>
+                <Flex direction='row' justify='flex-start' align='center'>
+                    <Text fz='2xl'>Contacts ({filteredContacts.length})</Text>
+                    <Popover withArrow>
+                        <Popover.Target>
+                            <Box ml={8}>
                                 <AiOutlineInfoCircle />
                             </Box>
-                        </PopoverTrigger>
-                        <PopoverContent>
-                            <PopoverArrow />
-                            <PopoverCloseButton />
-                            <PopoverHeader>Information</PopoverHeader>
-                            <PopoverBody>
+                        </Popover.Target>
+                        <Popover.Dropdown>
+                            <Text fw={600} mb="xs">Information</Text>
+                            <Box>
                                 <Text>
                                     Here are the contacts on your macOS device that BlueBubbles knows about,
                                     and will serve to any clients that want to know about them. These include
                                     contacts from this Mac's Address Book, as well as contacts from uploads/imports
                                     or manual entry.
                                 </Text>
-                            </PopoverBody>
-                        </PopoverContent>
+                            </Box>
+                        </Popover.Dropdown>
                     </Popover>
                 </Flex>
                 <Divider orientation='horizontal' />
-                <Flex flexDirection='row' justifyContent='flex-end' alignItems='center' pt={3}>
-                    <InputGroup width="xxs">
-                        <InputLeftElement pointerEvents='none'>
+                <Flex direction='row' justify='flex-end' align='center' pt={12}>
+                    <Box w="xxs">
+                        <Box style={{ pointerEvents: 'none' }}>
                             <AiOutlineSearch color='gray.300' />
-                        </InputLeftElement>
-                        <Input
+                        </Box>
+                        <TextInput
                             placeholder='Search Contacts'
                             onChange={(e: any) => {
                                 if (currentPage > 1) {
@@ -438,9 +428,9 @@ export const ContactsLayout = (): JSX.Element => {
                             }}
                             value={search}
                         />
-                    </InputGroup>
+                    </Box>
                 </Flex>
-                <Flex justifyContent="center" alignItems="center">
+                <Flex justify="center" align="center">
                     {getEmptyContent()}
                 </Flex>
                 {(contacts.length > 0) ? (
@@ -465,7 +455,7 @@ export const ContactsLayout = (): JSX.Element => {
                         pt={2}
                     >
                         <PaginationPreviousButton />
-                        <Box ml={1}></Box>
+                        <Box ml={4}></Box>
                         <PaginationPageGroup flexWrap="wrap" justifyContent="center">
                             {pages.map((page: number) => (
                                 <PaginationPage 
@@ -479,7 +469,7 @@ export const ContactsLayout = (): JSX.Element => {
                                 />
                             ))}
                         </PaginationPageGroup>
-                        <Box ml={1}></Box>
+                        <Box ml={4}></Box>
                         <PaginationNextButton />
                     </PaginationContainer>
                 </Pagination>
@@ -492,7 +482,7 @@ export const ContactsLayout = (): JSX.Element => {
                 onDelete={onDelete}
                 onAddressAdd={onAddAddress}
                 onAddressDelete={onDeleteAddress}
-                onClose={() => setDialogOpen.off()}
+                onClose={() => setDialogOpenOff()}
             />
 
             <ConfirmationDialog
