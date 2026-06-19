@@ -98,6 +98,7 @@ export * from "./data/imessage/FileCursorStore";
 
 // Phase 6 — networking + admin API
 export * from "./networking/TunnelProvider";
+export * from "./networking/CloudflareDdns";
 export * from "./networking/webhook";
 export * from "./networking/oauthPkce";
 export * from "./api/operations/adminOperations";

@@ -11,6 +11,7 @@ import { ServerPasswordField } from '../../../components/fields/ServerPasswordFi
 import { ZrokTokenField } from 'app/components/fields/ZrokTokenField';
 import { ZrokReservedNameField } from 'app/components/fields/ZrokReservedNameField';
 import { ZrokReserveTunnelField } from 'app/components/fields/ZrokReserveTunnelField';
+import { CloudflareDdnsField } from 'app/components/fields/CloudflareDdnsField';
 
 export const ConnectionWalkthrough = (): JSX.Element => {
     const proxyService: string = (useAppSelector(state => state.config.proxy_service) ?? '').toLowerCase().replace(' ', '-');
@@ -57,6 +58,12 @@ export const ConnectionWalkthrough = (): JSX.Element => {
                                     <ZrokReservedNameField />
                                 </>
                             ) : null}
+                        </>
+                    ) : null}
+                    {(proxyService === 'dynamic-dns') ? (
+                        <>
+                            <Box style={{ flex: 1 }} />
+                            <CloudflareDdnsField />
                         </>
                     ) : null}
                 </Stack>

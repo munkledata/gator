@@ -43,6 +43,15 @@ export const ConfigSchema = z
         enablePrivateApi: z.boolean().default(false),
         encryptComs: z.boolean().default(false),
         tunnelProvider: z.enum(["cloudflare", "zrok", "lan", "none"]).default("none"),
+        // Cloudflare dynamic DNS — keep a custom-domain A record pointed at the
+        // server's current public IP (for a home/dynamic-IP server). Flat keys so the
+        // UI's snake_case <-> camelCase mapping round-trips them like the other config.
+        cloudflareDdnsEnabled: z.boolean().default(false),
+        cloudflareDdnsApiToken: z.string().default(""),
+        cloudflareDdnsRecord: z.string().default(""),
+        cloudflareDdnsZone: z.string().default(""),
+        cloudflareDdnsProxied: z.boolean().default(false),
+        cloudflareDdnsIntervalSeconds: z.number().default(300),
         notifications: NotificationsConfigSchema
     })
     // passthrough() keeps the wider legacy config surface (the UI reads ~40 snake_case

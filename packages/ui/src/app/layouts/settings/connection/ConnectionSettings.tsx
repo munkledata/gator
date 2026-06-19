@@ -18,6 +18,7 @@ import { ZrokTokenField } from 'app/components/fields/ZrokTokenField';
 import { ZrokReserveTunnelField } from 'app/components/fields/ZrokReserveTunnelField';
 import { ZrokReservedNameField } from 'app/components/fields/ZrokReservedNameField';
 import { ZrokDisableField } from 'app/components/fields/ZrokDisableField';
+import { CloudflareDdnsField } from 'app/components/fields/CloudflareDdnsField';
 // import { EncryptCommunicationsField } from '../../../components/fields/EncryptCommunicationsField';
 
 
@@ -62,6 +63,13 @@ export const ConnectionSettings = (): JSX.Element => {
                         </>
                     ) : null}
                     <ZrokDisableField />
+                </>
+            ) : null}
+
+            {(proxyService === 'dynamic-dns') ? (
+                <>
+                    <Box style={{ flex: 1 }} />
+                    <CloudflareDdnsField />
                 </>
             ) : null}
 

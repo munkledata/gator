@@ -10,6 +10,7 @@ import type { WebhookStore } from "../../webhooks/Webhook";
 import type { PrivateApiTransport } from "../../private-api/PrivateApiTransport";
 import type { StatsReader } from "../../data/imessage/StatsReader";
 import type { MacPermissions } from "../../host-platform/MacPermissions";
+import type { CloudflareDdns } from "../../networking/CloudflareDdns";
 import type { Logger } from "../../core/logger";
 
 export interface AdminCommandDeps {
@@ -22,6 +23,7 @@ export interface AdminCommandDeps {
     transport: PrivateApiTransport;
     stats: StatsReader;
     permissions: MacPermissions;
+    cloudflareDdns: CloudflareDdns;
     version: string;
     /** Push a Socket.IO event to all connected clients (former main->renderer pushes). */
     emit: (event: string, data: unknown) => void;
@@ -41,7 +43,7 @@ const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === "ob
  * so the UI needs no password — see execute.ts.
  */
 export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[] {
-    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, emit, logger } =
+    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, emit, logger } =
         deps;
 
     // Lightweight in-memory alert log (the legacy server's server-side notifications).
@@ -177,7 +179,11 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         "save-lan-url": () => {
             const port = (configStore.getConfig() as unknown as { socketPort?: number }).socketPort ?? 1234;
             return setConfig({ server_address: `http://localhost:${port}` });
-        }
+        },
+
+        // --- Cloudflare dynamic DNS (config persisted via get/set-config; these act on it) ---
+        "cloudflare-ddns-sync-now": () => cloudflareDdns.syncOnce(),
+        "get-public-ip": () => cloudflareDdns.getPublicIp().then(ip => ({ ip })).catch(() => ({ ip: null }))
     };
 
     const Input = z.object({ channel: z.string().min(1), data: z.unknown().optional() });

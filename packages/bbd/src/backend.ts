@@ -51,6 +51,7 @@ import { FileCursorStore } from "./data/imessage/FileCursorStore";
 import { DrizzleWebhookStore } from "./webhooks/DrizzleWebhookStore";
 import { WebhookSubscriber } from "./webhooks/WebhookSubscriber";
 import { WebhookDispatcher } from "./networking/webhook";
+import { CloudflareDdns } from "./networking/CloudflareDdns";
 import { buildWebhookOperations } from "./api/operations/webhookOperations";
 import { wireMessageFanout } from "./serialize/messageFanout";
 import type { Service } from "./core/lifecycle";
@@ -149,11 +150,25 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const webhookSubscriber = new WebhookSubscriber(webhookStore, new WebhookDispatcher({ logger }), logger);
     registry.registerAll(buildWebhookOperations({ store: webhookStore }));
 
+    // Cloudflare dynamic DNS — reads its (flat camelCase) settings from the live config each tick.
+    const cloudflareDdns = new CloudflareDdns(() => {
+        const c = configStore.getConfig() as Record<string, unknown>;
+        return {
+            enabled: Boolean(c.cloudflareDdnsEnabled),
+            apiToken: String(c.cloudflareDdnsApiToken ?? ""),
+            record: String(c.cloudflareDdnsRecord ?? ""),
+            zone: String(c.cloudflareDdnsZone ?? ""),
+            proxied: Boolean(c.cloudflareDdnsProxied),
+            intervalSeconds: Number(c.cloudflareDdnsIntervalSeconds ?? 300)
+        };
+    }, { logger });
+
     // The admin-command dispatcher — the UI's former-IPC channels over HTTP.
     registry.registerAll(
         buildAdminCommandOperations({
             configService,
             configStore,
+            cloudflareDdns,
             chatReader,
             contacts,
             scheduledStore,
@@ -210,6 +225,12 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         stop: () => scheduler.stop()
     };
 
+    const ddnsService: Service = {
+        name: "cloudflare-ddns",
+        start: () => cloudflareDdns.start(),
+        stop: () => cloudflareDdns.stop()
+    };
+
     const readPathService: Service = {
         name: "read-path",
         start: async () => {
@@ -224,7 +245,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     };
 
     const daemon = new Daemon({
-        services: [transportService, httpService, schedulerService, readPathService],
+        services: [transportService, httpService, schedulerService, readPathService, ddnsService],
         hostPlatform: host,
         logger
     });
