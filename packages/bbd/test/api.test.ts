@@ -44,10 +44,19 @@ test("GET /api/v1/ping -> 200 success envelope, no auth", async () => {
 test("auth-gated route: 401 without password, 200 with; config strips secrets", async () => {
     const { registry } = setup();
     const app = fastifyApp(registry);
-    assert.equal((await app.inject({ method: "GET", url: "/api/v1/config" })).statusCode, 401);
-    const ok = await app.inject({ method: "GET", url: `/api/v1/config?password=${PASSWORD}` });
+    // A non-loopback caller (remote, over the tunnel) needs the password.
+    assert.equal(
+        (await app.inject({ method: "GET", url: "/api/v1/config", remoteAddress: "203.0.113.5" })).statusCode,
+        401
+    );
+    const ok = await app.inject({ method: "GET", url: `/api/v1/config?password=${PASSWORD}`, remoteAddress: "203.0.113.5" });
     assert.equal(ok.statusCode, 200);
     assert.equal(ok.json().data.password, undefined, "password not leaked");
+    // A loopback caller (the local admin UI) is trusted without the password.
+    assert.equal(
+        (await app.inject({ method: "GET", url: "/api/v1/config", remoteAddress: "127.0.0.1" })).statusCode,
+        200
+    );
     await app.close();
 });
 

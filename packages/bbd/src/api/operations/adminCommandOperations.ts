@@ -8,6 +8,8 @@ import type { ContactsService } from "../../contacts/ContactsService";
 import type { ScheduledMessageStore } from "../../scheduled/ScheduledMessage";
 import type { WebhookStore } from "../../webhooks/Webhook";
 import type { PrivateApiTransport } from "../../private-api/PrivateApiTransport";
+import type { StatsReader } from "../../data/imessage/StatsReader";
+import type { MacPermissions } from "../../host-platform/MacPermissions";
 import type { Logger } from "../../core/logger";
 
 export interface AdminCommandDeps {
@@ -18,6 +20,8 @@ export interface AdminCommandDeps {
     scheduledStore: ScheduledMessageStore;
     webhookStore: WebhookStore;
     transport: PrivateApiTransport;
+    stats: StatsReader;
+    permissions: MacPermissions;
     version: string;
     /** Push a Socket.IO event to all connected clients (former main->renderer pushes). */
     emit: (event: string, data: unknown) => void;
@@ -37,8 +41,18 @@ const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === "ob
  * so the UI needs no password — see execute.ts.
  */
 export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[] {
-    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, emit, logger } =
+    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, emit, logger } =
         deps;
+
+    // Lightweight in-memory alert log (the legacy server's server-side notifications).
+    interface Alert {
+        id: string;
+        type: string;
+        value: string;
+        created: number;
+        isRead: boolean;
+    }
+    const alerts: Alert[] = [];
 
     // The v1 UI/API contract uses snake_case config keys; the bbd schema is camelCase.
     const toSnake = (s: string): string => s.replace(/[A-Z]/g, m => "_" + m.toLowerCase());
@@ -123,16 +137,53 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         // --- environment / status ---
         "get-env": () => ({ version: deps.version, platform: process.platform, node: process.versions.node }),
 
-        // --- FCM config (stored in the config record) ---
-        "get-fcm-client": () => (configStore.getConfig() as unknown as Record<string, unknown>).fcmClient ?? null,
-        "get-fcm-server": () => (configStore.getConfig() as unknown as Record<string, unknown>).fcmServer ?? null,
-        "set-fcm-client": d => setConfig({ fcmClient: d } as unknown as Partial<Config>),
-        "set-fcm-server": d => setConfig({ fcmServer: d } as unknown as Partial<Config>),
+        // --- home-screen stats (read path; degrade to 0 without a real chat.db) ---
+        "get-message-count": () => stats.messageCount(),
+        "get-chat-image-count": () => stats.imageCount(),
+        "get-chat-video-count": () => stats.videoCount(),
+        "get-group-message-counts": () => stats.groupMessageCounts(),
+        "get-best-friend": () => stats.bestFriend(),
 
-        // --- gracefully unsupported (no backend subsystem yet) ---
-        "get-devices": () => [],
-        "get-alerts": () => [],
-        "save-lan-url": () => ({ ok: true })
+        // --- macOS permissions (node-mac-permissions) ---
+        "check-permissions": () => permissions.list(),
+        "get-current-permissions": () => permissions.list(),
+        "contact-permission-status": () => permissions.contactStatus(),
+        "request-contact-permission": () => permissions.requestContacts(),
+
+        // --- registered push devices (the config store's device table) ---
+        "get-devices": () => configStore.listDevices(),
+        "purge-devices": async () => {
+            const devices = await configStore.listDevices();
+            await Promise.all(devices.map(dev => configStore.removeDevice(dev.id)));
+            return { removed: devices.length };
+        },
+
+        // --- server-side alerts ---
+        "get-alerts": () => alerts,
+        "clear-alerts": () => {
+            alerts.length = 0;
+            return { ok: true };
+        },
+        "mark-alerts-as-read": d => {
+            const ids = new Set((Array.isArray(d.ids) ? d.ids : Array.isArray(d) ? d : []).map(String));
+            for (const a of alerts) if (ids.size === 0 || ids.has(a.id)) a.isRead = true;
+            return { ok: true };
+        },
+
+        // --- FCM config (snake_case keys in the passthrough config) ---
+        "get-fcm-client": () => readConfig().fcm_client ?? null,
+        "get-fcm-server": () => readConfig().fcm_server ?? null,
+        "set-fcm-client": d => setConfig({ fcm_client: d }),
+        "set-fcm-server": d => setConfig({ fcm_server: d }),
+
+        // --- tunnel config (the lifecycle/provisioning is config-backed for now) ---
+        "set-zrok-token": d => setConfig({ zrok_token: d.token ?? d.value ?? d }),
+        "register-zrok-email": d => setConfig({ zrok_email: d.email ?? d.value ?? d }),
+        "disable-zrok": () => setConfig({ enable_zrok: false, tunnel_provider: "none" }),
+        "save-lan-url": () => {
+            const port = (configStore.getConfig() as unknown as { socketPort?: number }).socketPort ?? 1234;
+            return setConfig({ server_address: `http://localhost:${port}` });
+        }
     };
 
     const Input = z.object({ channel: z.string().min(1), data: z.unknown().optional() });

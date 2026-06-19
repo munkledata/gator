@@ -21,6 +21,8 @@ import { serveStaticUi } from "./api/staticUi";
 import { openReadOnlyChatDb } from "./data/imessage/connection";
 import { introspectSchema } from "./data/imessage/schema";
 import { ChatReader } from "./data/imessage/ChatReader";
+import { StatsReader } from "./data/imessage/StatsReader";
+import { MacPermissions } from "./host-platform/MacPermissions";
 import { HandleReader } from "./data/imessage/HandleReader";
 import { AttachmentReader } from "./data/imessage/AttachmentReader";
 import { AttachmentStreamer } from "./data/imessage/AttachmentStreamer";
@@ -152,6 +154,8 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             scheduledStore,
             webhookStore,
             transport,
+            stats: new StatsReader(chatDb),
+            permissions: new MacPermissions(),
             version: BBD_VERSION,
             emit: (event, data) => io?.emit(event, data),
             logger
