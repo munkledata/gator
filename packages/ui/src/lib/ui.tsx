@@ -53,17 +53,37 @@ function color(v: any): any {
     if (typeof v !== 'string' || !v.includes('.')) return v;
     const [hue, shade] = v.split('.');
     const n = Number(shade);
-    if (!Number.isFinite(n)) return v;
+    // Non-numeric shade (e.g. Chakra "brand.primary") -> bare hue, which Mantine
+    // resolves to that color's primary shade. Returning it verbatim crashes Mantine's
+    // color parser (.startsWith on an unresolved shade).
+    if (!Number.isFinite(n)) return hue;
     const m = n <= 50 ? 0 : Math.min(9, Math.round(n / 100));
     return `${hue}.${m}`;
 }
 
+// Chakra exposes CSS as style-props (flexDirection, justifyContent, ...) on every
+// component; Mantine's Flex has a few named props but Box/most do not. Routing these to
+// an inline `style` object applies them as plain CSS on any Mantine component.
+const CSS_PROPS = new Set([
+    'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'flex', 'order',
+    'justifyContent', 'justifyItems', 'justifySelf', 'alignItems', 'alignContent', 'alignSelf',
+    'display', 'position', 'top', 'right', 'bottom', 'left', 'zIndex', 'inset',
+    'overflow', 'overflowX', 'overflowY', 'cursor', 'transition', 'transform', 'opacity',
+    'gridTemplateColumns', 'gridTemplateRows', 'gridColumn', 'gridRow', 'gridAutoFlow', 'gridGap',
+    'boxShadow', 'border', 'borderTop', 'borderBottom', 'borderLeft', 'borderRight',
+    'borderColor', 'borderWidth', 'borderStyle', 'borderBottomWidth', 'borderTopWidth',
+    'objectFit', 'whiteSpace', 'textOverflow', 'wordBreak', 'textTransform', 'textDecoration',
+    'letterSpacing', 'userSelect', 'pointerEvents', 'float', 'verticalAlign', 'listStyleType', 'aspectRatio'
+]);
+
 /** Map a Chakra style-prop bag onto Mantine's equivalents. Unknown props pass through. */
 export function adapt(props: AnyProps): AnyProps {
     const out: AnyProps = {};
+    const style: AnyProps = {};
     for (const [k, v] of Object.entries(props)) {
         if (v === undefined) continue;
         if (SPACING.has(k)) out[k] = space(v);
+        else if (k === 'spacing') out.gap = space(v);
         else if (k === 'bg' || k === 'background' || k === 'backgroundColor') out.bg = color(v);
         else if (k === 'color' || k === 'textColor') out.c = color(v);
         else if (k === 'width') out.w = v;
@@ -77,11 +97,14 @@ export function adapt(props: AnyProps): AnyProps {
         else if (k === 'fontStyle') out.fs = v;
         else if (k === 'textAlign') out.ta = v;
         else if (k === 'lineHeight') out.lh = v;
-        else if (k === 'rounded' || k === 'borderRadius') out.style = { ...(out.style ?? {}), borderRadius: v };
+        else if (k === 'rounded' || k === 'borderRadius') style.borderRadius = v;
+        else if (k === 'style') Object.assign(style, v);
+        else if (CSS_PROPS.has(k)) style[k] = v;
         else if (k.startsWith('_')) continue; // drop Chakra pseudo-props (_hover, _focus, ...)
         else if (k === 'isTruncated' || k === 'noOfLines') out.truncate = v ? 'end' : undefined;
         else out[k] = v;
     }
+    if (Object.keys(style).length) out.style = style;
     return out;
 }
 
@@ -94,7 +117,13 @@ const fwd = (M: React.ElementType, extra?: (p: AnyProps) => AnyProps) =>
 // --- layout primitives ---
 export const Box = fwd(MBox);
 export const Flex = fwd(MFlex);
-export const Stack = fwd(MStack);
+// Chakra Stack is vertical by default but goes horizontal with direction="row";
+// Mantine Stack is always vertical, so route the horizontal case to Group.
+export const Stack = React.forwardRef<any, AnyProps>(({ direction, ...rest }, ref) => {
+    const horizontal = direction === 'row' || direction === 'row-reverse';
+    const Comp = horizontal ? MGroup : MStack;
+    return <Comp ref={ref} {...adapt(rest)} />;
+});
 export const VStack = fwd(MStack);
 export const HStack = fwd(MGroup);
 export const Wrap = fwd(MGroup, p => ({ wrap: 'wrap', ...p }));
@@ -317,7 +346,13 @@ export const Drawer = ({ isOpen, onClose, children, placement, size, ...rest }: 
 // Menu  (Chakra MenuButton/MenuList/MenuItem -> Mantine Menu.Target/Dropdown/Item)
 // =====================================================================================
 export const Menu = ({ children, ...rest }: AnyProps) => <MMenu {...rest}>{children}</MMenu>;
-export const MenuButton = ({ children, as, ...rest }: AnyProps) => <MMenu.Target>{children}</MMenu.Target>;
+// Mantine's Menu.Target needs ONE ref-able child; Chakra's MenuButton is the trigger
+// button itself (often with string children). Wrap it in a real Button.
+export const MenuButton = ({ children, as, icon, leftIcon, rightIcon, ...rest }: AnyProps) => (
+    <MMenu.Target>
+        <MButton variant="default" leftSection={leftIcon} rightSection={rightIcon} {...adapt(rest)}>{children ?? icon}</MButton>
+    </MMenu.Target>
+);
 export const MenuList = ({ children, ...rest }: AnyProps) => <MMenu.Dropdown {...rest}>{children}</MMenu.Dropdown>;
 export const MenuItem = ({ children, icon, ...rest }: AnyProps) => <MMenu.Item leftSection={icon} {...rest}>{children}</MMenu.Item>;
 export const MenuDivider = () => <MMenu.Divider />;

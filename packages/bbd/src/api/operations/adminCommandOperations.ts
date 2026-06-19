@@ -40,17 +40,31 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
     const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, emit, logger } =
         deps;
 
-    const setConfig = async (patch: Partial<Config>): Promise<Config> => {
-        const updated = await configService.update(patch);
-        emit("config-update", updated);
-        return updated;
+    // The v1 UI/API contract uses snake_case config keys; the bbd schema is camelCase.
+    const toSnake = (s: string): string => s.replace(/[A-Z]/g, m => "_" + m.toLowerCase());
+    const toCamel = (s: string): string => s.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
+    const mapKeys = (obj: Record<string, unknown>, fn: (k: string) => string): Record<string, unknown> =>
+        Object.fromEntries(Object.entries(obj).map(([k, v]) => [fn(k), v]));
+
+    const readConfig = (): Record<string, unknown> => {
+        const snake = mapKeys(configStore.getConfig() as Record<string, unknown>, toSnake);
+        // BBD_SKIP_SETUP lets a test/dev boot land past the first-run walkthrough.
+        if (process.env.BBD_SKIP_SETUP === "1") snake.tutorial_is_done = true;
+        return snake;
+    };
+
+    const setConfig = async (patch: Record<string, unknown>): Promise<Record<string, unknown>> => {
+        const updated = await configService.update(mapKeys(patch, toCamel) as Partial<Config>);
+        const snake = mapKeys(updated as Record<string, unknown>, toSnake);
+        emit("config-update", snake);
+        return snake;
     };
 
     const handlers: Record<string, Handler> = {
-        // --- config ---
-        "get-config": () => configStore.getConfig(),
-        "set-config": d => setConfig(d as Partial<Config>),
-        "toggle-tutorial": d => setConfig({ tutorialIsDone: Boolean(d.toggle ?? d.value ?? true) } as Partial<Config>),
+        // --- config (snake_case on the wire, camelCase in the schema) ---
+        "get-config": () => readConfig(),
+        "set-config": d => setConfig(d),
+        "toggle-tutorial": d => setConfig({ tutorial_is_done: Boolean(d.toggle ?? d.value ?? true) }),
 
         // --- chats (read path) ---
         "get-chats": d => chatReader.getChats(d),
@@ -134,8 +148,11 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
             handler: async (_ctx, input) => {
                 const handler = handlers[input.channel];
                 if (!handler) {
+                    // Return [] (not an object/null) — the safest universal empty: consumers
+                    // that .map/.forEach/render it all no-op, instead of crashing (React #31
+                    // on an object child, or .forEach on null).
                     logger.debug(`admin-command: unsupported channel "${input.channel}"`);
-                    return { unsupported: true, channel: input.channel };
+                    return [];
                 }
                 return handler(asRecord(input.data));
             }
