@@ -34,6 +34,6 @@ test("changing a nested notifications field is detected", async () => {
 
     const svc = new ConfigService(new InMemoryConfigStore(), bus, silent);
     const current = svc.get();
-    await svc.update({ notifications: { ...current.notifications, defaultProvider: "fcm" } });
+    await svc.update({ notifications: { ...current.notifications, defaultProvider: "webpush" } });
     assert.deepEqual(seen, [["notifications"]]);
 });

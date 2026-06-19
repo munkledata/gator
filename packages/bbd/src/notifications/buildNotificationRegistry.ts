@@ -2,24 +2,22 @@ import type { Logger } from "../core/logger";
 import type { NotificationsConfig } from "../config/configSchema";
 import { NotificationRegistry } from "./NotificationRegistry";
 import { UnifiedPushProvider, type FetchLike } from "./UnifiedPushProvider";
-import { FcmProvider, type FcmTransport } from "./FcmProvider";
 import { WebPushProvider, type WebPushTransport } from "./WebPushProvider";
 
 /** Injected SDK seams. Absent transports mean that provider can't be enabled. */
 export interface NotificationTransports {
     fetch?: FetchLike;
-    fcm?: FcmTransport;
     webpush?: WebPushTransport;
 }
 
 /**
  * Assemble the provider registry from config.
  *
- * UnifiedPush is registered whenever enabled (it needs no SDK). FCM and Web Push are
- * registered only when both enabled AND their injected transport is supplied —
- * otherwise they're skipped with a warning, so a half-configured provider can't
- * silently swallow notifications. If the configured `defaultProvider` ends up not
- * registered, that's surfaced too.
+ * UnifiedPush is registered whenever enabled (it needs no SDK and is the default —
+ * privacy-first, no Google project). Web Push is registered only when both enabled AND
+ * its injected transport is supplied — otherwise it's skipped with a warning, so a
+ * half-configured provider can't silently swallow notifications. If the configured
+ * `defaultProvider` ends up not registered, that's surfaced too.
  */
 export function buildNotificationRegistry(
     config: NotificationsConfig,
@@ -31,11 +29,6 @@ export function buildNotificationRegistry(
 
     if (config.unifiedpush.enabled) {
         registry.register(new UnifiedPushProvider(transports.fetch));
-    }
-
-    if (config.fcm.enabled) {
-        if (transports.fcm) registry.register(new FcmProvider(transports.fcm));
-        else log.warn("fcm.enabled but no FCM transport supplied; skipping FCM provider");
     }
 
     if (config.webpush.enabled) {

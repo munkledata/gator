@@ -38,7 +38,7 @@ export const IntroWalkthrough = (): JSX.Element => {
                             </Heading>
                             <Text>
                                 Let us help walk you through the full setup of BlueBubbles. This guide will take you step
-                                by step to learn how to setup Google FCM and the BlueBubbles Server.
+                                by step to set up the BlueBubbles Server and connect your devices.
                             </Text>
                         </LinkBox>
                     </WrapItem>

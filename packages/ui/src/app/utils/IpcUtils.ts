@@ -7,20 +7,6 @@ export const getConfig = async () => {
     return await invoke('get-config');
 };
 
-export type FcmConfig = {
-    fcm_client: string;
-    fcm_server: string
-};
-
-export const getFcmConfig = async (): Promise<FcmConfig> => {
-    const client = await invoke('get-fcm-client');
-    const server = await invoke('get-fcm-server');
-    return {
-        fcm_client: client,
-        fcm_server: server
-    };
-};
-
 export const getEnv = async () => {
     return await invoke('get-env');
 };
@@ -144,10 +130,6 @@ export const getBinaryPath = async () => {
 
 export const installUpdate = async () => {
     return await invoke('install-update');
-};
-
-export const getFirebaseOauthUrl = async () => {
-    return await invoke('get-firebase-oauth-url');
 };
 
 export const getContactsOauthUrl = async () => {

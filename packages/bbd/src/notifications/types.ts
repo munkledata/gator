@@ -7,7 +7,7 @@
  * — the legacy `devices` table only knew about FCM tokens.
  */
 
-export type ProviderName = "unifiedpush" | "fcm" | "webpush";
+export type ProviderName = "unifiedpush" | "webpush";
 
 /** A normalized, already-serialized notification ready for any provider. */
 export interface NotificationPayload {
@@ -31,12 +31,6 @@ export interface UnifiedPushDevice extends DeviceBase {
     endpoint: string;
 }
 
-/** Firebase Cloud Messaging (HTTP v1). */
-export interface FcmDevice extends DeviceBase {
-    provider: "fcm";
-    token: string;
-}
-
 /** Web Push (VAPID) for browser/PWA/desktop clients. */
 export interface WebPushDevice extends DeviceBase {
     provider: "webpush";
@@ -48,4 +42,4 @@ export interface WebPushSubscription {
     keys: { p256dh: string; auth: string };
 }
 
-export type Device = UnifiedPushDevice | FcmDevice | WebPushDevice;
+export type Device = UnifiedPushDevice | WebPushDevice;

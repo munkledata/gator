@@ -15,7 +15,6 @@ const NATIVE_OR_DYNAMIC = new Set([
     "better-sqlite3",
     "node-mac-contacts",
     "node-mac-permissions",
-    "firebase-admin",
     "bufferutil",
     "utf-8-validate"
 ]);

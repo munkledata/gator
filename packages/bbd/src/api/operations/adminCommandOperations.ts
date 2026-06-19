@@ -170,12 +170,6 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
             return { ok: true };
         },
 
-        // --- FCM config (snake_case keys in the passthrough config) ---
-        "get-fcm-client": () => readConfig().fcm_client ?? null,
-        "get-fcm-server": () => readConfig().fcm_server ?? null,
-        "set-fcm-client": d => setConfig({ fcm_client: d }),
-        "set-fcm-server": d => setConfig({ fcm_server: d }),
-
         // --- tunnel config (the lifecycle/provisioning is config-backed for now) ---
         "set-zrok-token": d => setConfig({ zrok_token: d.token ?? d.value ?? d }),
         "register-zrok-email": d => setConfig({ zrok_email: d.email ?? d.value ?? d }),

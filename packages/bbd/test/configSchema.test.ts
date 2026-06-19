@@ -5,7 +5,6 @@ import { DEFAULT_CONFIG, parseConfig, parseConfigSafe } from "../src/config/conf
 test("UnifiedPush is the default push provider", () => {
     assert.equal(DEFAULT_CONFIG.notifications.defaultProvider, "unifiedpush");
     assert.equal(DEFAULT_CONFIG.notifications.unifiedpush.enabled, true);
-    assert.equal(DEFAULT_CONFIG.notifications.fcm.enabled, false);
     assert.equal(DEFAULT_CONFIG.notifications.webpush.enabled, false);
 });
 
@@ -26,10 +25,10 @@ test("invalid values are rejected", () => {
 test("valid overrides apply; unspecified sub-keys keep their defaults", () => {
     const c = parseConfig({
         socketPort: 8080,
-        notifications: { defaultProvider: "fcm", fcm: { enabled: true } }
+        notifications: { defaultProvider: "webpush", webpush: { enabled: true } }
     });
     assert.equal(c.socketPort, 8080);
-    assert.equal(c.notifications.defaultProvider, "fcm");
-    assert.equal(c.notifications.fcm.enabled, true);
+    assert.equal(c.notifications.defaultProvider, "webpush");
+    assert.equal(c.notifications.webpush.enabled, true);
     assert.equal(c.notifications.unifiedpush.enabled, true);
 });

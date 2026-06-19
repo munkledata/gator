@@ -84,8 +84,6 @@ function registrationJson(device: Device): string {
     switch (device.provider) {
         case "unifiedpush":
             return JSON.stringify({ endpoint: device.endpoint });
-        case "fcm":
-            return JSON.stringify({ token: device.token });
         case "webpush":
             return JSON.stringify({ subscription: device.subscription });
     }
@@ -97,8 +95,6 @@ function rowToDevice(row: typeof devicesTable.$inferSelect): Device {
     switch (row.provider) {
         case "unifiedpush":
             return { ...base, provider: "unifiedpush", endpoint: reg.endpoint };
-        case "fcm":
-            return { ...base, provider: "fcm", token: reg.token };
         case "webpush":
             return { ...base, provider: "webpush", subscription: reg.subscription };
         default:

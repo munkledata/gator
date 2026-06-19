@@ -11,7 +11,6 @@ const NoInput = z.object({}).passthrough();
  *  discriminated union, so validation enforces the right field per provider. */
 const RegisterDeviceInput = z.discriminatedUnion("provider", [
     z.object({ name: z.string().min(1), provider: z.literal("unifiedpush"), endpoint: z.string().url() }),
-    z.object({ name: z.string().min(1), provider: z.literal("fcm"), token: z.string().min(1) }),
     z.object({
         name: z.string().min(1),
         provider: z.literal("webpush"),
@@ -92,9 +91,6 @@ export function buildCoreOperations(deps: CoreOperationDeps): Operation[] {
                 switch (input.provider) {
                     case "unifiedpush":
                         device = { ...base, provider: "unifiedpush", endpoint: input.endpoint };
-                        break;
-                    case "fcm":
-                        device = { ...base, provider: "fcm", token: input.token };
                         break;
                     case "webpush":
                         device = { ...base, provider: "webpush", subscription: input.subscription };

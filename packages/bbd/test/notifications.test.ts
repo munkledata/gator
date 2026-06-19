@@ -49,7 +49,8 @@ test("registry routes each device to its provider; unknown provider is reported,
     );
     const devices: Device[] = [
         { id: "a", name: "a", provider: "unifiedpush", endpoint: "https://a", createdAt: 0 },
-        { id: "b", name: "b", provider: "fcm", token: "tok", createdAt: 0 } // no fcm provider registered
+        // webpush isn't registered in this test, so device b can't be delivered
+        { id: "b", name: "b", provider: "webpush", subscription: { endpoint: "https://b", keys: { p256dh: "x", auth: "y" } }, createdAt: 0 }
     ];
     const results = await registry.dispatch(devices, payload);
     assert.equal(sent, 1);
@@ -62,11 +63,11 @@ test("buildNotificationRegistry: UnifiedPush is the default and is registered", 
     assert.equal(config.defaultProvider, "unifiedpush");
     const registry = buildNotificationRegistry(config, silent);
     assert.equal(registry.has("unifiedpush"), true);
-    assert.equal(registry.has("fcm"), false);
+    assert.equal(registry.has("webpush"), false);
 });
 
-test("buildNotificationRegistry: FCM registered only when enabled AND a transport is supplied", () => {
-    const config = NotificationsConfigSchema.parse({ fcm: { enabled: true } });
-    assert.equal(buildNotificationRegistry(config, silent).has("fcm"), false);
-    assert.equal(buildNotificationRegistry(config, silent, { fcm: async () => {} }).has("fcm"), true);
+test("buildNotificationRegistry: Web Push registered only when enabled AND a transport is supplied", () => {
+    const config = NotificationsConfigSchema.parse({ webpush: { enabled: true } });
+    assert.equal(buildNotificationRegistry(config, silent).has("webpush"), false);
+    assert.equal(buildNotificationRegistry(config, silent, { webpush: async () => {} }).has("webpush"), true);
 });

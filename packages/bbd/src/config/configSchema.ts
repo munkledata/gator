@@ -9,25 +9,18 @@ import { z } from "zod";
  * loop (ConfigService) diffs and broadcasts changes.
  */
 
-export const ProviderNameSchema = z.enum(["unifiedpush", "fcm", "webpush"]);
+export const ProviderNameSchema = z.enum(["unifiedpush", "webpush"]);
 
 export const NotificationsConfigSchema = z
     .object({
         /**
          * The default provider new devices register against. **UnifiedPush** —
-         * privacy-first, self-hostable, no Google project required. FCM and Web Push
-         * remain available as opt-in providers.
+         * privacy-first, self-hostable, no Google project required (Firebase/FCM was
+         * removed). Web Push remains available as an opt-in provider.
          */
         defaultProvider: ProviderNameSchema.default("unifiedpush"),
         unifiedpush: z
             .object({ enabled: z.boolean().default(true) })
-            .default({}),
-        fcm: z
-            .object({
-                enabled: z.boolean().default(false),
-                /** Path to the Firebase service-account JSON (HTTP v1). */
-                serviceAccountPath: z.string().optional()
-            })
             .default({}),
         webpush: z
             .object({

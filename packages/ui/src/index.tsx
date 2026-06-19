@@ -10,7 +10,7 @@ import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { theme } from './theme';
 import { store } from './app/store';
-import { checkPermissions, getAlerts, getConfig, getDevices, getFcmConfig, getPrivateApiRequirements, getWebhooks } from './app/utils/IpcUtils';
+import { checkPermissions, getAlerts, getConfig, getDevices, getPrivateApiRequirements, getWebhooks } from './app/utils/IpcUtils';
 import { setConfigBulk, ConfigItem, setConfig } from './app/slices/ConfigSlice';
 import { addAll as addAllDevices } from './app/slices/DevicesSlice';
 import { DeviceItem } from './app/slices/DevicesSlice';
@@ -28,26 +28,6 @@ getConfig().then(cfg => {
     for (const key of Object.keys(cfg)) {
         items.push({ name: key, value: cfg[key], saveToDb: false });
     }
-
-    store.dispatch(setConfigBulk(items));
-});
-
-// Load the FCM config from the server
-getFcmConfig().then(cfg => {
-    if (!cfg) return;
-
-    const items: Array<ConfigItem> = [
-        {
-            name: 'fcm_client',
-            value: cfg.fcm_client,
-            saveToDb: false
-        },
-        {
-            name: 'fcm_server',
-            value: cfg.fcm_server,
-            saveToDb: false
-        }
-    ];
 
     store.dispatch(setConfigBulk(items));
 });
