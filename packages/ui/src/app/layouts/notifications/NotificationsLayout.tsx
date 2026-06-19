@@ -13,8 +13,8 @@ export const NotificationsLayout = (): JSX.Element => {
             <Divider orientation='horizontal' />
             <Text fz='md' mt={20}>
                 BlueBubbles delivers push notifications over <strong>UnifiedPush</strong> &mdash; a
-                privacy-first, self-hostable standard. There&apos;s no Google/Firebase project to configure,
-                and with a stable tunnel URL there&apos;s no server URL to sync to clients.
+                privacy-first, self-hostable standard. Nothing to configure here: with a stable tunnel URL
+                there&apos;s no server URL to broker and no third-party push account to set up.
             </Text>
             <Text fz='md' mt={20}>
                 On each device, install a UnifiedPush distributor (for example{' '}

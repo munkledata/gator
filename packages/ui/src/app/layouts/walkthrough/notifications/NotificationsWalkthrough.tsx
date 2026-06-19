@@ -12,8 +12,8 @@ export const NotificationsWalkthrough = (): JSX.Element => {
                 <Text fz='4xl'>Notifications</Text>
                 <Text fz='md' mt={20}>
                     BlueBubbles delivers push notifications over <strong>UnifiedPush</strong> &mdash; a
-                    privacy-first, self-hostable standard. There&apos;s no Google/Firebase project to set
-                    up, and nothing to configure here on the server.
+                    privacy-first, self-hostable standard. There&apos;s nothing to configure here on the
+                    server, and no third-party push account to set up.
                 </Text>
                 <Text fz='md' mt={20}>
                     On your device, install a UnifiedPush distributor (for example{' '}
