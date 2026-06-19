@@ -4,6 +4,11 @@ module.exports = {
     "productName": "BlueBubbles",
     "appId": "com.BlueBubbles.BlueBubbles-Server",
     "electronVersion": "42.4.1",
+    // No Developer ID on this machine, so electron-builder leaves Electron's placeholder
+    // signature (which reads as "damaged" on other Apple Silicon Macs). This hook ad-hoc
+    // signs every nested .node/.dylib inside-out + seals the bundle, so the signature is
+    // valid and self-consistent — no "damaged" error.
+    "afterPack": "./scripts/adhoc-sign.js",
     "npmRebuild": true,
     "directories": {
         "output": "releases",
