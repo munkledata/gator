@@ -17,11 +17,6 @@
     "rebuild": "electron-rebuild -f better-sqlite3 node-mac-contacts node-mac-permissions",
     "postinstall": "electron-rebuild install-app-deps && npm run rebuild"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
     "{src,test,mocks}/**/*.{json,css,scss,md}": [
       "prettier --config ./.prettierrc --ignore-path ./.prettierignore --write"
@@ -56,8 +51,7 @@
     "eslint-plugin-jsx-a11y": "^6.5.1",
     "eslint-plugin-prettier": "^4.0.0",
     "fork-ts-checker-webpack-plugin": "^7.0.0",
-    "husky": "^4.2.5",
-    "lint-staged": "^10.1.5",
+    "lint-staged": "^17.0.0",
     "prettier": "^2.6.2",
     "typescript": "5.6.3",
     "webpack": "^5.68.0",
@@ -66,7 +60,7 @@
     "webpack-node-externals": "^3.0.0"
   },
   "dependencies": {
-    "better-sqlite3": "^12.0.0",
+    "better-sqlite3": "^12.11.1",
     "node-mac-contacts": "^1.7.2",
     "node-mac-permissions": "^2.5.0"
   },
