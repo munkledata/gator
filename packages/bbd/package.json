@@ -19,6 +19,7 @@
     "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.2",
     "node-mac-contacts": "^1.7.2",
+    "node-mac-permissions": "^2.5.0",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.23.0",
     "fastify": "^5.0.0",
@@ -29,7 +30,9 @@
     "@types/node": "^24.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0",
-    "esbuild": "^0.28.0"
+    "esbuild": "^0.28.0",
+    "eslint": "^8.57.1",
+    "typescript-eslint": "^8.0.0"
   },
   "//note-pino": "The production Logger impl wraps pino, kept OUT of the core so logging stays an injectable abstraction (this is what breaks the legacy Logger->Server circular dependency). See src/core/logger.ts."
 }

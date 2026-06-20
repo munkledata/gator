@@ -18,6 +18,22 @@ export function safeEqual(a: string, b: string): boolean {
     return timingSafeEqual(ab, bb);
 }
 
+/**
+ * Whether a request is the trusted local admin UI.
+ *
+ * The local Electron window is granted password-free access — but **never** by
+ * source IP. A same-host TLS-terminating reverse proxy makes every remote client
+ * appear to come from 127.0.0.1, so an IP check would hand the full admin surface to
+ * the internet (audit S1). Instead the shell mints a per-boot secret, injects it into
+ * the daemon (env) and into its own renderer (preload), and the renderer presents it
+ * on every call. A remote browser loading the same bundle has no way to learn the
+ * token (it is never served over HTTP), so it falls back to the password.
+ */
+export function isTrustedLocal(presented: string | undefined, localToken: string | undefined): boolean {
+    if (!localToken || !presented) return false;
+    return safeEqual(presented, localToken);
+}
+
 interface FailureEntry {
     count: number;
     lockedUntil: number;

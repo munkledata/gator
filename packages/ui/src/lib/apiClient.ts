@@ -9,8 +9,11 @@
  *   - `onEvent(event, cb)` — server pushes, was `ipcRenderer.on`. A Socket.IO
  *     subscription on the same origin.
  *
- * Auth: the local window is loopback, which the daemon trusts (see execute.ts), so no
- * password is needed here; the password still guards remote access over the tunnel.
+ * Auth: the Electron shell injects a per-boot local-trust token into this renderer
+ * (preload `window.bbShell.localAuth`); we present it as the `x-bbd-local-auth` header
+ * and the socket handshake `auth.localAuth`, which the daemon trusts without a password
+ * (see auth.ts `isTrustedLocal`). It is never sent over HTTP by the server, so a remote
+ * browser loading this same bundle has no token and must use the password.
  */
 import { io, type Socket } from 'socket.io-client';
 
@@ -39,6 +42,7 @@ export const SHELL_CHANNELS = new Set<string>([
 
 interface BbShell {
     invoke(channel: string, data?: unknown): Promise<unknown>;
+    localAuth?: string;
 }
 
 declare global {
@@ -46,6 +50,9 @@ declare global {
         bbShell?: BbShell;
     }
 }
+
+/** The local-trust token injected by the Electron shell (absent in a plain browser). */
+const localAuth = (): string | undefined => (typeof window !== 'undefined' ? window.bbShell?.localAuth : undefined);
 
 class ApiClient {
     readonly #baseUrl: string;
@@ -56,9 +63,12 @@ class ApiClient {
     }
 
     async invokeHttp<T = unknown>(channel: string, data?: unknown): Promise<T> {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const token = localAuth();
+        if (token) headers['x-bbd-local-auth'] = token;
         const res = await fetch(new URL('/api/v1/admin/command', this.#baseUrl).toString(), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ channel, data })
         });
         const env = (await res.json()) as Envelope<T>;
@@ -68,7 +78,11 @@ class ApiClient {
 
     #ensureSocket(): Socket {
         if (!this.#socket) {
-            this.#socket = io(this.#baseUrl, { transports: ['websocket', 'polling'], autoConnect: true });
+            this.#socket = io(this.#baseUrl, {
+                transports: ['websocket', 'polling'],
+                autoConnect: true,
+                auth: { localAuth: localAuth() }
+            });
         }
         return this.#socket;
     }

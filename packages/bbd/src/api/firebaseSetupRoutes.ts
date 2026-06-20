@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { FirebaseSetupService } from "../notifications/fcm/FirebaseSetupService";
+import { isLoopback } from "./fastifyAdapter";
+import { setSecurityHeaders } from "./securityHeaders";
 
 /**
  * The OAuth loopback endpoint for the automatic Firebase setup. Google redirects the
@@ -16,8 +18,16 @@ const page = (title: string, body: string): string =>
 
 export function mountFirebaseSetupRoutes(app: FastifyInstance, service: FirebaseSetupService): void {
     app.get("/oauth/callback", async (request, reply) => {
+        // Google redirects the local browser to 127.0.0.1, so this only ever needs to
+        // answer loopback. Refuse off-host callers (audit S12) so a remote attacker can't
+        // submit their own code to hijack the Firebase provisioning, even if the daemon is
+        // exposed on a public interface or behind a proxy.
+        if (!isLoopback(request.ip)) {
+            return reply.status(404).type("text/plain").send("Not found");
+        }
         const q = (request.query ?? {}) as { code?: string; state?: string; error?: string };
         reply.header("Content-Type", "text/html; charset=utf-8");
+        setSecurityHeaders(reply);
 
         if (q.error) {
             service.markError(`Google sign-in was cancelled or denied (${q.error}).`);

@@ -21,7 +21,7 @@ jobs:
           node-version: 24  # LTS target (better-sqlite3 + native addons build cleanly)
 
       - name: Install workspace deps
-        run: npm install --workspaces --include-workspace-root
+        run: npm ci  # npm ci installs all workspaces strictly from package-lock.json (fails on drift)
 
       - name: Typecheck + test bbd
         working-directory: packages/bbd

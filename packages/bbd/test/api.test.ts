@@ -12,6 +12,7 @@ import { createConsoleLogger } from "../src/core/logger";
 
 const silent = createConsoleLogger("t", { level: "fatal" });
 const PASSWORD = "secret";
+const LOCAL_TOKEN = "local-trust-token-xyz";
 
 function setup() {
     const store = new InMemoryConfigStore();
@@ -22,7 +23,7 @@ function setup() {
 
 function fastifyApp(registry: OperationRegistry) {
     const app = Fastify();
-    mountFastify(app, registry, { logger: silent, auth: { password: PASSWORD } });
+    mountFastify(app, registry, { logger: silent, auth: { password: PASSWORD, localToken: LOCAL_TOKEN } });
     return app;
 }
 
@@ -44,18 +45,42 @@ test("GET /api/v1/ping -> 200 success envelope, no auth", async () => {
 test("auth-gated route: 401 without password, 200 with; config strips secrets", async () => {
     const { registry } = setup();
     const app = fastifyApp(registry);
-    // A non-loopback caller (remote, over the tunnel) needs the password.
+    // A remote caller needs the password.
     assert.equal(
         (await app.inject({ method: "GET", url: "/api/v1/config", remoteAddress: "203.0.113.5" })).statusCode,
         401
     );
-    const ok = await app.inject({ method: "GET", url: `/api/v1/config?password=${PASSWORD}`, remoteAddress: "203.0.113.5" });
+    const ok = await app.inject({
+        method: "GET",
+        url: "/api/v1/config",
+        headers: { authorization: `Bearer ${PASSWORD}` },
+        remoteAddress: "203.0.113.5"
+    });
     assert.equal(ok.statusCode, 200);
     assert.equal(ok.json().data.password, undefined, "password not leaked");
-    // A loopback caller (the local admin UI) is trusted without the password.
+    await app.close();
+});
+
+test("trust is by local token, not source IP: a loopback caller without the token is rejected (audit S1)", async () => {
+    const { registry } = setup();
+    const app = fastifyApp(registry);
+    // Loopback IP alone is NOT trusted (a same-host reverse proxy would forge it).
     assert.equal(
         (await app.inject({ method: "GET", url: "/api/v1/config", remoteAddress: "127.0.0.1" })).statusCode,
-        200
+        401
+    );
+    // Presenting the per-boot local token is trusted without a password.
+    const trusted = await app.inject({
+        method: "GET",
+        url: "/api/v1/config",
+        headers: { "x-bbd-local-auth": LOCAL_TOKEN },
+        remoteAddress: "203.0.113.5"
+    });
+    assert.equal(trusted.statusCode, 200);
+    // A wrong token is not trusted.
+    assert.equal(
+        (await app.inject({ method: "GET", url: "/api/v1/config", headers: { "x-bbd-local-auth": "nope" } })).statusCode,
+        401
     );
     await app.close();
 });
@@ -88,13 +113,23 @@ test("REST and the shared core produce a byte-identical envelope", async () => {
     await app.close();
 });
 
-test("Socket.IO adapter routes through the same core and acks the envelope", async () => {
-    const { registry } = setup();
+function fakeSocketIo(handshake: Record<string, unknown>) {
     const handlers: Record<string, (data: unknown, ack?: (r: unknown) => void) => void> = {};
+    const emitted: Array<{ event: string; data: unknown }> = [];
+    let joined: string | null = null;
+    let disconnected = false;
     const fakeSocket = {
-        handshake: { query: { password: PASSWORD }, address: "127.0.0.1" },
+        id: "sock-1",
+        handshake: { address: "127.0.0.1", query: {}, headers: {}, auth: {}, ...handshake },
         on: (event: string, fn: (data: unknown, ack?: (r: unknown) => void) => void) => {
             handlers[event] = fn;
+        },
+        join: (room: string) => {
+            joined = room;
+        },
+        emit: (event: string, data: unknown) => emitted.push({ event, data }),
+        disconnect: () => {
+            disconnected = true;
         }
     };
     const fakeIo = {
@@ -102,14 +137,40 @@ test("Socket.IO adapter routes through the same core and acks the envelope", asy
             if (event === "connection") fn(fakeSocket);
         }
     };
+    return { fakeIo, handlers, get joined() { return joined; }, get disconnected() { return disconnected; }, emitted };
+}
+
+test("Socket.IO adapter routes through the same core and acks the envelope", async () => {
+    const { registry } = setup();
+    const t = fakeSocketIo({ query: { password: PASSWORD } });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mountSocket(fakeIo as any, registry, { logger: silent, auth: { password: PASSWORD } });
+    mountSocket(t.fakeIo as any, registry, { logger: silent, auth: { password: PASSWORD } });
+    assert.equal(t.joined, "authed", "authenticated socket joins the broadcast room");
 
     const acked = await new Promise<{ status: number; data?: unknown }>(resolve => {
-        handlers["ping"]!({}, r => resolve(r as { status: number; data?: unknown }));
+        t.handlers["ping"]!({}, r => resolve(r as { status: number; data?: unknown }));
     });
     assert.equal(acked.status, 200);
     assert.deepEqual(acked.data, { pong: true });
+});
+
+test("Socket.IO connection without a credential is disconnected and never joins the room (audit S6)", () => {
+    const { registry } = setup();
+    const t = fakeSocketIo({ query: {} });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mountSocket(t.fakeIo as any, registry, { logger: silent, auth: { password: PASSWORD } });
+    assert.equal(t.disconnected, true);
+    assert.equal(t.joined, null, "rejected socket never joins the broadcast room");
+    assert.equal(t.handlers["ping"], undefined, "no op handlers registered for a rejected socket");
+});
+
+test("Socket.IO connection with the local token is trusted (audit S1)", () => {
+    const { registry } = setup();
+    const t = fakeSocketIo({ auth: { localAuth: LOCAL_TOKEN } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mountSocket(t.fakeIo as any, registry, { logger: silent, auth: { password: PASSWORD, localToken: LOCAL_TOKEN } });
+    assert.equal(t.disconnected, false);
+    assert.equal(t.joined, "authed");
 });
 
 test("generateOpenApi derives paths, params, and security from the registry", () => {

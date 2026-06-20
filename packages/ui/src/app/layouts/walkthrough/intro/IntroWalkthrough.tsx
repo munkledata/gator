@@ -44,13 +44,8 @@ const RESOURCES: Resource[] = [
         display: 'https://bluebubbles.app/web',
         title: 'Gator Web',
         body: 'Gator is not limited to running on your Android device. It can also be run in your browser so you can use it on the go! Connect it to this server once setup is complete.'
-    },
-    {
-        url: 'https://bluebubbles.app/donate',
-        display: 'https://bluebubbles.app/donate',
-        title: 'Support Us',
-        body: 'Gator is built on BlueBubbles, which was created and is run by independent engineers in their free time. Any sort of support is greatly appreciated! This can be monetary, or just a review.'
     }
+    // Donate/sponsor CTA removed: this fork does not solicit donations for upstream BlueBubbles.
 ];
 
 export const IntroWalkthrough = (): JSX.Element => {

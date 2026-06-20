@@ -11,7 +11,6 @@ import {
 import { FiGithub, FiMessageCircle } from 'react-icons/fi';
 import { FaDiscord } from 'react-icons/fa';
 import { AiOutlineHome } from 'react-icons/ai';
-import { MdOutlineAttachMoney } from 'react-icons/md';
 import { WalkthroughLayout } from '../../layouts/walkthrough/WalkthroughLayout';
 import logo from '../../../images/logo/icon-64.png';
 
@@ -55,18 +54,13 @@ const NavBar = (): JSX.Element => {
                             <ActionIcon size="lg" variant="subtle" aria-label="gator web"><FiMessageCircle /></ActionIcon>
                         </Anchor>
                     </Tooltip>
-                    <Tooltip label="Support Us" aria-label="donate-tip" withArrow>
-                        <Anchor href="https://bluebubbles.app/donate" style={{ textDecoration: 'none' }} target="_blank">
-                            <ActionIcon size="lg" variant="subtle" aria-label="donate"><MdOutlineAttachMoney /></ActionIcon>
-                        </Anchor>
-                    </Tooltip>
                     <Tooltip label="Join our Discord" aria-label="discord-tip" withArrow>
                         <Anchor href="https://discord.gg/yC4wr38" style={{ textDecoration: 'none' }} target="_blank">
                             <ActionIcon size="lg" variant="subtle" aria-label="discord"><FaDiscord /></ActionIcon>
                         </Anchor>
                     </Tooltip>
                     <Tooltip label="Read our Source Code" aria-label="github-tip" withArrow>
-                        <Anchor href="https://github.com/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
+                        <Anchor href="https://github.com/munkledata/gator" style={{ textDecoration: 'none' }} target="_blank">
                             <ActionIcon size="lg" variant="subtle" aria-label="github"><FiGithub /></ActionIcon>
                         </Anchor>
                     </Tooltip>

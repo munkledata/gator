@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { safeEqual } from "../../api/auth";
 import { generatePkce } from "../../networking/oauthPkce";
 import { buildGoogleAuthUrl, exchangeCodeForToken, type OAuthFetch } from "./googleOAuth";
 import { provisionFirebase } from "./firebaseProvisioner";
@@ -76,7 +77,8 @@ export class FirebaseSetupService {
         const pending = this.#pending;
         if (!pending) throw new Error("No Firebase setup is in progress");
         if (!code) throw new Error("Authorization was denied or returned no code");
-        if (state !== pending.state) throw new Error("OAuth state mismatch — please restart setup");
+        // Constant-time compare of the CSRF state token (audit S12).
+        if (!safeEqual(state, pending.state)) throw new Error("OAuth state mismatch — please restart setup");
         this.#pending = null;
 
         try {

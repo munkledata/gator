@@ -1,7 +1,7 @@
 import path from "node:path";
 import os from "node:os";
 import { randomBytes } from "node:crypto";
-import Fastify from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 import { Server as SocketServer } from "socket.io";
 
 import { Daemon } from "./bootstrap/daemon";
@@ -16,7 +16,8 @@ import { buildAdminOperations } from "./api/operations/adminOperations";
 import { buildAdminCommandOperations } from "./api/operations/adminCommandOperations";
 import { buildReadOperations } from "./api/operations/readOperations";
 import { mountFastify } from "./api/fastifyAdapter";
-import { mountSocket } from "./api/socketAdapter";
+import { mountSocket, AUTHED_ROOM } from "./api/socketAdapter";
+import { RateLimiter } from "./api/auth";
 import { serveStaticUi } from "./api/staticUi";
 import { openChatDbOrEmpty } from "./data/imessage/connection";
 import { introspectSchema } from "./data/imessage/schema";
@@ -50,8 +51,10 @@ import { ChatDbWatcher } from "./data/imessage/watcher";
 import { FileCursorStore } from "./data/imessage/FileCursorStore";
 import { DrizzleWebhookStore } from "./webhooks/DrizzleWebhookStore";
 import { WebhookSubscriber } from "./webhooks/WebhookSubscriber";
-import { WebhookDispatcher } from "./networking/webhook";
+import { WebhookDispatcher, isPublicHttpUrl } from "./networking/webhook";
 import { CloudflareDdns } from "./networking/CloudflareDdns";
+import { CertificateService, hostFromServerAddress } from "./networking/CertificateService";
+import { ZrokTunnel } from "./networking/ZrokTunnel";
 import { buildWebhookOperations } from "./api/operations/webhookOperations";
 import { wireMessageFanout } from "./serialize/messageFanout";
 import { buildNotificationRegistry } from "./notifications/buildNotificationRegistry";
@@ -74,8 +77,24 @@ export interface BackendOptions {
     port?: number;
     /** Auth password (defaults to the stored config's password). */
     password?: string;
+    /**
+     * Per-boot secret that marks the local admin UI as trusted. The Electron shell
+     * generates it, passes it here, and injects it into its own renderer; presented as
+     * the `x-bbd-local-auth` header, it grants password-free access — never the source
+     * IP (audit S1). Undefined in headless runs (everything uses the password).
+     */
+    localAuthToken?: string;
+    /**
+     * Bind the plain-HTTP listener to all interfaces (`0.0.0.0`) instead of loopback.
+     * Default is `127.0.0.1` (audit S4): plain HTTP must not be reachable off-host —
+     * remote clients use the TLS listener or an external reverse proxy. Opt in only for
+     * a trusted LAN with no untrusted hosts.
+     */
+    bindAll?: boolean;
     /** Private-API handshake secret (defaults to a fresh random secret each boot). */
     privateApiSecret?: string;
+    /** Path to the bundled `zrok` binary (the shell passes the packaged location). */
+    zrokBinPath?: string;
     /** Root logger (defaults to a console logger). */
     logger?: Logger;
     /** If set, the built UI bundle at this directory is served at `/` (SPA). */
@@ -96,6 +115,7 @@ export interface RunningBackend {
  * fall back to sensible defaults.
  */
 export async function startBbdBackend(options: BackendOptions = {}): Promise<RunningBackend> {
+    const bootAt = Date.now();
     const logger = options.logger ?? createConsoleLogger("bbd");
     const host = new HeadlessHostPlatform();
     const userDataPath = options.userDataPath ?? host.userDataPath();
@@ -107,7 +127,17 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const configService = new ConfigService(configStore, new EventBus(), logger);
     const config = configStore.getConfig();
     const port = options.port ?? config.socketPort;
-    const auth = { password: options.password ?? config.password };
+    // The actual listening port, resolved after listen() — lets callers pass port 0 for
+    // an OS-assigned free port (tests) and reflects the real port back to the shell.
+    let boundPort = port;
+    const auth = {
+        password: options.password ?? config.password,
+        localToken: options.localAuthToken,
+        // Brute-force lockout for the password path (audit S5): 10 failures / 60s per IP.
+        rateLimiter: new RateLimiter()
+    };
+    // Plain HTTP binds to loopback unless explicitly opted into all-interfaces (audit S4).
+    const bindHost = options.bindAll ? "0.0.0.0" : "127.0.0.1";
 
     // Read-only chat.db readers (Phase 3) feeding the migrated read operations.
     const { db: chatDb, degraded: readPathDegraded } = openChatDbOrEmpty(chatDbPath);
@@ -130,8 +160,17 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     });
     const sender = new MessageSender(transport, new AppleScriptFallback(new OsascriptRunner(), logger), logger);
     const contacts = new ContactsService(new MacContactsSource(), logger);
-    // Declared early so the admin-command dispatcher can emit() to clients once io exists.
-    let io: SocketServer | null = null;
+    // Two Socket.IO servers may be live: one on the loopback plain-HTTP listener (local
+    // UI) and one on the public TLS listener. Declared early so the admin-command
+    // dispatcher can emit() to clients once they exist.
+    let plainIo: SocketServer | null = null;
+    let tlsIo: SocketServer | null = null;
+    // Server-push only ever reaches authenticated sockets (audit S6): they join
+    // AUTHED_ROOM at handshake, so an unauthenticated connection sees nothing.
+    const emitToAuthed = (event: string, data: unknown): void => {
+        plainIo?.to(AUTHED_ROOM).emit(event, data);
+        tlsIo?.to(AUTHED_ROOM).emit(event, data);
+    };
 
     const registry = new OperationRegistry()
         .registerAll(buildCoreOperations({ configStore, version: BBD_VERSION }))
@@ -152,8 +191,24 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     // Webhooks + the live read -> serialize-once -> socket + webhook + push fanout.
     const domainBus = new EventBus<DomainEvents>();
     const webhookStore = new DrizzleWebhookStore(dbPath);
-    const webhookSubscriber = new WebhookSubscriber(webhookStore, new WebhookDispatcher({ logger }), logger);
+    // SSRF guard ON by default (audit S5): webhooks may only target public http(s) hosts.
+    const webhookSubscriber = new WebhookSubscriber(
+        webhookStore,
+        new WebhookDispatcher({ logger, allow: isPublicHttpUrl }),
+        logger
+    );
     registry.registerAll(buildWebhookOperations({ store: webhookStore }));
+
+    // Forward live Private-API helper events (typing indicators, read receipts,
+    // group rename/participant changes, incoming FaceTime, etc.) to socket + webhook
+    // clients. The transport always supported pushed events; the fork simply never
+    // subscribed, so only chat.db-polled new/updated-message events reached clients
+    // (audit: real-time event regression). new-message/updated-message still come from
+    // the chat.db watcher below; these are the everything-else live events.
+    transport.onEvent((event, data) => {
+        emitToAuthed(event, data);
+        void webhookSubscriber.onEvent(event, data);
+    });
 
     // Push notifications: FCM (HTTP v1) is registered up front; its credentials are read
     // live from the config store, so uploading the service account post-boot just works.
@@ -170,7 +225,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             const n = configStore.getConfig().notifications;
             await configService.update({ notifications: { ...n, fcm: { ...n.fcm, enabled: true, serviceAccount: account } } });
         },
-        emit: state => io?.emit("firebase-setup-status", state),
+        emit: state => emitToAuthed("firebase-setup-status", state),
         logger
     });
 
@@ -187,12 +242,34 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         };
     }, { logger });
 
+    // zrok tunnel — a real public-URL provider (replaces the dead config-only stub). It
+    // proxies to the loopback API and writes the acquired https URL back as the server
+    // address so clients can pair with it.
+    const zrok = new ZrokTunnel({
+        binPath: options.zrokBinPath ?? "zrok",
+        settings: () => {
+            const c = configStore.getConfig() as Record<string, unknown>;
+            return {
+                enabled: c.tunnelProvider === "zrok" || Boolean(c.enable_zrok),
+                token: String(c.zrok_token ?? ""),
+                reservedName: c.zrok_reserved_name ? String(c.zrok_reserved_name) : undefined,
+                backendTarget: `127.0.0.1:${boundPort}`
+            };
+        },
+        onUrl: async url => {
+            await configService.update({ serverAddress: url } as Record<string, unknown>);
+            emitToAuthed("new-server", url);
+        },
+        logger
+    });
+
     // The admin-command dispatcher — the UI's former-IPC channels over HTTP.
     registry.registerAll(
         buildAdminCommandOperations({
             configService,
             configStore,
             cloudflareDdns,
+            zrok,
             firebaseSetup,
             chatReader,
             contacts,
@@ -202,7 +279,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             stats: new StatsReader(chatDb),
             permissions: new MacPermissions(),
             version: BBD_VERSION,
-            emit: (event, data) => io?.emit(event, data),
+            emit: (event, data) => emitToAuthed(event, data),
             logger
         })
     );
@@ -215,7 +292,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const app = Fastify();
 
     wireMessageFanout(domainBus, {
-        emit: (type, dto) => io?.emit(type, dto),
+        emit: (type, dto) => emitToAuthed(type, dto),
         webhook: (type, dto) => webhookSubscriber.onEvent(type, dto),
         // Only fresh inserts get a push; updates (edits/reactions hitting existing rows)
         // ride the socket/webhook sinks but shouldn't re-alert the device.
@@ -227,23 +304,69 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         }
     });
 
+    // Mounts the API + attachment + firebase + health routes on a Fastify instance.
+    // `withUi` controls whether the bundled admin SPA is served from this listener — we
+    // serve it only on the loopback listener so the admin UI isn't exposed on the public
+    // TLS endpoint (native clients use the API directly).
+    const mountApiRoutes = (target: FastifyInstance, withUi: boolean): void => {
+        mountFastify(target, registry, { logger, auth });
+        mountAttachmentRoutes(target, { streamer: attachmentStreamer, auth });
+        mountFirebaseSetupRoutes(target, firebaseSetup);
+        // Unauthenticated liveness/readiness probe for the shell/launchd watchdog.
+        // Leaks only liveness + whether the chat.db read path is degraded — no secrets.
+        target.get("/api/v1/health", async () => ({
+            ok: true,
+            degraded: readPathDegraded,
+            uptimeMs: Date.now() - bootAt
+        }));
+        if (withUi && options.serveUiFrom) serveStaticUi(target, options.serveUiFrom);
+    };
+
+    const certService = new CertificateService(path.join(userDataPath, "certs"), logger);
+    let tlsApp: FastifyInstance | null = null;
+
     const httpService: Service = {
         name: "http",
         async start() {
-            mountFastify(app, registry, { logger, auth });
-            mountAttachmentRoutes(app, { streamer: attachmentStreamer, auth });
-            mountFirebaseSetupRoutes(app, firebaseSetup);
-            // The Electron shell serves its bundled UI from the same origin as the API,
-            // so the renderer's apiClient is same-origin and the headless extraction is free.
-            if (options.serveUiFrom) serveStaticUi(app, options.serveUiFrom);
-            await app.listen({ port, host: "0.0.0.0" });
-            io = new SocketServer(app.server, { allowEIO3: true });
-            mountSocket(io, registry, { logger, auth });
-            logger.info(`API listening on :${port}`);
+            mountApiRoutes(app, true);
+            await app.listen({ port, host: bindHost });
+            const addr = app.server.address();
+            if (addr && typeof addr === "object") boundPort = addr.port;
+            plainIo = new SocketServer(app.server, { allowEIO3: true });
+            mountSocket(plainIo, registry, { logger, auth });
+            logger.info(`API listening on ${bindHost}:${boundPort}`);
         },
         async stop() {
-            io?.close();
+            plainIo?.close();
             await app.close();
+        }
+    };
+
+    // Optional built-in TLS listener for remote clients (audit S4 / restored self-signed
+    // HTTPS capability). Binds 0.0.0.0 with a self-signed (or user-supplied) cert so the
+    // daemon can terminate TLS itself instead of requiring an external reverse proxy.
+    const tlsService: Service = {
+        name: "tls",
+        async start() {
+            const c = configStore.getConfig();
+            if (!c.tlsEnabled) return;
+            let material;
+            if (c.tlsCertPath && c.tlsKeyPath) {
+                material = certService.loadFrom(c.tlsCertPath, c.tlsKeyPath);
+            } else {
+                const host = hostFromServerAddress(c.serverAddress);
+                material = await certService.ensureSelfSigned("Gator", host ? [host] : []);
+            }
+            tlsApp = Fastify({ https: { key: material.key, cert: material.cert } });
+            mountApiRoutes(tlsApp, false);
+            await tlsApp.listen({ port: c.tlsPort, host: "0.0.0.0" });
+            tlsIo = new SocketServer(tlsApp.server, { allowEIO3: true });
+            mountSocket(tlsIo, registry, { logger, auth });
+            logger.info(`TLS API listening on 0.0.0.0:${c.tlsPort}`);
+        },
+        async stop() {
+            tlsIo?.close();
+            await tlsApp?.close();
         }
     };
 
@@ -265,6 +388,12 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         stop: () => cloudflareDdns.stop()
     };
 
+    const zrokService: Service = {
+        name: "zrok",
+        start: () => zrok.start(),
+        stop: () => zrok.stop()
+    };
+
     const readPathService: Service = {
         name: "read-path",
         start: async () => {
@@ -279,7 +408,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     };
 
     const daemon = new Daemon({
-        services: [transportService, httpService, schedulerService, readPathService, ddnsService],
+        services: [transportService, httpService, tlsService, schedulerService, readPathService, ddnsService, zrokService],
         hostPlatform: host,
         logger
     });
@@ -287,7 +416,9 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
 
     return {
         daemon,
-        port,
+        get port() {
+            return boundPort;
+        },
         stop: () => daemon.stop()
     };
 }

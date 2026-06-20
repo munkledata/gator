@@ -87,6 +87,13 @@ export const ConfigSchema = z
         cloudflareDdnsZone: z.string().default(""),
         cloudflareDdnsProxied: z.boolean().default(false),
         cloudflareDdnsIntervalSeconds: z.number().default(300),
+        // Built-in TLS: when enabled, bbd serves HTTPS on tlsPort (0.0.0.0) for remote
+        // clients, in addition to the loopback plain-HTTP listener for the local UI. A
+        // self-signed cert is generated on demand; a user-supplied cert/key path overrides.
+        tlsEnabled: z.boolean().default(false),
+        tlsPort: z.number().int().min(1).max(65535).default(1235),
+        tlsCertPath: z.string().default(""),
+        tlsKeyPath: z.string().default(""),
         notifications: NotificationsConfigSchema
     })
     // passthrough() keeps the wider legacy config surface (the UI reads ~40 snake_case

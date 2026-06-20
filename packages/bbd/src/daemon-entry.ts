@@ -22,7 +22,12 @@ startBbdBackend({
     messagesDir: process.env.BBD_MESSAGES_DIR,
     port: toPort(process.env.BBD_PORT),
     password: process.env.BBD_PASSWORD,
+    // Per-boot local-trust token the shell shares with its renderer (audit S1).
+    localAuthToken: process.env.BBD_LOCAL_AUTH || undefined,
+    // Plain HTTP stays loopback-only unless the host explicitly opts in (audit S4).
+    bindAll: process.env.BBD_BIND_ALL === "1",
     privateApiSecret: process.env.BBD_PA_SECRET,
+    zrokBinPath: process.env.BBD_ZROK_BIN || undefined,
     serveUiFrom: process.env.BBD_UI_DIR,
     logger
 })

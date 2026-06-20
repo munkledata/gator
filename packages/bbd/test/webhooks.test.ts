@@ -6,7 +6,7 @@ import path from "node:path";
 import { InMemoryWebhookStore } from "../src/webhooks/Webhook";
 import { WebhookSubscriber } from "../src/webhooks/WebhookSubscriber";
 import { buildWebhookOperations } from "../src/api/operations/webhookOperations";
-import { WebhookDispatcher, type WebhookFetch } from "../src/networking/webhook";
+import { WebhookDispatcher, isPublicHttpUrl, type WebhookFetch } from "../src/networking/webhook";
 import { wireMessageFanout } from "../src/serialize/messageFanout";
 import { FileCursorStore } from "../src/data/imessage/FileCursorStore";
 import { EventBus } from "../src/core/bus";
@@ -79,4 +79,33 @@ test("FileCursorStore round-trips the cursor and resets on a missing file", asyn
     } finally {
         fs.rmSync(file, { force: true });
     }
+});
+
+test("isPublicHttpUrl blocks SSRF targets and non-http schemes (audit S5)", () => {
+    // Allowed: public http(s) hosts.
+    assert.equal(isPublicHttpUrl("https://hooks.example.com/x"), true);
+    assert.equal(isPublicHttpUrl("http://93.184.216.34/x"), true);
+    // Blocked: loopback, private ranges, link-local/metadata, localhost, schemes.
+    assert.equal(isPublicHttpUrl("http://127.0.0.1:1234/api/v1/admin/command"), false);
+    assert.equal(isPublicHttpUrl("http://localhost/x"), false);
+    assert.equal(isPublicHttpUrl("http://10.0.0.5/x"), false);
+    assert.equal(isPublicHttpUrl("http://192.168.1.1/x"), false);
+    assert.equal(isPublicHttpUrl("http://172.16.0.1/x"), false);
+    assert.equal(isPublicHttpUrl("http://169.254.169.254/latest/meta-data"), false);
+    assert.equal(isPublicHttpUrl("http://[::1]/x"), false);
+    assert.equal(isPublicHttpUrl("file:///etc/passwd"), false);
+    assert.equal(isPublicHttpUrl("gopher://x"), false);
+    assert.equal(isPublicHttpUrl("not a url"), false);
+});
+
+test("WebhookDispatcher refuses a disallowed target when an allow guard is set (audit S5)", async () => {
+    let calls = 0;
+    const fetch: WebhookFetch = async () => {
+        calls++;
+        return { ok: true, status: 200 };
+    };
+    const d = new WebhookDispatcher({ logger: silent, fetch, allow: isPublicHttpUrl });
+    const ok = await d.dispatch({ url: "http://169.254.169.254/" }, { type: "new-message", data: {} });
+    assert.equal(ok, false);
+    assert.equal(calls, 0, "disallowed target is never fetched");
 });

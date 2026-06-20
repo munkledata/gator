@@ -1,6 +1,47 @@
 import { createHmac } from "node:crypto";
 import type { Logger } from "../core/logger";
 
+/**
+ * Default SSRF guard for user-supplied webhook URLs (audit S3/S5): allow only http(s)
+ * to a public host. Blocks loopback, RFC-1918/ULA private ranges, link-local, CGNAT,
+ * multicast/reserved, and `localhost`/`*.local` — so a webhook can't be pointed at the
+ * daemon's own admin API, a cloud metadata endpoint (169.254.169.254), or other
+ * internal services. (Hostnames are checked syntactically; DNS-rebinding to a private
+ * IP is out of scope for this static check.)
+ */
+export function isPublicHttpUrl(raw: string): boolean {
+    let url: URL;
+    try {
+        url = new URL(raw);
+    } catch {
+        return false;
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    const host = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    if (host === "localhost" || host.endsWith(".local")) return false;
+
+    // IPv4 literal?
+    const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (v4) {
+        const [a, b] = [Number(v4[1]), Number(v4[2])];
+        if (a === 10 || a === 127 || a === 0) return false; // private / loopback / "this network"
+        if (a === 172 && b >= 16 && b <= 31) return false; // 172.16/12
+        if (a === 192 && b === 168) return false; // 192.168/16
+        if (a === 169 && b === 254) return false; // link-local (incl. cloud metadata)
+        if (a === 100 && b >= 64 && b <= 127) return false; // CGNAT 100.64/10
+        if (a >= 224) return false; // multicast / reserved
+        return true;
+    }
+    // IPv6 literal?
+    if (host.includes(":")) {
+        if (host === "::1" || host === "::") return false; // loopback / unspecified
+        if (host.startsWith("fe80") || host.startsWith("fc") || host.startsWith("fd")) return false; // link-local / ULA
+        if (host.startsWith("::ffff:")) return false; // IPv4-mapped — reject to be safe
+        return true;
+    }
+    return true; // a DNS name
+}
+
 export interface WebhookEvent {
     type: string;
     data: unknown;

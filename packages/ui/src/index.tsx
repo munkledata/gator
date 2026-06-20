@@ -125,17 +125,8 @@ onEvent('refresh-alerts', (__: any) => {
     loadAlerts(true);
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-onEvent('update-available', (data: any) => {
-    store.dispatch(setConfig({
-        name: 'update_available',
-        value: {
-            version: data,
-            show: true
-        },
-        saveToDb: false
-    }));
-});
+// NOTE: the 'update-available' subscription was removed — the shell's install-update
+// IPC is a hard-fail stub and nothing produces this event, so it was dead plumbing.
 
 const domNode = document.getElementById('root')!;
 const root = createRoot(domNode);

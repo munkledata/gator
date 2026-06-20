@@ -16,13 +16,13 @@
     "release": "npm run build-ui && npm run build-bbd && npm run release-server",
     "prepare": "husky"
   },
-  "repository": "https://www.github.com/BlueBubblesApp/BlueBubbles-Server",
-  "author": "BlueBubbles Development Team <bluebubblesapp@gmail.com>",
+  "repository": "https://github.com/munkledata/gator",
+  "author": "munkledata <munkledata@gmail.com>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://www.github.com/BlueBubblesApp/BlueBubbles-Server/issues"
+    "url": "https://github.com/munkledata/gator/issues"
   },
-  "homepage": "https://www.bluebubbles.app",
+  "homepage": "https://github.com/munkledata/gator",
   "devEngines": {
     "runtime": {
       "name": "node",
@@ -43,6 +43,5 @@
   "overrides": {
     "node-addon-api": "^8.0.0",
     "esbuild": "^0.28.0"
-  },
-  "allowScripts": {}
+  }
 }

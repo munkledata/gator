@@ -1,0 +1,46 @@
+name: CI
+
+# PR + push gate. Runs typecheck/test/lint on every pull request and on pushes to
+# master so regressions are caught before merge — independent of the bbd-v* SEA
+# build (bbd-daemon.yml) and the release build (main.yml). No packaging here.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24  # matches devEngines; native addons build cleanly here
+
+      # npm ci installs strictly from package-lock.json (fails if it drifts).
+      - name: Install workspace deps
+        run: npm ci
+
+      # The bbd tests load better-sqlite3 as a native addon; rebuild it for the
+      # CI Node ABI (the lockfile may carry an Electron-ABI build from postinstall).
+      - name: Rebuild better-sqlite3 for Node
+        run: npm rebuild better-sqlite3
+
+      - name: Typecheck bbd
+        run: npm run -w @bluebubbles/bbd typecheck
+
+      - name: Test bbd
+        run: npm run -w @bluebubbles/bbd test
+
+      - name: Lint bbd
+        run: npm run -w @bluebubbles/bbd lint
+
+      # protocol ships a typecheck script; ui/server currently expose lint only —
+      # run what exists, skip the rest (no-op if a package lacks the script).
+      - name: Typecheck protocol
+        run: npm run -w @bluebubbles/protocol typecheck
+
+      - name: Lint server
+        run: npm run -w @bluebubbles/server lint

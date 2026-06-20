@@ -14,6 +14,9 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
     {
         files: ["src/**/*.ts", "test/**/*.ts"],
+        // Register the typescript-eslint plugin so `@typescript-eslint/*` rules (referenced
+        // by inline eslint-disable comments) are defined under flat config.
+        plugins: { "@typescript-eslint": tseslint.plugin },
         languageOptions: {
             parser: tseslint.parser,
             parserOptions: { sourceType: "module" }

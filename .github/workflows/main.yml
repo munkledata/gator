@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '24'
       - name: Install Dependencies
-        run: npm install
+        run: npm ci  # npm ci installs strictly from package-lock.json (fails on drift)
       - name: Install the Apple certificate and provisioning profile
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}

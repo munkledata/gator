@@ -11,8 +11,11 @@ import type { PrivateApiTransport } from "../../private-api/PrivateApiTransport"
 import type { StatsReader } from "../../data/imessage/StatsReader";
 import type { MacPermissions } from "../../host-platform/MacPermissions";
 import type { CloudflareDdns } from "../../networking/CloudflareDdns";
+import type { ZrokTunnel } from "../../networking/ZrokTunnel";
 import { parseServiceAccount } from "../../notifications/fcm/serviceAccount";
 import { assertSecureServerAddress } from "../../config/serverAddress";
+import { sanitizeConfig } from "../../config/sanitize";
+import { getLanIpv4 } from "../../networking/lanAddress";
 import type { FirebaseSetupService } from "../../notifications/fcm/FirebaseSetupService";
 import type { Logger } from "../../core/logger";
 
@@ -27,6 +30,7 @@ export interface AdminCommandDeps {
     stats: StatsReader;
     permissions: MacPermissions;
     cloudflareDdns: CloudflareDdns;
+    zrok: ZrokTunnel;
     firebaseSetup: FirebaseSetupService;
     version: string;
     /** Push a Socket.IO event to all connected clients (former main->renderer pushes). */
@@ -47,7 +51,7 @@ const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === "ob
  * so the UI needs no password — see execute.ts.
  */
 export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[] {
-    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, firebaseSetup, emit, logger } =
+    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, zrok, firebaseSetup, emit, logger } =
         deps;
 
     // Lightweight in-memory alert log (the legacy server's server-side notifications).
@@ -67,7 +71,10 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         Object.fromEntries(Object.entries(obj).map(([k, v]) => [fn(k), v]));
 
     const readConfig = (): Record<string, unknown> => {
-        const snake = mapKeys(configStore.getConfig() as Record<string, unknown>, toSnake);
+        // Strip secrets BEFORE snake-casing so this admin path can't leak the FCM private
+        // key, Cloudflare/zrok tokens, OAuth secret, or VAPID key (audit S3) — the same
+        // canonical strip the REST /config endpoint uses.
+        const snake = mapKeys(sanitizeConfig(configStore.getConfig()), toSnake);
         // BBD_SKIP_SETUP lets a test/dev boot land past the first-run walkthrough.
         if (process.env.BBD_SKIP_SETUP === "1") snake.tutorial_is_done = true;
         return snake;
@@ -77,6 +84,12 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         // Defense-in-depth behind the UI's own validation: reject an insecure public
         // http:// server address (loopback/LAN http stays allowed for the LAN-URL case).
         assertSecureServerAddress(patch.server_address);
+        // Enforce a server-side minimum password strength (audit S2). Empty = "unset"
+        // (allowed, e.g. first-run); a set password must be at least 8 characters so a
+        // trivially-guessable one can't be configured even outside the UI.
+        if (typeof patch.password === "string" && patch.password.length > 0 && patch.password.length < 8) {
+            throw new Error("Password must be at least 8 characters");
+        }
         const updated = await configService.update(mapKeys(patch, toCamel) as Partial<Config>);
         const snake = mapKeys(updated as Record<string, unknown>, toSnake);
         emit("config-update", snake);
@@ -168,8 +181,16 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
                 return { success: false, message: "Invalid service account JSON (need project_id, client_email, private_key)" };
             }
             const notifications = configStore.getConfig().notifications;
+            // Persist ONLY the three fields the sender uses, not the whole uploaded JSON
+            // (which also carries private_key_id, client_id, cert URLs). Minimizes the
+            // plaintext credential footprint at rest (audit S3, info).
+            const serviceAccount = {
+                project_id: account.projectId,
+                client_email: account.clientEmail,
+                private_key: account.privateKey
+            };
             await configService.update({
-                notifications: { ...notifications, fcm: { enabled: true, serviceAccount: d } }
+                notifications: { ...notifications, fcm: { ...notifications.fcm, enabled: true, serviceAccount } }
             });
             emit("config-update", readConfig());
             return { success: true, projectId: account.projectId, clientEmail: account.clientEmail };
@@ -254,18 +275,52 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
             return { ok: true };
         },
 
-        // --- tunnel config (the lifecycle/provisioning is config-backed for now) ---
-        "set-zrok-token": d => setConfig({ zrok_token: d.token ?? d.value ?? d }),
+        // --- zrok tunnel (now actually brings the tunnel up/down, not just config) ---
+        "set-zrok-token": async d => {
+            await setConfig({ zrok_token: d.token ?? d.value ?? d, enable_zrok: true, tunnel_provider: "zrok" });
+            // Restart so the new token takes effect, then report status.
+            await zrok.stop();
+            await zrok.start();
+            return { success: true, running: zrok.isRunning(), url: zrok.currentUrl(), available: zrok.isAvailable() };
+        },
         "register-zrok-email": d => setConfig({ zrok_email: d.email ?? d.value ?? d }),
-        "disable-zrok": () => setConfig({ enable_zrok: false, tunnel_provider: "none" }),
+        "start-zrok": async () => {
+            await zrok.start();
+            return { running: zrok.isRunning(), url: zrok.currentUrl(), available: zrok.isAvailable() };
+        },
+        "disable-zrok": async () => {
+            await zrok.stop();
+            return setConfig({ enable_zrok: false, tunnel_provider: "none" });
+        },
+        "get-zrok-status": () => ({
+            running: zrok.isRunning(),
+            url: zrok.currentUrl(),
+            available: zrok.isAvailable()
+        }),
         "save-lan-url": () => {
             const port = (configStore.getConfig() as unknown as { socketPort?: number }).socketPort ?? 1234;
-            return setConfig({ server_address: `http://localhost:${port}` });
+            // Advertise the real LAN IP so other devices can connect, not localhost.
+            const ip = getLanIpv4() ?? "localhost";
+            return setConfig({ server_address: `http://${ip}:${port}` });
         },
 
         // --- Cloudflare dynamic DNS (config persisted via get/set-config; these act on it) ---
         "cloudflare-ddns-sync-now": () => cloudflareDdns.syncOnce(),
-        "get-public-ip": () => cloudflareDdns.getPublicIp().then(ip => ({ ip })).catch(() => ({ ip: null }))
+        "get-public-ip": () => cloudflareDdns.getPublicIp().then(ip => ({ ip })).catch(() => ({ ip: null })),
+
+        // --- built-in TLS / HTTPS listener (self-signed or user-supplied cert) ---
+        "get-tls-status": () => {
+            const c = configStore.getConfig() as Record<string, unknown>;
+            return {
+                enabled: Boolean(c.tlsEnabled),
+                port: Number(c.tlsPort ?? 1235),
+                customCert: Boolean(c.tlsCertPath && c.tlsKeyPath)
+            };
+        },
+        // Enabling TLS persists config; the HTTPS listener (and self-signed cert
+        // generation) comes up on the next daemon start — the UI prompts a restart.
+        "enable-tls": d => setConfig({ tls_enabled: true, ...(d.port != null ? { tls_port: Number(d.port) } : {}) }),
+        "disable-tls": () => setConfig({ tls_enabled: false })
     };
 
     const Input = z.object({ channel: z.string().min(1), data: z.unknown().optional() });

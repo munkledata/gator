@@ -1,3 +1,6 @@
+import os from "node:os";
+import path from "node:path";
+import fs from "node:fs/promises";
 import type { Logger } from "../core/logger";
 import type { PrivateApiTransport } from "../private-api/PrivateApiTransport";
 import type { AppleScriptFallback } from "./appleScriptFallback";
@@ -6,6 +9,32 @@ export interface SendTextInput {
     chatGuid: string;
     text?: string;
     subject?: string;
+    /** Screen/bubble effect id (e.g. "com.apple.MobileSMS.expressivesend.impact"). */
+    effectId?: string;
+    /** GUID of the message being replied to (threaded reply). */
+    selectedMessageGuid?: string;
+    /** Part index of the replied-to message (for multi-part messages). */
+    partIndex?: number;
+    /** Run data-detector (link/date) scanning on the text. */
+    ddScan?: boolean;
+    /** Client-supplied correlation id, echoed back for optimistic-send matching. */
+    tempGuid?: string;
+    /** Serialized attributed body for rich text (passed through to the helper). */
+    attributedBody?: unknown;
+}
+
+export interface SendAttachmentInput {
+    chatGuid: string;
+    /** File name (used for the on-disk temp name and the attachment name). */
+    name: string;
+    /** Base64-encoded file bytes. */
+    dataBase64: string;
+    isAudioMessage?: boolean;
+    subject?: string;
+    effectId?: string;
+    selectedMessageGuid?: string;
+    partIndex?: number;
+    tempGuid?: string;
 }
 
 export interface SendReactionInput {
@@ -42,14 +71,62 @@ export class MessageSender {
         if (this.#transport.isConnected()) {
             const res = await this.#transport.send({
                 action: "send-message",
-                data: { chatGuid: input.chatGuid, message: input.text ?? "", subject: input.subject }
+                data: compact({
+                    chatGuid: input.chatGuid,
+                    message: input.text ?? "",
+                    subject: input.subject,
+                    effectId: input.effectId,
+                    selectedMessageGuid: input.selectedMessageGuid,
+                    partIndex: input.partIndex,
+                    ddScan: input.ddScan,
+                    tempGuid: input.tempGuid,
+                    attributedBody: input.attributedBody
+                })
             });
             if (res.error) throw new Error(res.error);
             return { guid: res.identifier, viaPrivateApi: true };
         }
-        this.#logger.debug("helper not connected; using AppleScript fallback");
-        await this.#fallback.sendText(input);
+        // Fidelity fields (effects, replies, attributed text, subject) need the Private
+        // API; the AppleScript fallback can only send plain text.
+        this.#logger.debug("helper not connected; using AppleScript fallback (plain text only)");
+        await this.#fallback.sendText({ chatGuid: input.chatGuid, text: input.text });
         return { viaPrivateApi: false };
+    }
+
+    /**
+     * Send a file as an attachment via the Private API. The bytes arrive base64-encoded
+     * over the JSON API; we materialize them to a temp file the helper can read, then
+     * remove it once the send is acked. Restores the attachment-send capability the fork
+     * had dropped entirely.
+     */
+    async sendAttachment(input: SendAttachmentInput): Promise<SendResult> {
+        if (!this.#transport.isConnected()) {
+            throw new Error('"send-attachment" requires the Private API (helper not connected)');
+        }
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gator-att-"));
+        const safeName = path.basename(input.name || "attachment");
+        const filePath = path.join(dir, safeName);
+        await fs.writeFile(filePath, Buffer.from(input.dataBase64, "base64"));
+        try {
+            const res = await this.#transport.send({
+                action: "send-attachment",
+                data: compact({
+                    chatGuid: input.chatGuid,
+                    attachmentPath: filePath,
+                    attachmentName: safeName,
+                    isAudioMessage: input.isAudioMessage ?? false,
+                    subject: input.subject,
+                    effectId: input.effectId,
+                    selectedMessageGuid: input.selectedMessageGuid,
+                    partIndex: input.partIndex,
+                    tempGuid: input.tempGuid
+                })
+            });
+            if (res.error) throw new Error(res.error);
+            return { guid: res.identifier, viaPrivateApi: true };
+        } finally {
+            await fs.rm(dir, { recursive: true, force: true });
+        }
     }
 
     async sendReaction(input: SendReactionInput): Promise<SendResult> {
@@ -101,4 +178,9 @@ export class MessageSender {
         if (res.error) throw new Error(res.error);
         return { guid: res.identifier, viaPrivateApi: true };
     }
+}
+
+/** Drop undefined keys so optional fidelity fields aren't sent as nulls to the helper. */
+function compact(obj: Record<string, unknown>): Record<string, unknown> {
+    return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 }

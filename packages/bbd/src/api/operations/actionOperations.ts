@@ -20,9 +20,50 @@ export function buildActionOperations(deps: ActionOperationDeps): Operation[] {
             method: "POST",
             path: "/api/v1/message/text",
             auth: true,
-            input: z.object({ chatGuid: z.string().min(1), text: z.string().optional(), subject: z.string().optional() }),
-            summary: "Send a text message",
+            input: z.object({
+                chatGuid: z.string().min(1),
+                text: z.string().optional(),
+                subject: z.string().optional(),
+                effectId: z.string().optional(),
+                selectedMessageGuid: z.string().optional(),
+                partIndex: z.coerce.number().int().min(0).optional(),
+                ddScan: z.coerce.boolean().optional(),
+                tempGuid: z.string().optional(),
+                attributedBody: z.unknown().optional()
+            }),
+            summary: "Send a text message (effects, replies, attributed body via Private API)",
             handler: (_ctx, input) => deps.sender.sendText(input)
+        }),
+        defineOperation({
+            name: "send-attachment",
+            method: "POST",
+            path: "/api/v1/message/attachment",
+            auth: true,
+            input: z.object({
+                chatGuid: z.string().min(1),
+                name: z.string().min(1),
+                // Base64-encoded file bytes (kept on the JSON envelope — no extra dep).
+                data: z.string().min(1),
+                isAudioMessage: z.coerce.boolean().optional(),
+                subject: z.string().optional(),
+                effectId: z.string().optional(),
+                selectedMessageGuid: z.string().optional(),
+                partIndex: z.coerce.number().int().min(0).optional(),
+                tempGuid: z.string().optional()
+            }),
+            summary: "Send a file attachment (Private API)",
+            handler: (_ctx, input) =>
+                deps.sender.sendAttachment({
+                    chatGuid: input.chatGuid,
+                    name: input.name,
+                    dataBase64: input.data,
+                    isAudioMessage: input.isAudioMessage,
+                    subject: input.subject,
+                    effectId: input.effectId,
+                    selectedMessageGuid: input.selectedMessageGuid,
+                    partIndex: input.partIndex,
+                    tempGuid: input.tempGuid
+                })
         }),
         defineOperation({
             name: "send-reaction",

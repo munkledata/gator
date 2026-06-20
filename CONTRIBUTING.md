@@ -1,72 +1,74 @@
 # Contribution Guide
 
-We encourage all contributions to this project! All we ask are you follow these simple rules when contributing:
+Contributions to Gator are welcome! Gator is a fork of BlueBubbles Server, restructured into an
+npm workspace (`packages/{protocol,bbd,server,ui}`). Please follow these basics:
 
-* Write clean code
-* Comment your code
-* Follow Typescript and React best practices
-    - [Typescript Best Practices](https://www.typescriptlang.org/docs/handbook/declaration-files/do-s-and-don-ts.html)
-    - [React Best Practices](https://reactjs.org/docs/thinking-in-react.html)
+* Write clean, commented code
+* Follow TypeScript and React best practices
+* Keep the `@bluebubbles/protocol` v1 wire contract frozen — changes there must be additive and
+  non-breaking (deployed clients depend on it byte-for-byte)
 
-## Pre-requisites
+## Prerequisites
 
-Please make sure you have completed the following pre-requisites:
+* **Git**
+* **Node.js 24+** with **npm** (see `.nvmrc`). Use npm, not Yarn — Yarn can hit native-build
+  errors on this project.
+* **macOS** — the daemon reads the local Messages database and uses macOS-only native modules.
+* A code editor with TypeScript, ESLint, and Prettier support (e.g. VS Code).
 
-* Install Git: [download](https://git-scm.com/downloads)
-* Install NodeJS (Latest Stable): [download](https://nodejs.org/en/)
-* Install a code editor. Here are a few recommended editors:
-    - [Visual Studio Code](https://code.visualstudio.com/download)
-    - [Android Studio](https://developer.android.com/studio)
-    - [Atom](https://atom.io/)
+## Cloning & remotes
 
-Once you have a code editor installed, remember to install all of the required plugins/extensions such as the following:
+This fork lives at <https://github.com/munkledata/gator>. Fork it on GitHub, then:
 
-* Typescript
-* ESLint
-* Prettier
+```bash
+git clone git@github.com:<your-username>/gator.git
+cd gator
+git remote add upstream git@github.com:munkledata/gator.git
+git fetch upstream
+```
 
-## Forking the Repository
+There is **no `development` branch**. All work targets **`master`** (PRs merge into `master`).
 
-In order to start contributing, follow these steps:
+## Building & running
 
-1. Create a GitHub account
-2. Fork the `BlueBubbles-Server` repository: [here](https://github.com/BlueBubblesApp/BlueBubbles-Server)
-3. On your desktop, clone your forked repository:
-    * HTTPS: `git clone https://github.com/BlueBubblesApp/BlueBubbles-Server.git`
-    * SSH: `git clone git@github.com:BlueBubblesApp/BlueBubbles-Server.git`
-4. Set the upstream to our main repo (this will allow you to pull official changes)
-    * `git remote add upstream git@github.com:BlueBubblesApp/BlueBubbles-Server.git`
-5. Fetch all the required branches/code
-    * `git fetch`
-    * `git fetch upstream`
-6. Pull the latest changes, or a specific branch you want to start from
-    * Pull code from the main repository's master branch: `git pull upstream master`
-    * Checkout a specific branch: `git checkout upstream <name of branch>`
+```bash
+npm install                            # installs all workspaces; postinstall rebuilds native addons
 
-## Committing Code
+# One-time: build the two things the Electron shell expects to exist
+npm run build-ui                       # build the UI and copy it where the daemon serves it
+npm run build-bbd                      # bundle the daemon the shell forks (dist/daemon-entry.cjs)
 
-1. Make your code changes :)
-2. Create your own branch
-    * `git checkout -b <your name>/<feature>`
-    * Example: `git checkout -b zach/improved-animations`
-3. Stage your changes to the commit using a code-editor plugin, or Git directly
-    * Stage a specific file: `git add <file name>`
-    * Stage all changes: `git add -A`
-4. Commit your changes
-    * `git commit -m "<Description of your changes>"`
-5. Push your changes to your forked repository
-    * `git push origin <your branch name>`
+npm run start                          # launch the Electron shell (forks the daemon, opens the UI)
+```
 
-## Submitting a Pull-Request
+For fast UI iteration, run the Vite dev server on its own and point a browser at it:
 
-Once you have made all your changes, follow these instructions:
+```bash
+npm run start -w @bluebubbles/ui       # Vite dev server (talks to a running daemon)
+```
 
-1. Login to GitHub's website
-2. Go to your forked `BlueBubbles-Server` repository
-3. Go to the `Pull requests` tab
-4. Create a new Pull request, merging your changes into the main `development` branch
-5. Please include the following information with your pull request:
-    * The problem
-    * What your code solves
-    * How you fixed it
-6. Once submitted, your changes will be reviewed, and hopefully committed into the master branch!
+## Tests, typecheck & lint
+
+The test suite lives in `packages/bbd`. The tests load `better-sqlite3` as a native addon, so
+rebuild it for your Node ABI first (the postinstall builds it against Electron's ABI):
+
+```bash
+npm rebuild better-sqlite3
+npm test -w @bluebubbles/bbd
+```
+
+Typecheck and lint before opening a PR:
+
+```bash
+npm run typecheck -w @bluebubbles/bbd
+npm run lint -w @bluebubbles/bbd
+```
+
+CI runs these on every pull request and on pushes to `master`.
+
+## Submitting changes
+
+1. Branch off `master`: `git checkout -b <your-name>/<feature>`
+2. Commit with a clear message describing the problem and the fix
+3. Push to your fork and open a Pull Request against `munkledata/gator` `master`
+4. Include: the problem, what your change does, and how you verified it

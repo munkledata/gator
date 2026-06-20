@@ -53,17 +53,12 @@ const GUIDES: Guide[] = [
         title: 'Gator Web',
         body: 'Gator is not limited to running on your Android device. It can also be run in your browser so you can use it on the go! Connect it to this server once setup is complete.'
     },
+    // Donate/sponsor CTAs removed: this fork does not solicit donations for upstream BlueBubbles.
     {
-        url: 'https://github.com/sponsors/BlueBubblesApp',
-        display: 'https://github.com/sponsors/BlueBubblesApp',
-        title: 'Sponsor Us',
-        body: 'Sponsor us by contributing a recurring donation to us, through GitHub. A monthly donation is just another way to help support the developers and help maintain the project!'
-    },
-    {
-        url: 'https://bluebubbles.app/donate',
-        display: 'https://bluebubbles.app/donate',
-        title: 'Support Us',
-        body: 'Gator is built on BlueBubbles, which was created and is run by independent engineers in their free time. Any sort of support is greatly appreciated! This can be monetary, or just a review.'
+        url: 'https://github.com/munkledata/gator',
+        display: 'https://github.com/munkledata/gator',
+        title: 'Source Code',
+        body: 'Gator is open source. Browse the code, file issues, or contribute on GitHub.'
     }
 ];
 

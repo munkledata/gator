@@ -2,6 +2,8 @@
 // Making them relative to the scripts folder will break the commands
 module.exports = {
     "productName": "Gator",
+    // appId is intentionally kept as the upstream value for client wire-compat and
+    // userData continuity (changing it would orphan existing installs' config/data dir).
     "appId": "com.BlueBubbles.BlueBubbles-Server",
     "electronVersion": "42.4.1",
     // No Developer ID on this machine, so electron-builder leaves Electron's placeholder
@@ -40,8 +42,9 @@ module.exports = {
         "publish": [
             {
                 "provider": "github",
-                "repo": "bluebubbles-server",
-                "owner": "BlueBubblesApp",
+                // Publish to this fork's release repo (remote `gator`), not upstream.
+                "repo": "gator",
+                "owner": "munkledata",
                 "private": false,
                 "channel": "latest",
                 "releaseType": "draft",

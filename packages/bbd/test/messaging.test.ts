@@ -51,6 +51,51 @@ test("sendText falls back to AppleScript with positional args (no interpolation)
     assert.deepEqual(runner.calls[0]!.args, ["c", "hi"]);
 });
 
+test("sendText forwards fidelity fields (effect, reply, ddScan) and omits undefined", async () => {
+    const t = new FakeTransport();
+    const sender = new MessageSender(t, new AppleScriptFallback(new FakeRunner(), silent), silent);
+    await sender.sendText({
+        chatGuid: "c",
+        text: "hi",
+        effectId: "com.apple.MobileSMS.expressivesend.impact",
+        selectedMessageGuid: "reply-to-guid",
+        ddScan: true,
+        tempGuid: "temp-1"
+    });
+    const data = t.lastRequest?.data as Record<string, unknown>;
+    assert.equal(data.effectId, "com.apple.MobileSMS.expressivesend.impact");
+    assert.equal(data.selectedMessageGuid, "reply-to-guid");
+    assert.equal(data.ddScan, true);
+    assert.equal(data.tempGuid, "temp-1");
+    assert.equal("subject" in data, false, "undefined fields are not sent");
+});
+
+test("sendAttachment writes bytes to a temp file, sends, and returns the GUID ack", async () => {
+    const t = new FakeTransport();
+    const sender = new MessageSender(t, new AppleScriptFallback(new FakeRunner(), silent), silent);
+    const res = await sender.sendAttachment({
+        chatGuid: "c",
+        name: "pic.png",
+        dataBase64: Buffer.from("hello-bytes").toString("base64")
+    });
+    assert.equal(res.guid, "GUID-1");
+    assert.equal(t.lastRequest?.action, "send-attachment");
+    const data = t.lastRequest?.data as Record<string, unknown>;
+    assert.equal(data.chatGuid, "c");
+    assert.equal(data.attachmentName, "pic.png");
+    assert.match(String(data.attachmentPath), /pic\.png$/);
+});
+
+test("sendAttachment requires the Private API (no AppleScript fallback)", async () => {
+    const t = new FakeTransport();
+    t.connected = false;
+    const sender = new MessageSender(t, new AppleScriptFallback(new FakeRunner(), silent), silent);
+    await assert.rejects(
+        () => sender.sendAttachment({ chatGuid: "c", name: "f.bin", dataBase64: "AAAA" }),
+        /requires the Private API/
+    );
+});
+
 test("sendReaction requires the Private API", async () => {
     const t = new FakeTransport();
     t.connected = false;

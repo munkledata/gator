@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { defineOperation, type Operation } from "../Operation";
 import type { ConfigStore } from "../../data/config-db/ConfigStore";
 import type { Device } from "../../notifications/types";
+import { sanitizeConfig } from "../../config/sanitize";
 
 /** Permissive "no meaningful input" schema. */
 const NoInput = z.object({}).passthrough();
@@ -25,18 +26,6 @@ export interface CoreOperationDeps {
     configStore: ConfigStore;
     version: string;
     now?: () => number;
-}
-
-/** Strip secrets before returning config over the wire. */
-function sanitizeConfig(deps: CoreOperationDeps) {
-    const { password, notifications, ...rest } = deps.configStore.getConfig();
-    void password;
-    // The FCM service account holds a private key, and the OAuth client secret is a
-    // credential too — never expose either over the API.
-    const { serviceAccount, oauthClientSecret, ...fcm } = notifications.fcm;
-    void serviceAccount;
-    void oauthClientSecret;
-    return { ...rest, notifications: { ...notifications, fcm } };
 }
 
 /**
@@ -72,7 +61,7 @@ export function buildCoreOperations(deps: CoreOperationDeps): Operation[] {
             auth: true,
             input: NoInput,
             summary: "Current configuration (secrets stripped)",
-            handler: () => sanitizeConfig(deps)
+            handler: () => sanitizeConfig(deps.configStore.getConfig())
         }),
         defineOperation({
             name: "list-devices",

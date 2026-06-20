@@ -5,6 +5,13 @@ import { safeEqual, RateLimiter } from "./auth";
 export interface AuthConfig {
     /** The configured shared password (the frozen v1 model). */
     password: string;
+    /**
+     * Per-boot secret that marks the local admin UI as trusted (password-free). Set by
+     * the Electron shell and presented by its renderer; never derived from the source
+     * IP (see {@link file://./auth.ts} `isTrustedLocal`). Undefined in headless runs,
+     * where every caller must use the password.
+     */
+    localToken?: string;
     rateLimiter?: RateLimiter;
 }
 
@@ -16,10 +23,9 @@ export interface InvocationRequest {
     /** Rate-limit key (e.g. client IP). */
     rateLimitKey?: string;
     /**
-     * The caller is the local machine (loopback). The admin UI is served by the
-     * daemon and runs in the local Electron window, so — like the legacy trusted
-     * renderer — it is allowed without the password; the password still guards every
-     * remote request (over the tunnel).
+     * The caller is the trusted local admin UI (it presented the per-boot local token,
+     * not merely a loopback IP — see {@link file://./auth.ts} `isTrustedLocal`). Trusted
+     * callers skip the password; the password still guards every remote request.
      */
     trusted?: boolean;
 }

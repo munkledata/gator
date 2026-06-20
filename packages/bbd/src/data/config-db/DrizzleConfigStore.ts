@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import Database from "better-sqlite3";
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
@@ -23,17 +24,42 @@ export class DrizzleConfigStore implements ConfigStore {
         const sqlite = new Database(dbPath);
         sqlite.pragma("journal_mode = WAL");
 
+        // The config blob holds the server password and every credential in plaintext, so
+        // restrict the DB (and its WAL sidecars, created by the pragma above) to the owner
+        // — otherwise it lands world/group-readable under the process umask (audit S8).
+        for (const f of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
+            try {
+                fs.chmodSync(f, 0o600);
+            } catch {
+                /* sidecar may not exist yet on a brand-new DB — recreated owner-only on write */
+            }
+        }
+
         // A `config`/`devices` table left over from the legacy server (or an older bbd)
         // can have an incompatible schema — e.g. the legacy `config` table has no `key`
         // column — which makes every query throw ("no such column: key") and crashes the
-        // daemon on boot. bbd never wrote to those tables, so drop any table that's
-        // missing our discriminating column; CREATE TABLE IF NOT EXISTS then recreates it.
-        const dropIfIncompatible = (table: string, requiredCol: string): void => {
+        // daemon on boot. bbd never wrote to those tables, but rather than DROP them (which
+        // silently destroys a user's old data on upgrade), RENAME the incompatible table to
+        // a one-time backup so the rows survive for manual recovery; CREATE TABLE IF NOT
+        // EXISTS then recreates a clean one. Table/column names here are compile-time
+        // literals (never request data), so the interpolation is injection-free.
+        const backupIfIncompatible = (table: string, requiredCol: string): void => {
             const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
-            if (cols.length > 0 && !cols.some(c => c.name === requiredCol)) sqlite.exec(`DROP TABLE ${table}`);
+            if (cols.length === 0 || cols.some(c => c.name === requiredCol)) return; // absent or already compatible
+            const backup = `${table}_legacy_backup`;
+            const exists = sqlite
+                .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+                .get(backup);
+            if (exists) {
+                // Original legacy data was already preserved on a prior boot; this is a
+                // newer incompatible copy we can safely discard without losing the backup.
+                sqlite.exec(`DROP TABLE ${table}`);
+            } else {
+                sqlite.exec(`ALTER TABLE ${table} RENAME TO ${backup}`);
+            }
         };
-        dropIfIncompatible("config", "key");
-        dropIfIncompatible("devices", "provider");
+        backupIfIncompatible("config", "key");
+        backupIfIncompatible("devices", "provider");
 
         sqlite.exec(
             `CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
