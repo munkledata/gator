@@ -51,7 +51,7 @@ export const ApiLayout = (): JSX.Element => {
                     </Flex>
                     <Divider orientation='horizontal' />
                     <Text>
-                        BlueBubbles offers a high-level REST API to interact with the server, as well as iMessage itself.
+                        Gator offers a high-level REST API to interact with the server, as well as iMessage itself.
                         With the API, you'll be able to send messages, fetch messages, filter chats, and more! To see what
                         else you can do in the API, please see the documentation below:
                     </Text>

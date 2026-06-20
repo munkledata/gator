@@ -4,7 +4,7 @@
 // "localhost" cert), so electron-builder skips code signing and leaves the
 // app with Electron's placeholder signature (Identifier=Electron, resources
 // not sealed). That invalid signature is why transferred copies report
-// "BlueBubbles is damaged and can't be opened" on Apple Silicon.
+// "Gator is damaged and can't be opened" on Apple Silicon.
 //
 // This hook ad-hoc signs the bundle so its signature is valid and self-consistent.
 // Ad-hoc is enough to stop the "damaged" error on your own Macs (after removing

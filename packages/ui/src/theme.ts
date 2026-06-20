@@ -14,7 +14,7 @@ const gator: MantineColorsTuple = [
     '#008226'
 ];
 
-// The BlueBubbles / chat-bubble blue, kept as a secondary accent (e.g. links, stat badges).
+// The chat-bubble blue, kept as a secondary accent (e.g. links, stat badges).
 const brand: MantineColorsTuple = [
     '#e8f3ff',
     '#d3e4fd',

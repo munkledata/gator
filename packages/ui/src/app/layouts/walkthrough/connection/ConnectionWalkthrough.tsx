@@ -22,16 +22,16 @@ export const ConnectionWalkthrough = (): JSX.Element => {
             <Box px={20}>
                 <Text fz='4xl'>Connection Setup</Text>
                 <Text fz='md' mt={20}>
-                    In order for you to be able to connect to this BlueBubbles server from the internet, you'll need
+                    In order for you to be able to connect to this Gator server from the internet, you'll need
                     to either setup a Dynamic DNS or use one of the integrated proxy services. Proxy services create
-                    a tunnel from your macOS device to your BlueBubbles clients. It does this by routing all communications
-                    from your BlueBubbles server, through the proxy service's servers, and to your BlueBubbles client. Without
-                    this, your BlueBubbles server will only be accessible on your local network.
+                    a tunnel from your macOS device to your Gator clients. It does this by routing all communications
+                    from your Gator server, through the proxy service's servers, and to your Gator client. Without
+                    this, your Gator server will only be accessible on your local network.
                 </Text>
                 <Text fz='md' mt={20}>
-                    Now, we also do not want anyone else to be able to access your BlueBubbles server except you, so we have
+                    Now, we also do not want anyone else to be able to access your Gator server except you, so we have
                     setup password-based authentication. All clients will be required to provide the password in order to
-                    interact with the BlueBubbles Server's API.
+                    interact with the Gator Server's API.
                 </Text>
                 <Text fz='md' mt={20}>
                     Below, you'll be asked to set a password, as well as select the proxy service that you would like to use.

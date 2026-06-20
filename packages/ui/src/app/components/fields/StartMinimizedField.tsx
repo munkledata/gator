@@ -20,7 +20,7 @@ export const StartMinimizedField = ({ helpText }: StartMinimizedFieldProps): JSX
             <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
-                        When enabled, the BlueBubbles Server will be minimized after starting up.
+                        When enabled, the Gator Server will be minimized after starting up.
                     </Text>
                 )}
             </Text>

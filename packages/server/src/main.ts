@@ -159,7 +159,16 @@ function registerShellHandlers(): void {
         "hot-restart": relaunch,
         "full-restart": relaunch,
         "install-update": () => ({ success: false, message: "Auto-update is not available in this build" }),
-        "reset-app": () => ({ success: false, message: "Reset is not available from the UI" }),
+        "reset-app": () => {
+            // Full reset: stop the daemon, wipe its persisted state, and relaunch into first-run setup.
+            stopBackend();
+            const userData = app.getPath("userData");
+            for (const file of ["config.db", "config.db-wal", "config.db-shm", "cursor.json"]) {
+                try { fs.unlinkSync(path.join(userData, file)); } catch { /* noop (missing file is fine) */ }
+            }
+            relaunch();
+            return { success: true };
+        },
         "reinstall-helper-bundle": () => ({ success: false, message: "Helper reinstall is not available yet" })
     };
     for (const [channel, fn] of Object.entries(handlers)) {
@@ -191,7 +200,7 @@ if (!app.requestSingleInstanceLock()) {
             const msg = (err as Error)?.stack ?? String(err);
             logStartupError(`Failed to start backend: ${msg}`);
             dialog.showErrorBox(
-                "BlueBubbles couldn't start",
+                "Gator couldn't start",
                 `The backend failed to start, so the app will close.\n\n${(err as Error)?.message ?? err}\n\nDetails were written to the startup-error.log in the app's log folder.`
             );
             app.exit(1);

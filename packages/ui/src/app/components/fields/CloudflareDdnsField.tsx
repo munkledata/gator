@@ -66,7 +66,7 @@ export const CloudflareDdnsField = (): JSX.Element => {
                 label='Keep a Cloudflare DNS record pointed at this server'
             />
             <Text fz='xs' c='dimmed' mt={4}>
-                For a home / dynamic-IP server on a custom domain. BlueBubbles updates your subdomain&apos;s
+                For a home / dynamic-IP server on a custom domain. Gator updates your subdomain&apos;s
                 <Code>A</Code> record to this server&apos;s current public IP{publicIp ? ` (currently ${publicIp})` : ''}.
             </Text>
 

@@ -11,7 +11,7 @@ export const NotificationsWalkthrough = (): JSX.Element => {
             <Box px={20}>
                 <Text fz='4xl'>Notifications</Text>
                 <Text fz='md' mt={20} mb={20}>
-                    BlueBubbles uses <strong>Firebase Cloud Messaging</strong> (HTTP&nbsp;v1) to push notifications to
+                    Gator uses <strong>Firebase Cloud Messaging</strong> (HTTP&nbsp;v1) to push notifications to
                     your devices. Set it up automatically by signing into Google, or upload an existing service account.
                     You can also do this later from Settings. Your private key never leaves this Mac.
                 </Text>

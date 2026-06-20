@@ -64,9 +64,9 @@ module.exports = {
         "entitlements": "./scripts/entitlements.mac.plist",
         "entitlementsInherit": "./scripts/entitlements.mac.plist",
         "extendInfo": {
-            "NSContactsUsageDescription": "BlueBubbles needs access to your Contacts",
-            "NSAppleEventsUsageDescription": "BlueBubbles needs access to run AppleScripts",
-            "NSSystemAdministrationUsageDescription": "BlueBubbles needs access to manage your system",
+            "NSContactsUsageDescription": "Gator needs access to your Contacts",
+            "NSAppleEventsUsageDescription": "Gator needs access to run AppleScripts",
+            "NSSystemAdministrationUsageDescription": "Gator needs access to manage your system",
         },
         "gatekeeperAssess": false,
         "minimumSystemVersion": "26.0",

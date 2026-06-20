@@ -114,7 +114,7 @@ test("Socket.IO adapter routes through the same core and acks the envelope", asy
 
 test("generateOpenApi derives paths, params, and security from the registry", () => {
     const { registry } = setup();
-    const doc = generateOpenApi(registry, { title: "BlueBubbles", version: "2.0" }) as Record<string, any>;
+    const doc = generateOpenApi(registry, { title: "Gator", version: "2.0" }) as Record<string, any>;
     assert.equal(doc.openapi, "3.1.0");
     assert.ok(doc.paths["/api/v1/ping"].get);
     assert.ok(doc.paths["/api/v1/devices"].post.requestBody, "POST has a request body schema");

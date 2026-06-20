@@ -21,7 +21,7 @@ export const WebhooksTable = ({ webhooks }: { webhooks: Array<WebhookItem> }): J
     return (
         <Box>
             <Table>
-                <Table.Caption>These are callbacks to receive events from the BlueBubbles Server</Table.Caption>
+                <Table.Caption>These are callbacks to receive events from the Gator Server</Table.Caption>
                 <Table.Thead>
                     <Table.Tr>
                         <Table.Th>URL</Table.Th>

@@ -20,7 +20,7 @@ export const OpenFindMyOnStartupField = ({ helpText }: OpenFindMyOnStartupFieldP
             <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
-                        When enabled, BlueBubbles will automatically open, then hide the FindMy app when the server starts.
+                        When enabled, Gator will automatically open, then hide the FindMy app when the server starts.
                         This is to trigger the fetch of locations from the FindMy app so the server can cache them for clients.
                     </Text>
                 )}

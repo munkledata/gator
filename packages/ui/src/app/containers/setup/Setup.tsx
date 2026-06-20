@@ -50,9 +50,9 @@ const NavBar = (): JSX.Element => {
                             <ActionIcon size="lg" variant="subtle" aria-label="website"><AiOutlineHome /></ActionIcon>
                         </Anchor>
                     </Tooltip>
-                    <Tooltip label="BlueBubbles Web" aria-label="website-tip" withArrow>
+                    <Tooltip label="Gator Web" aria-label="website-tip" withArrow>
                         <Anchor href="https://bluebubbles.app/web" style={{ textDecoration: 'none' }} target="_blank">
-                            <ActionIcon size="lg" variant="subtle" aria-label="bluebubbles web"><FiMessageCircle /></ActionIcon>
+                            <ActionIcon size="lg" variant="subtle" aria-label="gator web"><FiMessageCircle /></ActionIcon>
                         </Anchor>
                     </Tooltip>
                     <Tooltip label="Support Us" aria-label="donate-tip" withArrow>

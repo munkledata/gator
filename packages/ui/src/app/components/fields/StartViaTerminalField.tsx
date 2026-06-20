@@ -21,7 +21,7 @@ export const StartViaTerminalField = ({ helpText }: StartViaTerminalFieldProps):
             <Text fz="xs" c="dimmed">
                 {helpText ?? (
                     <Text>
-                        When BlueBubbles starts up, it will auto-reload itself in terminal mode.
+                        When Gator starts up, it will auto-reload itself in terminal mode.
                         When in terminal, type "help" for command information.
                     </Text>
                 )}

@@ -19,13 +19,13 @@ const RESOURCES: Resource[] = [
         url: 'https://bluebubbles.app/install',
         display: 'https://bluebubbles.app/install',
         title: 'Installation Guide',
-        body: 'Let us help walk you through the full setup of BlueBubbles. This guide will take you step by step to set up the BlueBubbles Server and connect your devices.'
+        body: 'Let us help walk you through the full setup of Gator. This guide will take you step by step to set up the Gator Server and connect your devices.'
     },
     {
         url: 'https://docs.bluebubbles.app',
         display: 'https://docs.bluebubbles.app',
         title: 'Documentation & User Guide',
-        body: 'Read about what BlueBubbles has to offer, how to set it up, and how to use the plethora of features. This documentation also provides more links to other useful articles.'
+        body: 'Read about what Gator has to offer, how to set it up, and how to use the plethora of features. This documentation also provides more links to other useful articles.'
     },
     {
         url: 'https://documenter.getpostman.com/view/765844/UV5RnfwM',
@@ -42,8 +42,8 @@ const RESOURCES: Resource[] = [
     {
         url: 'https://bluebubbles.app/web',
         display: 'https://bluebubbles.app/web',
-        title: 'BlueBubbles Web',
-        body: 'BlueBubbles is not limited to running on your Android device. It can also be run in your browser so you can use it on the go! Connect it to this server once setup is complete.'
+        title: 'Gator Web',
+        body: 'Gator is not limited to running on your Android device. It can also be run in your browser so you can use it on the go! Connect it to this server once setup is complete.'
     },
     {
         url: 'https://bluebubbles.app/donate',
@@ -57,16 +57,16 @@ export const IntroWalkthrough = (): JSX.Element => {
     return (
         <Box>
             <Box px={20}>
-                <Text fz='4xl'>Welcome to BlueBubbles!</Text>
+                <Text fz='4xl'>Welcome to Gator!</Text>
                 <Text fz='md' mt={20}>
-                    Hey there, and welcome to the BlueBubbles Server! For starters, BlueBubbles is a cross-platform and
+                    Hey there, and welcome to the Gator Server! For starters, Gator is a cross-platform and
                     open-source ecosystem of apps, enabling the use of iMessage on Android, Web, and PC (Linux and Windows).
                     This Server App is the hub for all your connected devices; allowing you to send messages and receive
                     notifications as you would on an Apple device.
                 </Text>
                 <Text fz='3xl' mt={40}>Useful Resources</Text>
                 <Text fz='md' my={20}>
-                    In addition to the links in the navigation bar, use the links below to learn more about BlueBubbles and how to use it!
+                    In addition to the links in the navigation bar, use the links below to learn more about Gator and how to use it!
                 </Text>
                 <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing='md'>
                     {RESOURCES.map(r => (

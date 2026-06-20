@@ -47,7 +47,7 @@ export const DynamicDnsDialog = ({
                 <br />
                 <List>
                     <List.Item>https://thequickbrownfox.ddns.net:{port}</List.Item>
-                    <List.Item>https://bluebubbles.no-ip.org:{port}</List.Item>
+                    <List.Item>https://gator.no-ip.org:{port}</List.Item>
                 </List>
                 <br />
                 <Text>Only secure <strong>https://</strong> URLs are allowed, so make sure you have a valid TLS certificate for your domain.</Text>

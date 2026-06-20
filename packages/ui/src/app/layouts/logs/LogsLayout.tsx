@@ -70,7 +70,7 @@ const confirmationActions: ConfirmationItems = {
     fullRestart: {
         message: (
             'Are you sure you want to perform a full restart?<br /><br />' +
-            'This will close and re-open the BlueBubbles Server'
+            'This will close and re-open the Gator Server'
         ),
         func: fullRestart
     }
@@ -120,7 +120,7 @@ export const LogsLayout = (): JSX.Element => {
                                 <Text fw={600} mb="xs">Information</Text>
                                 <Box>
                                     <Text>
-                                        This page will allow you to perform debugging actions on your BlueBubbles server.
+                                        This page will allow you to perform debugging actions on your Gator server.
                                         As many of you know, software is not perfect, and there will always be edge cases
                                         depending on the environment. These controls allow us to get the information needed, or
                                         take the required actions to solve an issue. It also allows you to "see" into what

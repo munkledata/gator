@@ -147,7 +147,7 @@ export const FcmServiceAccountField = (): JSX.Element => {
             <Box>
                 <Text fw={600} mb={4}>Set up automatically</Text>
                 <Text fz='sm' c='dimmed' mb={12}>
-                    Sign into Google and BlueBubbles will create the Firebase project and service account for you.
+                    Sign into Google and Gator will create the Firebase project and service account for you.
                     This uses your own Google OAuth client, so nothing is shared with anyone else.
                 </Text>
 

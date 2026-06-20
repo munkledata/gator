@@ -7,11 +7,9 @@ import {
     CloseButton,
     Flex,
     Group,
-    Anchor,
     Drawer,
     Stack,
     Text,
-    Tooltip,
     Menu,
     Button,
     Badge,
@@ -21,7 +19,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { FiHome, FiSettings, FiMenu, FiBell, FiTrash } from 'react-icons/fi';
 import { FaGoogle } from 'react-icons/fa';
-import { AiOutlineBug, AiOutlineHome, AiOutlineApi } from 'react-icons/ai';
+import { AiOutlineBug, AiOutlineApi } from 'react-icons/ai';
 import { BsChevronDown, BsCheckAll, BsBook, BsPersonCircle, BsFillCalendarCheckFill, BsPhone } from 'react-icons/bs';
 import { IconType } from 'react-icons';
 
@@ -246,13 +244,6 @@ const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileP
             </Text>
 
             <Group>
-                <Tooltip label="Website Home" aria-label="website-tip" withArrow>
-                    <Anchor href="https://bluebubbles.app" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="subtle" aria-label="website">
-                            <AiOutlineHome />
-                        </ActionIcon>
-                    </Anchor>
-                </Tooltip>
                 <Box style={{ position: 'relative', float: 'left' }}>
                     <ActionIcon
                         size="lg"

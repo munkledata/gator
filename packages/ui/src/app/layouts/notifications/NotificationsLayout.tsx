@@ -14,7 +14,7 @@ export const NotificationsLayout = (): JSX.Element => {
             <Divider orientation='horizontal' />
 
             <Text fz='md' mt={20} mb={20}>
-                BlueBubbles delivers push notifications through <strong>Firebase Cloud Messaging</strong> (HTTP&nbsp;v1).
+                Gator delivers push notifications through <strong>Firebase Cloud Messaging</strong> (HTTP&nbsp;v1).
                 Let it set up the Firebase project for you by signing into Google, or upload an existing service
                 account. Either way, your private key stays on this Mac and is never shared with clients.
             </Text>

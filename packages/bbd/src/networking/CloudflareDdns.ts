@@ -10,7 +10,7 @@ import type { Logger } from "../core/logger";
  *
  * Default is DNS-only (grey-cloud, `proxied: false`): the record exposes the real IP so
  * clients can reach the server directly on its port — Cloudflare's HTTP proxy can't
- * forward the arbitrary port a BlueBubbles server listens on.
+ * forward the arbitrary port a Gator server listens on.
  */
 export type DdnsFetch = (
     url: string,

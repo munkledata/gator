@@ -21,7 +21,7 @@ export function mountFirebaseSetupRoutes(app: FastifyInstance, service: Firebase
 
         if (q.error) {
             service.markError(`Google sign-in was cancelled or denied (${q.error}).`);
-            return reply.send(page("Setup cancelled", "You can close this window and try again from BlueBubbles."));
+            return reply.send(page("Setup cancelled", "You can close this window and try again from Gator."));
         }
         if (!q.code || !q.state) {
             return reply.send(page("Something went wrong", "No authorization code was returned. Close this window and retry."));
@@ -30,6 +30,6 @@ export function mountFirebaseSetupRoutes(app: FastifyInstance, service: Firebase
         // Provisioning runs for minutes; don't block the response on it. Errors are
         // captured into the service's status (surfaced in the app), so swallow here.
         void service.complete(q.code, q.state).catch(() => undefined);
-        return reply.send(page("BlueBubbles is setting up Firebase…", "You can close this window and return to the app to watch progress."));
+        return reply.send(page("Gator is setting up Firebase…", "You can close this window and return to the app to watch progress."));
     });
 }

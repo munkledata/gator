@@ -153,7 +153,7 @@ export const ContactsLayout = (): JSX.Element => {
         }
 
         if (contacts.length === 0) {
-            return wrap(<Text fz="md">BlueBubbles found no contacts in your Mac's Address Book!</Text>);
+            return wrap(<Text fz="md">Gator found no contacts in your Mac's Address Book!</Text>);
         }
 
         return null;
@@ -348,7 +348,7 @@ export const ContactsLayout = (): JSX.Element => {
             </Stack>
             <Box ml={20} mr={20}>
                 <Text fz='md'>
-                    Using the button below, you can authorize BlueBubbles to access your Google Contacts. This will allow BlueBubbles to
+                    Using the button below, you can authorize Gator to access your Google Contacts. This will allow Gator to
                     download your contacts + avatars from Google, and serve them to any connected clients.
                 </Text>
                 <Anchor
@@ -387,7 +387,7 @@ export const ContactsLayout = (): JSX.Element => {
                             <Text fw={600} mb="xs">Information</Text>
                             <Box>
                                 <Text>
-                                    Here are the contacts on your macOS device that BlueBubbles knows about,
+                                    Here are the contacts on your macOS device that Gator knows about,
                                     and will serve to any clients that want to know about them. These include
                                     contacts from this Mac's Address Book, as well as contacts from uploads/imports
                                     or manual entry.

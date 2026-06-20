@@ -15,7 +15,7 @@ export const PrivateApiWalkthrough = (): JSX.Element => {
             <Box px={20}>
                 <Text fz='4xl'>Private API Setup (Advanced | Optional)</Text>
                 <Text fz='md' mt={20}>
-                    You may already know this, but BlueBubbles is one of the only cross-platform iMessage solution that
+                    You may already know this, but Gator is one of the only cross-platform iMessage solution that
                     supports sending reactions, replies, subjects, and effects. This is because we developed an Objective-C
                     library that allows us to interface with Apple's "Private APIs". Normally, this is not possible, however,
                     after disabling your macOS device's SIP controls, these private APIs are made accessible.
