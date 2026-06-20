@@ -33,6 +33,8 @@ export interface AdminCommandDeps {
     cloudflareDdns: CloudflareDdns;
     zrok: ZrokTunnel;
     acme: AcmeService;
+    /** Active-certificate info (domain/expiry/issuer) for the UI TLS panel. */
+    tlsInfo: () => Record<string, unknown>;
     firebaseSetup: FirebaseSetupService;
     version: string;
     /** Push a Socket.IO event to all connected clients (former main->renderer pushes). */
@@ -53,7 +55,7 @@ const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === "ob
  * so the UI needs no password — see execute.ts.
  */
 export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[] {
-    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, zrok, acme, firebaseSetup, emit, logger } =
+    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, zrok, acme, tlsInfo, firebaseSetup, emit, logger } =
         deps;
 
     // Lightweight in-memory alert log (the legacy server's server-side notifications).
@@ -311,18 +313,8 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         "get-public-ip": () => cloudflareDdns.getPublicIp().then(ip => ({ ip })).catch(() => ({ ip: null })),
 
         // --- built-in TLS / HTTPS listener (self-signed or user-supplied cert) ---
-        "get-tls-status": () => {
-            const c = configStore.getConfig() as Record<string, unknown>;
-            const expiry = acme.expiry();
-            return {
-                enabled: Boolean(c.tlsEnabled),
-                port: Number(c.tlsPort ?? 1235),
-                mode: String(c.tlsMode ?? "self-signed"),
-                domain: String(c.tlsDomain ?? ""),
-                customCert: Boolean(c.tlsCertPath && c.tlsKeyPath),
-                certExpiry: expiry ? expiry.toISOString() : null
-            };
-        },
+        // Reports the active cert's domain/expiry/issuer (parsed from disk) + the TLS mode.
+        "get-tls-status": () => tlsInfo(),
         // Enabling TLS persists config; the HTTPS listener (and self-signed cert
         // generation) comes up on the next daemon start — the UI prompts a restart.
         "enable-tls": d => setConfig({ tls_enabled: true, ...(d.port != null ? { tls_port: Number(d.port) } : {}) }),

@@ -13,7 +13,7 @@ import { useAppSelector } from '../../../hooks';
 import { ProxySetupField } from '../../../components/fields/ProxySetupField';
 import { ServerPasswordField } from '../../../components/fields/ServerPasswordField';
 import { LocalPortField } from '../../../components/fields/LocalPortField';
-import { UseHttpsField } from '../../../components/fields/UseHttpsField';
+import { TlsField } from '../../../components/fields/TlsField';
 import { ZrokTokenField } from 'app/components/fields/ZrokTokenField';
 import { ZrokReserveTunnelField } from 'app/components/fields/ZrokReserveTunnelField';
 import { ZrokReservedNameField } from 'app/components/fields/ZrokReservedNameField';
@@ -80,22 +80,18 @@ export const ConnectionSettings = (): JSX.Element => {
             <LocalPortField />
 
             <Box style={{ flex: 1 }} />
-            {(['dynamic-dns', 'lan-url'].includes(proxyService)) ? (
-                <Accordion multiple>
-                    <Accordion.Item value="advanced-connection-settings">
-                        <Accordion.Control>
-                            <Box ta="left" w="15em" style={{ flex: '1' }}>
-                                Advanced Connection Settings
-                            </Box>
-                        </Accordion.Control>
-                        <Accordion.Panel pb={16}>
-                            {/* <EncryptCommunicationsField />
-                            <Box m={15} /> */}
-                            <UseHttpsField />
-                        </Accordion.Panel>
-                    </Accordion.Item>
-                </Accordion>
-            ) : null}
+            <Accordion multiple>
+                <Accordion.Item value="tls-settings">
+                    <Accordion.Control>
+                        <Box ta="left" w="15em" style={{ flex: '1' }}>
+                            TLS / HTTPS
+                        </Box>
+                    </Accordion.Control>
+                    <Accordion.Panel pb={16}>
+                        <TlsField />
+                    </Accordion.Panel>
+                </Accordion.Item>
+            </Accordion>
         </Stack>
     );
 };

@@ -1,6 +1,7 @@
+import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { randomBytes } from "node:crypto";
+import { randomBytes, X509Certificate } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import { Server as SocketServer } from "socket.io";
 
@@ -301,6 +302,49 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         }
     });
 
+    // Describe the certificate the HTTPS listener is (or would be) serving, parsed from
+    // the actual cert on disk — domain, expiry, issuer — for the UI's TLS status panel.
+    const tlsInfo = (): Record<string, unknown> => {
+        const c = configStore.getConfig() as Record<string, unknown>;
+        const mode = String(c.tlsMode ?? "self-signed");
+        const configuredDomain = String(c.tlsDomain ?? "") || hostFromServerAddress(c.serverAddress) || null;
+        const certPath =
+            mode === "letsencrypt"
+                ? path.join(certsDir, "le-cert.pem")
+                : mode === "custom"
+                  ? String(c.tlsCertPath ?? "") || null
+                  : path.join(certsDir, "cert.pem");
+
+        let certExpiry: string | null = null;
+        let issuer: string | null = null;
+        let subjectAltName: string | null = null;
+        let domain = configuredDomain;
+        try {
+            if (certPath && fs.existsSync(certPath)) {
+                const x = new X509Certificate(fs.readFileSync(certPath));
+                certExpiry = new Date(x.validTo).toISOString();
+                const cn = /CN=([^\n,/]+)/.exec(x.issuer ?? "")?.[1] ?? null;
+                issuer = cn ?? (x.issuer ? x.issuer.split("\n")[0]! : null);
+                subjectAltName = x.subjectAltName ?? null;
+                const subjectCn = /CN=([^\n,/]+)/.exec(x.subject ?? "")?.[1];
+                if (subjectCn) domain = subjectCn;
+            }
+        } catch {
+            /* unparseable cert — leave fields null */
+        }
+        return {
+            enabled: Boolean(c.tlsEnabled),
+            port: Number(c.tlsPort ?? 1235),
+            mode,
+            domain,
+            customCert: Boolean(c.tlsCertPath && c.tlsKeyPath),
+            hasCert: certExpiry != null,
+            certExpiry,
+            issuer,
+            subjectAltName
+        };
+    };
+
     // The admin-command dispatcher — the UI's former-IPC channels over HTTP.
     registry.registerAll(
         buildAdminCommandOperations({
@@ -309,6 +353,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             cloudflareDdns,
             zrok,
             acme,
+            tlsInfo,
             firebaseSetup,
             chatReader,
             contacts,
