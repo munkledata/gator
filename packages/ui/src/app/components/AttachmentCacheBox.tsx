@@ -3,8 +3,7 @@ import {
     Box,
     Text,
     Group,
-    List,
-    useMantineColorScheme
+    List
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { keyframes } from '@emotion/react';
@@ -20,7 +19,6 @@ const spin = keyframes`
 
 
 export const AttachmentCacheBox = (): JSX.Element => {
-    const { colorScheme } = useMantineColorScheme();
     const [showProgress, setShowProgress] = useDisclosure();
     const [meta, setMeta] = useState((): Record<string, any> | null => {
         return null;
@@ -54,7 +52,7 @@ export const AttachmentCacheBox = (): JSX.Element => {
     }, []);
 
     return (
-        <Box style={{ border: '1px solid', borderColor: colorScheme === 'dark' ? 'gray.7' : 'gray.2', borderRadius: 'xl' }} p={12} w='300px'>
+        <Box style={{ border: '1px solid var(--mantine-color-dark-4)', borderRadius: 'var(--mantine-radius-lg)' }} p={12} w='300px'>
             <Group align='center'>
                 <Text fz='lg' fw='bold'>Attachment Cache Info</Text>
                 <Box

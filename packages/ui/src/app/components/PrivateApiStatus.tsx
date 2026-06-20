@@ -3,8 +3,7 @@ import {
     Box,
     Text,
     Group,
-    List,
-    useMantineColorScheme
+    List
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { keyframes } from '@emotion/react';
@@ -18,7 +17,6 @@ const spin = keyframes`
 
 
 export const PrivateApiStatus = (): JSX.Element => {
-    const { colorScheme } = useMantineColorScheme();
     const [showProgress, setShowProgress] = useDisclosure();
     const [status, setStatus] = useState((): NodeJS.Dict<any> | null => {
         return null;
@@ -43,7 +41,7 @@ export const PrivateApiStatus = (): JSX.Element => {
 
     const connected = status?.connected === null ? '...' : (status?.connected ?? false) ? 'Yes' : 'No';
     return (
-        <Box p={12} w='325px' style={{ border: '1px solid', borderColor: colorScheme === 'dark' ? 'gray.7' : 'gray.2', borderRadius: 'xl' }}>
+        <Box p={12} w='325px' style={{ border: '1px solid var(--mantine-color-dark-4)', borderRadius: 'var(--mantine-radius-lg)' }}>
             <Group align='center'>
                 <Text fz='lg' fw='bold'>Private API Status</Text>
                 <Box

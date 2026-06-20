@@ -6,8 +6,7 @@ import {
     Group,
     Anchor,
     Text,
-    Tooltip,
-    useMantineColorScheme
+    Tooltip
 } from '@mantine/core';
 import { FiGithub, FiMessageCircle } from 'react-icons/fi';
 import { FaDiscord } from 'react-icons/fa';
@@ -29,8 +28,6 @@ export const Setup = (): JSX.Element => {
 };
 
 const NavBar = (): JSX.Element => {
-    const { colorScheme } = useMantineColorScheme();
-
     return (
         <Flex
             h="20"
@@ -39,8 +36,7 @@ const NavBar = (): JSX.Element => {
             p={16}
             pl={24}
             style={{
-                borderBottomWidth: '1px',
-                borderBottomColor: colorScheme === 'dark' ? 'gray.7' : 'gray.2'
+                borderBottom: '1px solid var(--mantine-color-dark-4)'
             }}
         >
             <Flex align="center" justify="flex-start">

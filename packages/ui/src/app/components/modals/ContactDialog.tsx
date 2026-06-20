@@ -221,7 +221,7 @@ export const ContactDialog = ({
                                     size={'md'}
                                     key={e.address}
                                     variant='solid'
-                                    style={{ borderRadius: 'full' }}
+                                    style={{ borderRadius: '9999px' }}
                                 >
                                     <Text span>{e.address}</Text>
                                     <CloseButton

@@ -30,8 +30,8 @@ export const PermissionsWalkthrough = (): JSX.Element => {
                     Use the gear icon next to a permission failure above to open System Preferences,
                     then add/enable BlueBubbles:
                 </Text>
-                <Image src={SystemPreferencesImage} style={{ borderRadius: 'lg' }} my={8} />
-                <Image src={FullDiskImage} style={{ borderRadius: 'lg' }} my={8} />
+                <Image src={SystemPreferencesImage} style={{ borderRadius: 'var(--mantine-radius-md)' }} my={8} />
+                <Image src={FullDiskImage} style={{ borderRadius: 'var(--mantine-radius-md)' }} my={8} />
 
             </Box>
         </Box>

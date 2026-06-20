@@ -400,7 +400,7 @@ export const ContactsLayout = (): JSX.Element => {
                 <Flex direction='row' justify='flex-end' align='center' pt={12}>
                     <Box w="xxs">
                         <Box style={{ pointerEvents: 'none' }}>
-                            <AiOutlineSearch color='gray.300' />
+                            <AiOutlineSearch color='var(--mantine-color-dark-2)' />
                         </Box>
                         <TextInput
                             placeholder='Search Contacts'

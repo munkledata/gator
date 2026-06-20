@@ -12,7 +12,6 @@ import {
     Stack,
     Text,
     Tooltip,
-    useMantineColorScheme,
     Menu,
     Button,
     Badge,
@@ -215,7 +214,6 @@ interface MobileProps extends FlexProps {
     unreadCount: number;
 }
 const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileProps) => {
-    const { colorScheme } = useMantineColorScheme();
     const bgColor = 'dark.6';
 
     return (
@@ -226,13 +224,12 @@ const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileP
             align="center"
             bg={bgColor}
             style={{
-                borderBottomWidth: '1px',
-                borderBottomColor: (colorScheme === 'dark' ? 'gray.700' : 'gray.200'),
-                justifyContent: { base: 'space-between', md: 'flex-end' },
+                borderBottom: '1px solid var(--mantine-color-dark-4)',
+                justifyContent: 'flex-end',
                 position: 'sticky',
-                top: '0',
-                zIndex: 'sticky'
-            } as unknown as React.CSSProperties}
+                top: 0,
+                zIndex: 100
+            }}
             {...rest}
         >
             <ActionIcon

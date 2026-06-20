@@ -35,7 +35,7 @@ export const NotificationsTable = ({ notifications }: { notifications: Array<Not
                 {notifications.map(item => {
                     const AlertIcon = AlertTypeIcon[item.type] ?? AiOutlineWarning;
                     return (
-                        <Table.Tr key={item.id} c={(item?.read ?? false) ? 'gray.4' : 'current'}>
+                        <Table.Tr key={item.id} c={(item?.read ?? false) ? 'dimmed' : undefined}>
                             <Table.Td style={{ verticalAlign: 'baseline' }}>
                                 <AlertIcon
                                     size={24}

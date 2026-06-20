@@ -126,7 +126,7 @@ export const HomeLayout = (): JSX.Element => {
                                                     Your QR Code contains your server configuration so that clients can connect.
                                                     Your QR Code should remain <strong>private</strong> as it contains sensitive information!
                                                 </Text>
-                                                <Box mt={16} h='266px' w='266px' mb={12} style={{ border: '5px solid', borderColor: 'white', borderRadius: 'lg' }}>
+                                                <Box mt={16} h='266px' w='266px' mb={12} style={{ border: '5px solid white', borderRadius: 'var(--mantine-radius-md)' }}>
                                                     {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
                                                     {/* @ts-ignore: ts2876 */}
                                                     {(qrCode) ? <QRCode value={qrCode as string} /> : null}
