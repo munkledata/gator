@@ -27,7 +27,9 @@ export * as tables from "./data/config-db/tables";
 export * from "./notifications/types";
 export type { NotificationProvider } from "./notifications/NotificationProvider";
 export * from "./notifications/NotificationRegistry";
-export * from "./notifications/UnifiedPushProvider";
+export { FcmProvider, type FcmFetch, type FcmResponse, type FcmProviderDeps } from "./notifications/FcmProvider";
+export { parseServiceAccount, type FcmServiceAccount } from "./notifications/fcm/serviceAccount";
+export { nodeRs256Signer, type JwtSigner } from "./notifications/fcm/sign";
 export { WebPushProvider, type WebPushTransport } from "./notifications/WebPushProvider";
 export * from "./notifications/buildNotificationRegistry";
 

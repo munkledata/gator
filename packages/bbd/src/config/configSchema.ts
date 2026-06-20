@@ -9,18 +9,27 @@ import { z } from "zod";
  * loop (ConfigService) diffs and broadcasts changes.
  */
 
-export const ProviderNameSchema = z.enum(["unifiedpush", "webpush"]);
+export const ProviderNameSchema = z.enum(["fcm", "webpush"]);
 
-export const NotificationsConfigSchema = z
+const NotificationsConfigShape = z
     .object({
         /**
-         * The default provider new devices register against. **UnifiedPush** —
-         * privacy-first, self-hostable, no Google project required (Firebase/FCM was
-         * removed). Web Push remains available as an opt-in provider.
+         * The default provider new devices register against. **FCM** (Firebase Cloud
+         * Messaging) is the push path for the BlueBubbles app, delivered via the HTTP
+         * v1 API from an uploaded service account. Web Push is an opt-in browser provider.
          */
-        defaultProvider: ProviderNameSchema.default("unifiedpush"),
-        unifiedpush: z
-            .object({ enabled: z.boolean().default(true) })
+        defaultProvider: ProviderNameSchema.default("fcm"),
+        fcm: z
+            .object({
+                enabled: z.boolean().default(true),
+                /**
+                 * The Firebase service-account JSON (HTTP v1). Holds a private key, so it
+                 * is stripped from the authenticated config API (see coreOperations).
+                 * Stored as the parsed object or the raw string; {@link parseServiceAccount}
+                 * accepts either.
+                 */
+                serviceAccount: z.unknown().optional()
+            })
             .default({}),
         webpush: z
             .object({
@@ -32,6 +41,22 @@ export const NotificationsConfigSchema = z
             .default({})
     })
     .default({});
+
+/**
+ * Tolerate config persisted by an earlier build: a stored `defaultProvider` of
+ * `"unifiedpush"` (the removed provider) would otherwise fail the enum and crash the
+ * daemon on boot. Remap it to `"fcm"` and drop the dead `unifiedpush` sub-object
+ * before validating.
+ */
+export const NotificationsConfigSchema = z.preprocess(val => {
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+        const v = { ...(val as Record<string, unknown>) };
+        if (v.defaultProvider === "unifiedpush") v.defaultProvider = "fcm";
+        delete v.unifiedpush;
+        return v;
+    }
+    return val;
+}, NotificationsConfigShape);
 
 export const ConfigSchema = z
     .object({

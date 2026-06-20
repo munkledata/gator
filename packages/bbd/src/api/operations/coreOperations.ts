@@ -10,7 +10,7 @@ const NoInput = z.object({}).passthrough();
 /** Device registration — the pluggable-provider model surfaces here as a
  *  discriminated union, so validation enforces the right field per provider. */
 const RegisterDeviceInput = z.discriminatedUnion("provider", [
-    z.object({ name: z.string().min(1), provider: z.literal("unifiedpush"), endpoint: z.string().url() }),
+    z.object({ name: z.string().min(1), provider: z.literal("fcm"), token: z.string().min(1) }),
     z.object({
         name: z.string().min(1),
         provider: z.literal("webpush"),
@@ -29,9 +29,12 @@ export interface CoreOperationDeps {
 
 /** Strip secrets before returning config over the wire. */
 function sanitizeConfig(deps: CoreOperationDeps) {
-    const { password, ...rest } = deps.configStore.getConfig();
+    const { password, notifications, ...rest } = deps.configStore.getConfig();
     void password;
-    return rest;
+    // The FCM service account holds a private key — never expose it over the API.
+    const { serviceAccount, ...fcm } = notifications.fcm;
+    void serviceAccount;
+    return { ...rest, notifications: { ...notifications, fcm } };
 }
 
 /**
@@ -89,8 +92,8 @@ export function buildCoreOperations(deps: CoreOperationDeps): Operation[] {
                 const base = { id: randomUUID(), name: input.name, createdAt: now() };
                 let device: Device;
                 switch (input.provider) {
-                    case "unifiedpush":
-                        device = { ...base, provider: "unifiedpush", endpoint: input.endpoint };
+                    case "fcm":
+                        device = { ...base, provider: "fcm", token: input.token };
                         break;
                     case "webpush":
                         device = { ...base, provider: "webpush", subscription: input.subscription };

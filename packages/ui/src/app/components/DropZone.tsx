@@ -14,42 +14,38 @@ interface DropZoneProps {
     loadedText?: string | null;
 }
 
-const getColor = (isLoaded: boolean, isDragging: boolean) => (isDragging) ? 'brand.primary' : (isLoaded ? 'green' : 'gray.400');
-
-// Mantine resolves a bare hue to its primary shade; gray.400 maps to gray.4.
-const mantineColor = (v: string): string => {
-    if (!v.includes('.')) return v;
-    const [hue, shade] = v.split('.');
-    const n = Number(shade);
-    if (!Number.isFinite(n)) return hue;
-    const m = n <= 50 ? 0 : Math.min(9, Math.round(n / 100));
-    return `${hue}.${m}`;
-};
+// Map the three states to real CSS colors (Mantine vars). The old Chakra-style tokens
+// ('gray.400', 'brand.primary') were invalid as raw CSS, so the dashed border and icon
+// rendered with no usable color.
+const stateColor = (isLoaded: boolean, isDragging: boolean): string =>
+    isDragging
+        ? 'var(--mantine-primary-color-filled)'
+        : isLoaded
+            ? 'var(--mantine-color-green-6)'
+            : 'var(--mantine-color-gray-5)';
 
 export const DropZone = ({ text, isDragging = false, isLoaded = false, loadedText = null }: DropZoneProps): JSX.Element => {
-    const dragColor = getColor(isLoaded, isDragging);
+    const color = stateColor(isLoaded, isDragging);
     const dragFontSize = isDragging ? 'lg' : 'md';
     const dragIconSize = isDragging ? 36 : 28;
     return (
         <Box
             mih='100px'
-            pl={20}
-            pr={20}
-            style={{ borderRadius: '3xl', borderWidth: '1px', border: 'dashed', borderColor: dragColor }}
+            px={20}
+            style={{ borderRadius: 'var(--mantine-radius-lg)', border: `2px dashed ${color}`, transition: 'all .2s ease' }}
         >
             <Center h='100%'>
-                <Flex direction="row" justify="center" align="center">
+                <Flex direction="row" justify="center" align="center" py={16}>
                     <Box style={{ transition: 'all 2s ease' }}>
                         {/* The key is required for the color to change */}
-                        <RiDragDropLine key={dragColor} size={dragIconSize} color={dragColor} />
+                        <RiDragDropLine key={color} size={dragIconSize} color={color} />
                     </Box>
 
                     <Text
                         ml={12}
-                        c={mantineColor(dragColor)}
                         ta='center'
                         fz={dragFontSize}
-                        style={{ transition: 'all .2s ease' }}
+                        style={{ color, transition: 'all .2s ease' }}
                     >
                         {isLoaded && !isDragging ? loadedText : text}
                     </Text>

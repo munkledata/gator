@@ -7,7 +7,7 @@
  * — the legacy `devices` table only knew about FCM tokens.
  */
 
-export type ProviderName = "unifiedpush" | "webpush";
+export type ProviderName = "fcm" | "webpush";
 
 /** A normalized, already-serialized notification ready for any provider. */
 export interface NotificationPayload {
@@ -25,10 +25,14 @@ interface DeviceBase {
     lastActiveAt?: number;
 }
 
-/** UnifiedPush (e.g. ntfy/Gotify) — the default. The server just POSTs to `endpoint`. */
-export interface UnifiedPushDevice extends DeviceBase {
-    provider: "unifiedpush";
-    endpoint: string;
+/**
+ * Firebase Cloud Messaging — the default for the BlueBubbles app. The device's FCM
+ * registration `token` is the send target; the server delivers via the FCM HTTP v1
+ * API (service account → OAuth token → v1 endpoint), no `firebase-admin` SDK.
+ */
+export interface FcmDevice extends DeviceBase {
+    provider: "fcm";
+    token: string;
 }
 
 /** Web Push (VAPID) for browser/PWA/desktop clients. */
@@ -42,4 +46,4 @@ export interface WebPushSubscription {
     keys: { p256dh: string; auth: string };
 }
 
-export type Device = UnifiedPushDevice | WebPushDevice;
+export type Device = FcmDevice | WebPushDevice;

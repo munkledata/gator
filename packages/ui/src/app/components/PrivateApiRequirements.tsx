@@ -4,8 +4,7 @@ import {
     Text,
     Group,
     List,
-    Popover,
-    useMantineColorScheme
+    Popover
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { keyframes } from '@emotion/react';
@@ -32,7 +31,6 @@ const spin = keyframes`
 export const PrivateApiRequirements = (): JSX.Element => {
     const requirements: Array<RequirementsItem> = (useAppSelector(state => state.config.private_api_requirements) ?? []);
     const [showProgress, { open: showProgressOn, close: showProgressOff }] = useDisclosure();
-    const { colorScheme } = useMantineColorScheme();
 
     const refreshRequirements = () => {
         showProgressOn();
@@ -48,7 +46,7 @@ export const PrivateApiRequirements = (): JSX.Element => {
     };
 
     return (
-        <Box style={{ border: '1px solid', borderColor: colorScheme === 'dark' ? 'gray.7' : 'gray.2', borderRadius: 'xl' }} p={12} w='325px'>
+        <Box style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }} p={12} w='325px'>
             <Group align='center'>
                 <Text fz='lg' fw='bold'>Private API Requirements</Text>
                 <Box

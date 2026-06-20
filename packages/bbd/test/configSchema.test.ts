@@ -2,9 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_CONFIG, parseConfig, parseConfigSafe } from "../src/config/configSchema";
 
-test("UnifiedPush is the default push provider", () => {
-    assert.equal(DEFAULT_CONFIG.notifications.defaultProvider, "unifiedpush");
-    assert.equal(DEFAULT_CONFIG.notifications.unifiedpush.enabled, true);
+test("FCM is the default push provider", () => {
+    assert.equal(DEFAULT_CONFIG.notifications.defaultProvider, "fcm");
+    assert.equal(DEFAULT_CONFIG.notifications.fcm.enabled, true);
     assert.equal(DEFAULT_CONFIG.notifications.webpush.enabled, false);
 });
 
@@ -13,7 +13,7 @@ test("parsing an empty object yields every default", () => {
     assert.equal(c.socketPort, 1234);
     assert.equal(c.enablePrivateApi, false);
     assert.equal(c.tunnelProvider, "none");
-    assert.equal(c.notifications.defaultProvider, "unifiedpush");
+    assert.equal(c.notifications.defaultProvider, "fcm");
 });
 
 test("invalid values are rejected", () => {
@@ -30,5 +30,19 @@ test("valid overrides apply; unspecified sub-keys keep their defaults", () => {
     assert.equal(c.socketPort, 8080);
     assert.equal(c.notifications.defaultProvider, "webpush");
     assert.equal(c.notifications.webpush.enabled, true);
-    assert.equal(c.notifications.unifiedpush.enabled, true);
+    assert.equal(c.notifications.fcm.enabled, true);
+});
+
+test("legacy config persisted with the removed UnifiedPush provider loads instead of crashing", () => {
+    // An earlier build stored defaultProvider "unifiedpush" + a unifiedpush sub-object;
+    // the preprocess remaps it to FCM and drops the dead key rather than failing the enum.
+    const c = parseConfig({ notifications: { defaultProvider: "unifiedpush", unifiedpush: { enabled: true } } });
+    assert.equal(c.notifications.defaultProvider, "fcm");
+    assert.equal("unifiedpush" in c.notifications, false);
+});
+
+test("the FCM service account round-trips through the schema", () => {
+    const account = { project_id: "p", client_email: "a@b.iam", private_key: "KEY" };
+    const c = parseConfig({ notifications: { fcm: { enabled: true, serviceAccount: account } } });
+    assert.deepEqual(c.notifications.fcm.serviceAccount, account);
 });

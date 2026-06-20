@@ -22,9 +22,9 @@ export const IntroWalkthrough = (): JSX.Element => {
                 <Text fz='md' my={20}>
                     In addition to the links in the navigation bar, use the links below to learn more about BlueBubbles and how to use it!
                 </Text>
-                <Group wrap='wrap' gap='10px'>
+                <Group wrap='wrap' gap='md' align='stretch'>
                     <Box>
-                        <Box maw='sm' px='5' pb={20} pt={8} style={{ borderWidth: '1px', borderRadius: 'xl' }}>
+                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
                             <Text c='gray'>
                                 https://bluebubbles.app/install
                             </Text>
@@ -40,7 +40,7 @@ export const IntroWalkthrough = (): JSX.Element => {
                         </Box>
                     </Box>
                     <Box>
-                        <Box maw='sm' px='5' pb={20} pt={8} style={{ borderWidth: '1px', borderRadius: 'xl' }}>
+                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
                             <Text c='gray'>
                                 https://docs.bluebubbles.app
                             </Text>
@@ -56,7 +56,7 @@ export const IntroWalkthrough = (): JSX.Element => {
                         </Box>
                     </Box>
                     <Box>
-                        <Box maw='sm' px='5' pb={20} pt={8} style={{ borderWidth: '1px', borderRadius: 'xl' }}>
+                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
                             <Text c='gray'>
                                 https://documenter.getpostman.com
                             </Text>
@@ -72,7 +72,7 @@ export const IntroWalkthrough = (): JSX.Element => {
                         </Box>
                     </Box>
                     <Box>
-                        <Box maw='sm' px='5' pb={20} pt={8} style={{ borderWidth: '1px', borderRadius: 'xl' }}>
+                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
                             <Text c='gray'>
                                 https://bluebubbles.app/faq
                             </Text>
@@ -88,7 +88,7 @@ export const IntroWalkthrough = (): JSX.Element => {
                         </Box>
                     </Box>
                     <Box>
-                        <Box maw='sm' px='5' pb={20} pt={8} style={{ borderWidth: '1px', borderRadius: 'xl' }}>
+                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
                             <Text c='gray'>
                                 https://bluebubbles.app/web
                             </Text>
@@ -104,7 +104,7 @@ export const IntroWalkthrough = (): JSX.Element => {
                         </Box>
                     </Box>
                     <Box>
-                        <Box maw='sm' px='5' pb={20} pt={8} style={{ borderWidth: '1px', borderRadius: 'xl' }}>
+                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
                             <Text c='gray'>
                                 https://bluebubbles.app/donate
                             </Text>

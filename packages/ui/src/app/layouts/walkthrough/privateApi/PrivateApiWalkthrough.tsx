@@ -23,7 +23,7 @@ export const PrivateApiWalkthrough = (): JSX.Element => {
                 <Text fz='md' mt={20}>
                     If you would like to find out more information, please go to the link below:
                 </Text>
-                <Box component='article' maw='sm' px='5' pb={20} pt={8} mt={20} style={{ borderWidth: '1px', borderRadius: 'xl' }}>
+                <Box component='article' maw='sm' px={20} pb={20} pt={12} mt={20} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
                     <Text c='gray'>
                         https://docs.bluebubbles.app/private-api/
                     </Text>

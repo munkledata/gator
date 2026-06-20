@@ -69,7 +69,14 @@ export class DrizzleConfigStore implements ConfigStore {
     }
 
     async listDevices(): Promise<Device[]> {
-        return this.#db.select().from(devicesTable).all().map(rowToDevice);
+        // Skip rows whose provider is no longer supported (e.g. a stale "unifiedpush"
+        // row from an earlier build) instead of throwing and breaking the whole list.
+        return this.#db
+            .select()
+            .from(devicesTable)
+            .all()
+            .map(rowToDevice)
+            .filter((d): d is Device => d !== null);
     }
 
     async upsertDevice(device: Device): Promise<void> {
@@ -95,22 +102,23 @@ export class DrizzleConfigStore implements ConfigStore {
 
 function registrationJson(device: Device): string {
     switch (device.provider) {
-        case "unifiedpush":
-            return JSON.stringify({ endpoint: device.endpoint });
+        case "fcm":
+            return JSON.stringify({ token: device.token });
         case "webpush":
             return JSON.stringify({ subscription: device.subscription });
     }
 }
 
-function rowToDevice(row: typeof devicesTable.$inferSelect): Device {
+function rowToDevice(row: typeof devicesTable.$inferSelect): Device | null {
     const reg = JSON.parse(row.registration);
     const base = { id: row.id, name: row.name, createdAt: row.createdAt, lastActiveAt: row.lastActiveAt ?? undefined };
     switch (row.provider) {
-        case "unifiedpush":
-            return { ...base, provider: "unifiedpush", endpoint: reg.endpoint };
+        case "fcm":
+            return { ...base, provider: "fcm", token: reg.token };
         case "webpush":
             return { ...base, provider: "webpush", subscription: reg.subscription };
         default:
-            throw new Error(`unknown provider "${row.provider}" for device ${row.id}`);
+            // Unknown/legacy provider (e.g. a stale "unifiedpush" row) — skip it.
+            return null;
     }
 }

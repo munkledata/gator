@@ -11,6 +11,8 @@ import type { PrivateApiTransport } from "../../private-api/PrivateApiTransport"
 import type { StatsReader } from "../../data/imessage/StatsReader";
 import type { MacPermissions } from "../../host-platform/MacPermissions";
 import type { CloudflareDdns } from "../../networking/CloudflareDdns";
+import { parseServiceAccount } from "../../notifications/fcm/serviceAccount";
+import { assertSecureServerAddress } from "../../config/serverAddress";
 import type { Logger } from "../../core/logger";
 
 export interface AdminCommandDeps {
@@ -70,6 +72,9 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
     };
 
     const setConfig = async (patch: Record<string, unknown>): Promise<Record<string, unknown>> => {
+        // Defense-in-depth behind the UI's own validation: reject an insecure public
+        // http:// server address (loopback/LAN http stays allowed for the LAN-URL case).
+        assertSecureServerAddress(patch.server_address);
         const updated = await configService.update(mapKeys(patch, toCamel) as Partial<Config>);
         const snake = mapKeys(updated as Record<string, unknown>, toSnake);
         emit("config-update", snake);
@@ -151,6 +156,39 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         "get-current-permissions": () => permissions.list(),
         "contact-permission-status": () => permissions.contactStatus(),
         "request-contact-permission": () => permissions.requestContacts(),
+
+        // --- Firebase Cloud Messaging (HTTP v1) setup ---
+        // The UI uploads the Firebase service-account JSON; we validate and persist it
+        // under notifications.fcm. The private key never leaves this machine.
+        "set-fcm-server": async d => {
+            const account = parseServiceAccount(d);
+            if (!account) {
+                return { success: false, message: "Invalid service account JSON (need project_id, client_email, private_key)" };
+            }
+            const notifications = configStore.getConfig().notifications;
+            await configService.update({
+                notifications: { ...notifications, fcm: { enabled: true, serviceAccount: d } }
+            });
+            emit("config-update", readConfig());
+            return { success: true, projectId: account.projectId, clientEmail: account.clientEmail };
+        },
+        "clear-fcm": async () => {
+            const notifications = configStore.getConfig().notifications;
+            await configService.update({
+                notifications: { ...notifications, fcm: { ...notifications.fcm, enabled: false, serviceAccount: undefined } }
+            });
+            emit("config-update", readConfig());
+            return { success: true };
+        },
+        "get-fcm-status": () => {
+            const fcm = configStore.getConfig().notifications.fcm;
+            const account = parseServiceAccount(fcm.serviceAccount ?? null);
+            return {
+                configured: Boolean(account) && fcm.enabled,
+                projectId: account?.projectId ?? null,
+                clientEmail: account?.clientEmail ?? null
+            };
+        },
 
         // --- registered push devices (the config store's device table) ---
         "get-devices": () => configStore.listDevices(),

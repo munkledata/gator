@@ -15,6 +15,17 @@ export const getDevices = async () => {
     return await invoke('get-devices');
 };
 
+export interface FcmStatus {
+    configured: boolean;
+    projectId: string | null;
+    clientEmail: string | null;
+}
+
+/** Whether the Firebase service account is configured (and, if so, which project). */
+export const getFcmStatus = async (): Promise<FcmStatus> => {
+    return await invoke('get-fcm-status');
+};
+
 export const getAlerts = async () => {
     return await invoke('get-alerts');
 };

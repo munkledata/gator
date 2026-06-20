@@ -66,13 +66,13 @@ test("register-device validates the provider discriminated union and persists", 
     const bad = await app.inject({
         method: "POST",
         url: `/api/v1/devices?password=${PASSWORD}`,
-        payload: { name: "P", provider: "unifiedpush" } // missing endpoint
+        payload: { name: "P", provider: "fcm" } // missing token
     });
     assert.equal(bad.statusCode, 400);
     const ok = await app.inject({
         method: "POST",
         url: `/api/v1/devices?password=${PASSWORD}`,
-        payload: { name: "Phone", provider: "unifiedpush", endpoint: "https://ntfy.sh/abc" }
+        payload: { name: "Phone", provider: "fcm", token: "fcm-token-abc" }
     });
     assert.equal(ok.statusCode, 200);
     assert.equal((await store.listDevices()).length, 1);

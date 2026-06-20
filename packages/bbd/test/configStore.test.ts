@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { InMemoryConfigStore } from "../src/data/config-db/ConfigStore";
-import type { UnifiedPushDevice } from "../src/notifications/types";
+import type { FcmDevice } from "../src/notifications/types";
 
 test("getConfig returns defaults; setConfig merges + persists + re-validates", async () => {
     const store = new InMemoryConfigStore();
@@ -13,11 +13,11 @@ test("getConfig returns defaults; setConfig merges + persists + re-validates", a
 
 test("device CRUD with the provider discriminator", async () => {
     const store = new InMemoryConfigStore();
-    const device: UnifiedPushDevice = {
+    const device: FcmDevice = {
         id: "d1",
         name: "Phone",
-        provider: "unifiedpush",
-        endpoint: "https://ntfy.sh/x",
+        provider: "fcm",
+        token: "fcm-token-abc",
         createdAt: 1
     };
     await store.upsertDevice(device);

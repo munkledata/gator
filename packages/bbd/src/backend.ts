@@ -54,6 +54,8 @@ import { WebhookDispatcher } from "./networking/webhook";
 import { CloudflareDdns } from "./networking/CloudflareDdns";
 import { buildWebhookOperations } from "./api/operations/webhookOperations";
 import { wireMessageFanout } from "./serialize/messageFanout";
+import { buildNotificationRegistry } from "./notifications/buildNotificationRegistry";
+import { parseServiceAccount } from "./notifications/fcm/serviceAccount";
 import type { Service } from "./core/lifecycle";
 
 export const BBD_VERSION = "2.0.0-bbd";
@@ -144,11 +146,17 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     registry.registerAll(buildScheduledOperations({ store: scheduledStore }));
     const scheduler = new Scheduler(scheduledStore, sender, logger);
 
-    // Webhooks + the live read -> serialize-once -> socket + webhook fanout.
+    // Webhooks + the live read -> serialize-once -> socket + webhook + push fanout.
     const domainBus = new EventBus<DomainEvents>();
     const webhookStore = new DrizzleWebhookStore(dbPath);
     const webhookSubscriber = new WebhookSubscriber(webhookStore, new WebhookDispatcher({ logger }), logger);
     registry.registerAll(buildWebhookOperations({ store: webhookStore }));
+
+    // Push notifications: FCM (HTTP v1) is registered up front; its credentials are read
+    // live from the config store, so uploading the service account post-boot just works.
+    const notifications = buildNotificationRegistry(config.notifications, logger, {
+        fcmCredentials: () => parseServiceAccount(configStore.getConfig().notifications.fcm.serviceAccount ?? null)
+    });
 
     // Cloudflare dynamic DNS — reads its (flat camelCase) settings from the live config each tick.
     const cloudflareDdns = new CloudflareDdns(() => {
@@ -191,7 +199,15 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
 
     wireMessageFanout(domainBus, {
         emit: (type, dto) => io?.emit(type, dto),
-        webhook: (type, dto) => webhookSubscriber.onEvent(type, dto)
+        webhook: (type, dto) => webhookSubscriber.onEvent(type, dto),
+        // Only fresh inserts get a push; updates (edits/reactions hitting existing rows)
+        // ride the socket/webhook sinks but shouldn't re-alert the device.
+        notify: async (type, dto) => {
+            if (type !== "new-message") return;
+            const devices = await configStore.listDevices();
+            if (devices.length === 0) return;
+            await notifications.dispatch(devices, { type, data: dto, priority: "high" });
+        }
     });
 
     const httpService: Service = {
