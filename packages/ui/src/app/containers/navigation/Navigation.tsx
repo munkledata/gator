@@ -19,11 +19,10 @@ import {
     FlexProps
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { FiHome, FiSettings, FiMenu, FiBell, FiGithub, FiMessageCircle, FiTrash } from 'react-icons/fi';
-import { FaDiscord, FaGoogle } from 'react-icons/fa';
-import { AiOutlineBug, AiOutlineHome, AiOutlineApi, AiOutlineHeart } from 'react-icons/ai';
+import { FiHome, FiSettings, FiMenu, FiBell, FiTrash } from 'react-icons/fi';
+import { FaGoogle } from 'react-icons/fa';
+import { AiOutlineBug, AiOutlineHome, AiOutlineApi } from 'react-icons/ai';
 import { BsChevronDown, BsCheckAll, BsBook, BsPersonCircle, BsFillCalendarCheckFill, BsPhone } from 'react-icons/bs';
-import { MdOutlineAttachMoney } from 'react-icons/md';
 import { IconType } from 'react-icons';
 
 import { ContactsLayout } from 'app/layouts/contacts/ContactsLayout';
@@ -193,7 +192,7 @@ const NavItem = ({ icon: IconComp, to, children, ...rest }: NavItemProps) => {
             p="4"
             mx="4"
             role="group"
-            c={location.pathname === to ? 'brand' : 'current'}
+            c={location.pathname === to ? 'brand.4' : 'gray.3'}
             style={{
                 borderRadius: 'lg',
                 cursor: 'pointer'
@@ -252,41 +251,6 @@ const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileP
                     <Anchor href="https://bluebubbles.app" style={{ textDecoration: 'none' }} target="_blank">
                         <ActionIcon size="lg" variant="subtle" aria-label="website">
                             <AiOutlineHome />
-                        </ActionIcon>
-                    </Anchor>
-                </Tooltip>
-                <Tooltip label="BlueBubbles Web" aria-label="web-tip" withArrow>
-                    <Anchor href="https://bluebubbles.app/web" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="subtle" aria-label="bluebubbles web">
-                            <FiMessageCircle />
-                        </ActionIcon>
-                    </Anchor>
-                </Tooltip>
-                <Tooltip label="Sponsor Us" aria-label="sponsor-tip" withArrow>
-                    <Anchor href="https://github.com/sponsors/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="subtle" aria-label="donate">
-                            <AiOutlineHeart />
-                        </ActionIcon>
-                    </Anchor>
-                </Tooltip>
-                <Tooltip label="Support Us" aria-label="donate-tip" withArrow>
-                    <Anchor href="https://bluebubbles.app/donate" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="subtle" aria-label="donate">
-                            <MdOutlineAttachMoney />
-                        </ActionIcon>
-                    </Anchor>
-                </Tooltip>
-                <Tooltip label="Join our Discord" aria-label="discord-tip" withArrow>
-                    <Anchor href="https://discord.gg/yC4wr38" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="subtle" aria-label="discord">
-                            <FaDiscord />
-                        </ActionIcon>
-                    </Anchor>
-                </Tooltip>
-                <Tooltip label="Read our Source Code" aria-label="github-tip" withArrow>
-                    <Anchor href="https://github.com/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="subtle" aria-label="github">
-                            <FiGithub />
                         </ActionIcon>
                     </Anchor>
                 </Tooltip>
