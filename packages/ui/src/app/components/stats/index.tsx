@@ -133,26 +133,27 @@ export const StatBox = (
     { title: string, text: string | number | null, color: string }
 ): JSX.Element => {
     return (
-        <Box maw='sm' p={20} m={4} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}>
-            <Badge color={color} mb={8}>
+        <Box
+            p="md"
+            style={{
+                border: '1px solid var(--mantine-color-default-border)',
+                borderRadius: 'var(--mantine-radius-md)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                minHeight: 110
+            }}
+        >
+            <Badge color={color} variant='light' style={{ alignSelf: 'flex-start' }}>
                 {title}
             </Badge>
-            <Box style={{ flex: 1 }} />
-            <Box
-                c='gray.5'
-                fw='semibold'
-                style={{ letterSpacing: 'wide' }}
-            >
-                {(text === null) ? (
-                    <Skeleton height={8} radius="sm" h={20} mt={8} />
-                ) : (
-                    (typeof(text) === 'number') ? (
-                        <Text fz='2vw'>{formatNumber(text)}</Text>
-                    ) : (
-                        <Text fz='2vw'>{text}</Text>
-                    )
-                )}
-            </Box>
+            {(text === null) ? (
+                <Skeleton height={28} mt={4} radius="sm" />
+            ) : (
+                <Text c='gray.3' fw={600} fz={28} lh={1.1} style={{ wordBreak: 'break-word' }}>
+                    {(typeof(text) === 'number') ? formatNumber(text) : text}
+                </Text>
+            )}
         </Box>
     );
 };

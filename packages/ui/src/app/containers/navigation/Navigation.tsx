@@ -93,7 +93,7 @@ export const Navigation = (): JSX.Element => {
                 </Drawer>
                 {/* mobilenav */}
                 <MobileNav onOpen={onOpen} onNotificationOpen={onNotificationOpen} unreadCount={unreadCount} />
-                <Box ml={60} p="2">
+                <Box ml={256} p="md">
                     <Routes>
                         <Route path="/settings" element={<SettingsLayout />} />
                         <Route path="/logs" element={<LogsLayout />} />
@@ -219,7 +219,7 @@ const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileP
 
     return (
         <Flex
-            ml={255}
+            ml={256}
             px={4}
             h="20"
             align="center"

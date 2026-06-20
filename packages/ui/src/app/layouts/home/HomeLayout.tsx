@@ -196,7 +196,7 @@ export const HomeLayout = (): JSX.Element => {
                     <Divider orientation='horizontal' />
                     <Box style={{ flex: 1 }} />
                     { /* Delays are so older systems do not freeze when requesting data from the databases */ }
-                    <SimpleGrid cols={3}>
+                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing='md'>
                         <TotalMessagesStatBox pastDays={statDays} />
                         <TopGroupStatBox delay={200} pastDays={statDays} />
                         <BestFriendStatBox delay={400} pastDays={statDays} />
