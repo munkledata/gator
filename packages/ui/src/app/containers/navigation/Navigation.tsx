@@ -1,26 +1,17 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Link as RouterLink, useLocation } from 'react-router-dom';
-import type { AnyAction } from '@reduxjs/toolkit';
 import {
-    ActionIcon,
     Box,
-    CloseButton,
+    Badge,
     Flex,
-    Group,
-    Drawer,
     Stack,
     Text,
-    Menu,
-    Button,
-    Badge,
-    BoxProps,
     FlexProps
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { FiHome, FiSettings, FiMenu, FiBell, FiTrash } from 'react-icons/fi';
+import { FiHome, FiSettings, FiBell } from 'react-icons/fi';
 import { FaGoogle } from 'react-icons/fa';
 import { AiOutlineBug, AiOutlineApi } from 'react-icons/ai';
-import { BsChevronDown, BsCheckAll, BsBook, BsPersonCircle, BsFillCalendarCheckFill, BsPhone } from 'react-icons/bs';
+import { BsBook, BsPersonCircle, BsFillCalendarCheckFill, BsPhone } from 'react-icons/bs';
 import { IconType } from 'react-icons';
 
 import { ContactsLayout } from 'app/layouts/contacts/ContactsLayout';
@@ -32,12 +23,12 @@ import { SettingsLayout } from '../../layouts/settings/SettingsLayout';
 import { NotificationsLayout } from '../../layouts/notifications/NotificationsLayout';
 import { ApiLayout } from '../../layouts/api/ApiLayout';
 import { GuidesLayout } from '../../layouts/guides/GuidesLayout';
+import { AlertsLayout } from '../../layouts/alerts/AlertsLayout';
 import logo from '../../../images/logo/icon-64.png';
-import { NotificationsTable } from '../../components/tables/NotificationsTable';
 import './styles.css';
 
-import { useAppSelector, useAppDispatch } from '../../hooks';
-import { readAll, clear as clearAlerts, NotificationItem } from '../../slices/NotificationsSlice';
+import { useAppSelector } from '../../hooks';
+import { NotificationItem } from '../../slices/NotificationsSlice';
 import { ScheduledMessagesLayout } from 'app/layouts/scheduledMessages/ScheduledMessagesLayout';
 
 interface LinkItemProps {
@@ -50,6 +41,7 @@ const LinkItems: Array<LinkItemProps> = [
     { name: 'Contacts', icon: BsPersonCircle, to: '/contacts' },
     { name: 'Android Devices', icon: BsPhone, to: '/devices' },
     { name: 'Notifications', icon: FaGoogle, to: '/notifications' },
+    { name: 'Alerts', icon: FiBell, to: '/alerts' },
     { name: 'Scheduled Messages', icon: BsFillCalendarCheckFill, to: '/scheduled-messages' },
     { name: 'API & Webhooks', icon: AiOutlineApi, to: '/webhooks' },
     { name: 'Debug & Logs', icon: AiOutlineBug, to: '/logs' },
@@ -57,45 +49,18 @@ const LinkItems: Array<LinkItemProps> = [
     { name: 'Settings', icon: FiSettings, to: '/settings' }
 ];
 
-const closeNotification = (closeFunc: () => void, dispatch: React.Dispatch<AnyAction>) => {
-    dispatch(readAll());
-    closeFunc();
-};
-
 export const Navigation = (): JSX.Element => {
-    const [isOpen, { open: onOpen, close: onClose }] = useDisclosure();
-    const [
-        isNotificationsOpen,
-        { open: onNotificationOpen, close: onNotificationClose }
-    ] = useDisclosure();
-
-    const notifications: Array<NotificationItem> = useAppSelector(state => state.notificationStore.notifications);
-    const unreadCount = notifications.filter(e => !e.read).length;
-    const dispatch = useAppDispatch();
-
     return (
         <Box mih="100vh">
             <Router>
-                <SidebarContent onClose={() => onClose} />
-                <Drawer
-                    opened={isOpen}
-                    position="left"
-                    onClose={onClose}
-                    size="full"
-                    {...{ autoFocus: false, returnFocusOnClose: false, onOverlayClick: onClose } as any}
-                >
-                    <Box>
-                        <SidebarContent onClose={onClose} />
-                    </Box>
-                </Drawer>
-                {/* mobilenav */}
-                <MobileNav onOpen={onOpen} onNotificationOpen={onNotificationOpen} unreadCount={unreadCount} />
+                <SidebarContent />
                 <Box ml={256} p="md">
                     <Routes>
                         <Route path="/settings" element={<SettingsLayout />} />
                         <Route path="/logs" element={<LogsLayout />} />
                         <Route path="/contacts" element={<ContactsLayout />} />
                         <Route path="/notifications" element={<NotificationsLayout />} />
+                        <Route path="/alerts" element={<AlertsLayout />} />
                         <Route path="/devices" element={<DevicesLayout />} />
                         <Route path="/scheduled-messages" element={<ScheduledMessagesLayout />} />
                         <Route path="/webhooks" element={<ApiLayout />} />
@@ -104,71 +69,30 @@ export const Navigation = (): JSX.Element => {
                     </Routes>
                 </Box>
             </Router>
-
-            <Drawer
-                onClose={() => closeNotification(onNotificationClose, dispatch)}
-                opened={isNotificationsOpen}
-                size="lg"
-                title={`Notifications / Alerts (${unreadCount})`}
-            >
-                <Box style={{ overflowWrap: 'break-word' }}>
-                    <Menu>
-                        <Menu.Target>
-                            <Button
-                                variant="default"
-                                rightSection={<BsChevronDown />}
-                                w="12em"
-                                mr={20}
-                                mb={16}
-                            >
-                                Manage
-                            </Button>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                            <Menu.Item leftSection={<FiTrash />} onClick={() => {
-                                dispatch(clearAlerts({ showToast: true }));
-                            }}>
-                                Clear Alerts
-                            </Menu.Item>
-                            <Menu.Item leftSection={<BsCheckAll />} onClick={() => {
-                                dispatch(readAll());
-                            }}>
-                                Mark All as Read
-                            </Menu.Item>
-                        </Menu.Dropdown>
-                    </Menu>
-                    <NotificationsTable notifications={notifications} />
-                </Box>
-            </Drawer>
         </Box>
     );
 };
 
-interface SidebarProps extends BoxProps {
-    onClose: () => void;
-}
-
-const SidebarContent = ({ onClose, display, ...rest }: SidebarProps) => {
+const SidebarContent = (): JSX.Element => {
+    const notifications: Array<NotificationItem> = useAppSelector(state => state.notificationStore.notifications);
+    const unreadCount = notifications.filter(e => !e.read).length;
     return (
         <Box
             w='16em'
             pos="fixed"
             h="100vh"
-            style={{
-                borderRight: '1px solid var(--mantine-color-dark-4)',
-                display
-            } as unknown as React.CSSProperties}
-            {...rest}
+            style={{ borderRight: '1px solid var(--mantine-color-dark-4)' }}
         >
             <Flex h={64} align="center" px="md" gap={10} justify="flex-start">
                 <img src={logo} className="logo" alt="logo" height={40} />
                 <Text fz="xl" fw={700}>Gator</Text>
-                <CloseButton className="mobile-only" onClick={onClose} ml="auto" />
             </Flex>
             <Stack gap={2} px="xs" mt={4}>
                 {LinkItems.map(link => (
                     <RouterLink key={link.name} to={link.to} style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <NavItem icon={link.icon} to={link.to}>{link.name}</NavItem>
+                        <NavItem icon={link.icon} to={link.to} badge={link.to === '/alerts' ? unreadCount : 0}>
+                            {link.name}
+                        </NavItem>
                     </RouterLink>
                 ))}
             </Stack>
@@ -179,9 +103,10 @@ const SidebarContent = ({ onClose, display, ...rest }: SidebarProps) => {
 interface NavItemProps extends FlexProps {
     icon: IconType;
     to: string;
+    badge?: number;
     children: string | number;
 }
-const NavItem = ({ icon: IconComp, to, children, ...rest }: NavItemProps) => {
+const NavItem = ({ icon: IconComp, to, badge = 0, children, ...rest }: NavItemProps) => {
     const location = useLocation();
     return (
         <Flex
@@ -202,77 +127,9 @@ const NavItem = ({ icon: IconComp, to, children, ...rest }: NavItemProps) => {
                 <IconComp size={18} />
             )}
             {children}
-        </Flex>
-    );
-};
-
-interface MobileProps extends FlexProps {
-    onOpen: () => void;
-    onNotificationOpen: () => void;
-    unreadCount: number;
-}
-const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileProps) => {
-    const bgColor = 'dark.6';
-
-    return (
-        <Flex
-            ml={256}
-            px={4}
-            h="20"
-            align="center"
-            bg={bgColor}
-            style={{
-                borderBottom: '1px solid var(--mantine-color-dark-4)',
-                justifyContent: 'flex-end',
-                position: 'sticky',
-                top: 0,
-                zIndex: 100
-            }}
-            {...rest}
-        >
-            <ActionIcon
-                onClick={onOpen}
-                variant="subtle"
-                aria-label="open menu"
-                className="mobile-only"
-            >
-                <FiMenu />
-            </ActionIcon>
-
-            <Text fz="2xl" fw="bold" className="mobile-only" {...{ fontFamily: 'monospace' } as any}>
-                <img style={{ minWidth: '48px' }} src={logo} className="logo-small" alt="logo" />
-            </Text>
-
-            <Group>
-                <Box style={{ position: 'relative', float: 'left' }}>
-                    <ActionIcon
-                        size="lg"
-                        variant="subtle"
-                        aria-label="notifications"
-                        onClick={() => onNotificationOpen()}
-                        style={{ verticalAlign: 'middle', zIndex: 1 }}
-                    >
-                        <FiBell />
-                    </ActionIcon>
-                    {(unreadCount > 0) ? (
-                        <Badge
-                            variant='solid'
-                            color='red'
-                            m={0}
-                            miw={5}
-                            mih={5}
-                            ta={'center'}
-                            style={{
-                                borderRadius: 10,
-                                position: 'absolute',
-                                top: 1,
-                                right: 1,
-                                zIndex: 2
-                            }}
-                        >{unreadCount}</Badge>
-                    ) : null}
-                </Box>
-            </Group>
+            {(badge > 0) ? (
+                <Badge color='red' size='sm' ml='auto'>{badge}</Badge>
+            ) : null}
         </Flex>
     );
 };

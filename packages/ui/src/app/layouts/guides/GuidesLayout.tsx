@@ -63,7 +63,7 @@ const GUIDES: Guide[] = [
         url: 'https://bluebubbles.app/donate',
         display: 'https://bluebubbles.app/donate',
         title: 'Support Us',
-        body: 'BlueBubbles was created and is currently run by independent engineers in their free time. Any sort of support is greatly appreciated! This can be monetary, or just a review.'
+        body: 'Gator is built on BlueBubbles, which was created and is run by independent engineers in their free time. Any sort of support is greatly appreciated! This can be monetary, or just a review.'
     }
 ];
 
