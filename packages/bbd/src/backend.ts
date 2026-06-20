@@ -432,16 +432,36 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             const c = configStore.getConfig();
             if (!c.tlsEnabled) return;
             const host = hostFromServerAddress(c.serverAddress);
+
+            // Acquire the cert for the configured mode, but NEVER let a TLS misconfig
+            // (e.g. Let's Encrypt selected before an email/domain is saved) crash the whole
+            // daemon: on failure, fall back to a self-signed cert so HTTPS still comes up;
+            // if even that fails, skip the HTTPS listener and keep serving over loopback.
             let material;
-            if (c.tlsMode === "custom" || (c.tlsCertPath && c.tlsKeyPath)) {
-                material = certService.loadFrom(c.tlsCertPath, c.tlsKeyPath);
-            } else if (c.tlsMode === "letsencrypt") {
-                // Issue (or load a still-valid) Let's Encrypt cert, then keep it renewed.
-                material = await acme.ensure();
-                acme.startRenewal();
-            } else {
-                material = await certService.ensureSelfSigned("Gator", host ? [host] : []);
+            try {
+                if (c.tlsMode === "custom" || (c.tlsCertPath && c.tlsKeyPath)) {
+                    material = certService.loadFrom(c.tlsCertPath, c.tlsKeyPath);
+                } else if (c.tlsMode === "letsencrypt") {
+                    // Issue (or load a still-valid) Let's Encrypt cert, then keep it renewed.
+                    material = await acme.ensure();
+                    acme.startRenewal();
+                } else {
+                    material = await certService.ensureSelfSigned("Gator", host ? [host] : []);
+                }
+            } catch (e) {
+                logger.warn(
+                    `TLS '${c.tlsMode}' setup failed (${(e as Error)?.message ?? e}); falling back to a self-signed certificate`
+                );
+                try {
+                    material = await certService.ensureSelfSigned("Gator", host ? [host] : []);
+                } catch (e2) {
+                    logger.error(
+                        `self-signed TLS fallback also failed (${(e2 as Error)?.message ?? e2}); HTTPS listener disabled`
+                    );
+                    return;
+                }
             }
+
             tlsApp = Fastify({ https: { key: material.key, cert: material.cert } });
             mountApiRoutes(tlsApp, false);
             await tlsApp.listen({ port: c.tlsPort, host: "0.0.0.0" });

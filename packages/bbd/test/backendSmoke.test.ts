@@ -76,6 +76,34 @@ test("composition root boots; ping/health open, password + local-token trusted, 
     }
 });
 
+test("misconfigured Let's Encrypt (no email) falls back to self-signed instead of crashing the daemon", { skip: hasOpenssl ? false : "openssl not available" }, async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bbd-tlsfallback-"));
+    const tlsPort = 18445;
+    try {
+        // tlsMode=letsencrypt with no acmeEmail/domain — issuance must fail, but boot must not.
+        await new DrizzleConfigStore(path.join(dir, "config.db")).setConfig({
+            tlsEnabled: true,
+            tlsMode: "letsencrypt",
+            tlsPort
+        });
+        const running = await startBbdBackend({
+            userDataPath: dir,
+            messagesDir: path.join(dir, "no-messages"),
+            port: 0,
+            password: "smoke-pass-123",
+            logger: silent
+        });
+        try {
+            // Daemon booted (no throw) and the HTTPS listener is up on the self-signed fallback.
+            assert.equal((await httpsGet(`https://127.0.0.1:${tlsPort}/api/v1/ping`)).status, 200);
+        } finally {
+            await running.stop();
+        }
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 test("built-in TLS listener serves HTTPS when enabled (audit S4 / restored self-signed cert)", { skip: hasOpenssl ? false : "openssl not available" }, async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bbd-tls-"));
     const tlsPort = 18443;
