@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -32,6 +33,32 @@ export class CertificateService {
     /** Load a user-provided cert/key pair from disk. Throws if either is missing. */
     loadFrom(certPath: string, keyPath: string): TlsMaterial {
         return { cert: fs.readFileSync(certPath, "utf8"), key: fs.readFileSync(keyPath, "utf8") };
+    }
+
+    /**
+     * Generate a fresh RSA-2048 key + PKCS#10 CSR for the given domain(s), via openssl.
+     * Returns the private-key PEM and the CSR in base64url DER, which is the exact shape
+     * ACME's finalize step wants. RSA (not EC) for the widest BlueBubbles-client TLS compat.
+     */
+    async generateKeyAndCsr(domain: string, sans: string[] = []): Promise<{ keyPem: string; csrDerB64Url: string }> {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gator-csr-"));
+        const keyPath = path.join(dir, "key.pem");
+        const csrPath = path.join(dir, "csr.der");
+        try {
+            await execFileAsync("openssl", ["genrsa", "-out", keyPath, "2048"]);
+            const names = [domain, ...sans.filter(Boolean)].filter((d, i, a) => a.indexOf(d) === i);
+            const sanArg = `subjectAltName=${names.map(d => `DNS:${d}`).join(",")}`;
+            const base = ["req", "-new", "-key", keyPath, "-subj", `/CN=${domain}`, "-outform", "DER", "-out", csrPath];
+            try {
+                await execFileAsync("openssl", [...base, "-addext", sanArg]);
+            } catch (e) {
+                this.#logger.warn(`openssl -addext failed for CSR (${(e as Error)?.message ?? e}); CSR will be CN-only`);
+                await execFileAsync("openssl", base);
+            }
+            return { keyPem: fs.readFileSync(keyPath, "utf8"), csrDerB64Url: fs.readFileSync(csrPath).toString("base64url") };
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
     }
 
     /**

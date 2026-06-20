@@ -3,8 +3,9 @@
 Gator Server is the macOS backend for the BlueBubbles app ecosystem. It reads your Mac's
 iMessage database and exposes it to BlueBubbles clients (phone apps, browsers) over a local
 HTTP + Socket.IO API — with push notifications, webhooks, scheduled messages, and contacts.
-For off-LAN access it provides a Dynamic DNS (Cloudflare A-record) updater and zrok; you bring
-your own reverse proxy / TLS. It is a fork of, and wire-compatible with, BlueBubbles Server.
+For off-LAN access it provides a Dynamic DNS (Cloudflare A-record) updater, zrok, and built-in
+TLS — self-signed, an auto-renewing Let's Encrypt cert (Cloudflare dns-01), or your own cert
+(or bring your own reverse proxy). It is a fork of, and wire-compatible with, BlueBubbles Server.
 
 ## Architecture
 
@@ -79,14 +80,23 @@ you. Clients pick up the resulting config automatically.
 
 ### Reaching your server remotely
 
-There is no built-in public-tunnel service. To reach the server from outside your LAN:
+To reach the server from outside your LAN:
 
 1. **Dynamic DNS** — the daemon includes a Cloudflare A-record updater that keeps a hostname
    pointed at your current public IP. Configure it under the remote-access settings.
-2. **Bring your own reverse proxy / TLS** — terminate HTTPS yourself (e.g. Caddy, nginx,
-   Traefik) and forward to the daemon, then point clients at your hostname. The daemon speaks
-   plain HTTP locally; TLS is your proxy's job.
-3. **zrok** — a zrok share is also supported as an alternative ingress.
+2. **Built-in TLS (HTTPS)** — enable TLS and the daemon serves HTTPS directly on its TLS port
+   (the loopback plain-HTTP listener stays local-only). Three cert modes:
+   - **`self-signed`** (default) — generated on demand; clients must trust it manually.
+   - **`letsencrypt`** — a real, auto-renewing Let's Encrypt certificate obtained via the
+     **Cloudflare dns-01 challenge**, reusing the same Cloudflare API token + zone as Dynamic
+     DNS. Works behind NAT with no inbound port 80; renews ahead of expiry and hot-reloads the
+     listener with no restart. Set your custom domain + an ACME account email and issue from
+     the remote-access settings.
+   - **`custom`** — point `tlsCertPath` / `tlsKeyPath` at your own cert/key.
+3. **Bring your own reverse proxy** — alternatively terminate HTTPS yourself (Caddy, nginx,
+   Traefik) and forward to the daemon's loopback HTTP listener.
+4. **zrok** — a zrok share is also supported as an alternative ingress (the daemon runs the
+   bundled `zrok` binary and publishes the resulting public URL).
 
 On the same LAN, clients can simply connect to the Mac's LAN address.
 

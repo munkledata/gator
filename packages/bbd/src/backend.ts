@@ -54,6 +54,8 @@ import { WebhookSubscriber } from "./webhooks/WebhookSubscriber";
 import { WebhookDispatcher, isPublicHttpUrl } from "./networking/webhook";
 import { CloudflareDdns } from "./networking/CloudflareDdns";
 import { CertificateService, hostFromServerAddress } from "./networking/CertificateService";
+import { AcmeService } from "./networking/AcmeService";
+import { LETS_ENCRYPT_PRODUCTION, LETS_ENCRYPT_STAGING } from "./networking/acme/AcmeClient";
 import { ZrokTunnel } from "./networking/ZrokTunnel";
 import { buildWebhookOperations } from "./api/operations/webhookOperations";
 import { wireMessageFanout } from "./serialize/messageFanout";
@@ -263,6 +265,42 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         logger
     });
 
+    const certsDir = path.join(userDataPath, "certs");
+    const certService = new CertificateService(certsDir, logger);
+    let tlsApp: FastifyInstance | null = null;
+
+    // Let's Encrypt (dns-01 via Cloudflare). Reuses the Cloudflare DDNS token + zone; the
+    // cert domain defaults to the configured serverAddress host. onCert hot-reloads the
+    // running HTTPS listener on renewal (no restart) via the TLS socket's secure context.
+    const acme = new AcmeService({
+        certsDir,
+        cert: certService,
+        logger,
+        settings: () => {
+            const c = configStore.getConfig() as Record<string, unknown>;
+            return {
+                enabled: c.tlsMode === "letsencrypt",
+                email: String(c.acmeEmail ?? ""),
+                domain: String(c.tlsDomain ?? "") || hostFromServerAddress(c.serverAddress) || "",
+                directoryUrl: c.acmeStaging ? LETS_ENCRYPT_STAGING : LETS_ENCRYPT_PRODUCTION,
+                cloudflareToken: String(c.cloudflareDdnsApiToken ?? ""),
+                cloudflareZone:
+                    String(c.cloudflareDdnsZone ?? "") ||
+                    (hostFromServerAddress(c.serverAddress)?.split(".").slice(-2).join(".") ?? "")
+            };
+        },
+        onCert: material => {
+            try {
+                (tlsApp?.server as { setSecureContext?: (o: { key: string; cert: string }) => void } | undefined)?.setSecureContext?.(
+                    { key: material.key, cert: material.cert }
+                );
+                logger.info("hot-reloaded the TLS listener with the renewed certificate");
+            } catch (e) {
+                logger.warn(`could not hot-reload TLS cert (a restart will pick it up): ${(e as Error)?.message ?? e}`);
+            }
+        }
+    });
+
     // The admin-command dispatcher — the UI's former-IPC channels over HTTP.
     registry.registerAll(
         buildAdminCommandOperations({
@@ -270,6 +308,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             configStore,
             cloudflareDdns,
             zrok,
+            acme,
             firebaseSetup,
             chatReader,
             contacts,
@@ -322,9 +361,6 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         if (withUi && options.serveUiFrom) serveStaticUi(target, options.serveUiFrom);
     };
 
-    const certService = new CertificateService(path.join(userDataPath, "certs"), logger);
-    let tlsApp: FastifyInstance | null = null;
-
     const httpService: Service = {
         name: "http",
         async start() {
@@ -350,11 +386,15 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         async start() {
             const c = configStore.getConfig();
             if (!c.tlsEnabled) return;
+            const host = hostFromServerAddress(c.serverAddress);
             let material;
-            if (c.tlsCertPath && c.tlsKeyPath) {
+            if (c.tlsMode === "custom" || (c.tlsCertPath && c.tlsKeyPath)) {
                 material = certService.loadFrom(c.tlsCertPath, c.tlsKeyPath);
+            } else if (c.tlsMode === "letsencrypt") {
+                // Issue (or load a still-valid) Let's Encrypt cert, then keep it renewed.
+                material = await acme.ensure();
+                acme.startRenewal();
             } else {
-                const host = hostFromServerAddress(c.serverAddress);
                 material = await certService.ensureSelfSigned("Gator", host ? [host] : []);
             }
             tlsApp = Fastify({ https: { key: material.key, cert: material.cert } });
@@ -362,9 +402,10 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             await tlsApp.listen({ port: c.tlsPort, host: "0.0.0.0" });
             tlsIo = new SocketServer(tlsApp.server, { allowEIO3: true });
             mountSocket(tlsIo, registry, { logger, auth });
-            logger.info(`TLS API listening on 0.0.0.0:${c.tlsPort}`);
+            logger.info(`TLS API (${c.tlsMode}) listening on 0.0.0.0:${c.tlsPort}`);
         },
         async stop() {
+            acme.stop();
             tlsIo?.close();
             await tlsApp?.close();
         }

@@ -12,6 +12,7 @@ import type { StatsReader } from "../../data/imessage/StatsReader";
 import type { MacPermissions } from "../../host-platform/MacPermissions";
 import type { CloudflareDdns } from "../../networking/CloudflareDdns";
 import type { ZrokTunnel } from "../../networking/ZrokTunnel";
+import type { AcmeService } from "../../networking/AcmeService";
 import { parseServiceAccount } from "../../notifications/fcm/serviceAccount";
 import { assertSecureServerAddress } from "../../config/serverAddress";
 import { sanitizeConfig } from "../../config/sanitize";
@@ -31,6 +32,7 @@ export interface AdminCommandDeps {
     permissions: MacPermissions;
     cloudflareDdns: CloudflareDdns;
     zrok: ZrokTunnel;
+    acme: AcmeService;
     firebaseSetup: FirebaseSetupService;
     version: string;
     /** Push a Socket.IO event to all connected clients (former main->renderer pushes). */
@@ -51,7 +53,7 @@ const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === "ob
  * so the UI needs no password — see execute.ts.
  */
 export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[] {
-    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, zrok, firebaseSetup, emit, logger } =
+    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, zrok, acme, firebaseSetup, emit, logger } =
         deps;
 
     // Lightweight in-memory alert log (the legacy server's server-side notifications).
@@ -311,16 +313,40 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         // --- built-in TLS / HTTPS listener (self-signed or user-supplied cert) ---
         "get-tls-status": () => {
             const c = configStore.getConfig() as Record<string, unknown>;
+            const expiry = acme.expiry();
             return {
                 enabled: Boolean(c.tlsEnabled),
                 port: Number(c.tlsPort ?? 1235),
-                customCert: Boolean(c.tlsCertPath && c.tlsKeyPath)
+                mode: String(c.tlsMode ?? "self-signed"),
+                domain: String(c.tlsDomain ?? ""),
+                customCert: Boolean(c.tlsCertPath && c.tlsKeyPath),
+                certExpiry: expiry ? expiry.toISOString() : null
             };
         },
         // Enabling TLS persists config; the HTTPS listener (and self-signed cert
         // generation) comes up on the next daemon start — the UI prompts a restart.
         "enable-tls": d => setConfig({ tls_enabled: true, ...(d.port != null ? { tls_port: Number(d.port) } : {}) }),
-        "disable-tls": () => setConfig({ tls_enabled: false })
+        "disable-tls": () => setConfig({ tls_enabled: false }),
+        // Switch to Let's Encrypt and issue a cert now (dns-01 via the stored Cloudflare
+        // token). Writes the cert to disk; the HTTPS listener serves it on next start (or
+        // is hot-reloaded if TLS is already running).
+        "issue-letsencrypt": async d => {
+            await setConfig({
+                tls_enabled: true,
+                tls_mode: "letsencrypt",
+                ...(d.email != null ? { acme_email: String(d.email) } : {}),
+                ...(d.domain != null ? { tls_domain: String(d.domain) } : {}),
+                ...(d.staging != null ? { acme_staging: Boolean(d.staging) } : {})
+            });
+            try {
+                const material = await acme.issue();
+                void material;
+                const expiry = acme.expiry();
+                return { success: true, certExpiry: expiry ? expiry.toISOString() : null };
+            } catch (e) {
+                return { success: false, message: (e as Error)?.message ?? "issuance failed" };
+            }
+        }
     };
 
     const Input = z.object({ channel: z.string().min(1), data: z.unknown().optional() });

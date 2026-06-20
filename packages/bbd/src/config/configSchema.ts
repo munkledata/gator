@@ -88,12 +88,21 @@ export const ConfigSchema = z
         cloudflareDdnsProxied: z.boolean().default(false),
         cloudflareDdnsIntervalSeconds: z.number().default(300),
         // Built-in TLS: when enabled, bbd serves HTTPS on tlsPort (0.0.0.0) for remote
-        // clients, in addition to the loopback plain-HTTP listener for the local UI. A
-        // self-signed cert is generated on demand; a user-supplied cert/key path overrides.
+        // clients, in addition to the loopback plain-HTTP listener for the local UI.
         tlsEnabled: z.boolean().default(false),
         tlsPort: z.number().int().min(1).max(65535).default(1235),
+        // How the cert is sourced: a self-signed cert (default; triggers client trust
+        // warnings), a real Let's Encrypt cert via the Cloudflare dns-01 challenge, or a
+        // user-supplied cert/key on disk.
+        tlsMode: z.enum(["self-signed", "letsencrypt", "custom"]).default("self-signed"),
         tlsCertPath: z.string().default(""),
         tlsKeyPath: z.string().default(""),
+        // The certificate domain (CN/SAN). Empty -> derived from serverAddress's host.
+        tlsDomain: z.string().default(""),
+        // Let's Encrypt (dns-01): the account email and a staging toggle for testing.
+        // Issuance reuses the Cloudflare DDNS token + zone for the _acme-challenge record.
+        acmeEmail: z.string().default(""),
+        acmeStaging: z.boolean().default(false),
         notifications: NotificationsConfigSchema
     })
     // passthrough() keeps the wider legacy config surface (the UI reads ~40 snake_case
