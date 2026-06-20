@@ -1,7 +1,7 @@
 // NOTE: All paths are relative to the package.json that will be loading this configuration file.
 // Making them relative to the scripts folder will break the commands
 module.exports = {
-    "productName": "BlueBubbles",
+    "productName": "Gator",
     "appId": "com.BlueBubbles.BlueBubbles-Server",
     "electronVersion": "42.4.1",
     // No Developer ID on this machine, so electron-builder leaves Electron's placeholder

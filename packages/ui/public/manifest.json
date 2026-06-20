@@ -1,6 +1,6 @@
 {
-  "short_name": "BlueBubbles",
-  "name": "BlueBubbles Server",
+  "short_name": "Gator",
+  "name": "Gator Server",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +20,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#2bbf4c",
+  "background_color": "#15273d"
 }

@@ -20,8 +20,9 @@ const logStartupError = (m: string): void => {
 };
 process.on("uncaughtException", e => logStartupError(`uncaughtException: ${(e as Error)?.stack ?? e}`));
 
-// Preserve the historical userData directory (config.db et al. live here).
-app.setPath("userData", app.getPath("userData").replace("@bluebubbles/server", "bluebubbles-server"));
+// Pin the userData directory to the historical location so the existing config.db
+// (server password, FCM setup, address, etc.) survives the rename to "Gator".
+app.setPath("userData", path.join(app.getPath("appData"), "bluebubbles-server"));
 
 let backend: UtilityProcess | null = null;
 let win: BrowserWindow | null = null;
@@ -83,7 +84,7 @@ function createWindow(port: number): void {
         height: 800,
         minWidth: 900,
         minHeight: 600,
-        title: "BlueBubbles",
+        title: "Gator Server",
         webPreferences: {
             contextIsolation: true,
             nodeIntegration: false,
@@ -112,11 +113,11 @@ function createTray(port: number): void {
     } catch {
         return; // a tray is a nicety, not a requirement
     }
-    tray.setToolTip("BlueBubbles");
+    tray.setToolTip("Gator");
     tray.setContextMenu(
         Menu.buildFromTemplate([
             {
-                label: "Open BlueBubbles",
+                label: "Open Gator",
                 click: () => {
                     if (win) win.show();
                     else createWindow(port);
