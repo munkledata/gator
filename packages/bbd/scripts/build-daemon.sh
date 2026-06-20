@@ -20,7 +20,7 @@ rm -rf "$DIST" && mkdir -p "$DIST"
 
 echo "==> Bundling $ENTRY -> $BUNDLE"
 npx --yes esbuild "$ENTRY" \
-  --bundle --platform=node --target=node22 --format=cjs \
+  --bundle --platform=node --target=node24 --format=cjs \
   --external:better-sqlite3 \
   --outfile="$BUNDLE"
 

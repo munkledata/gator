@@ -33,7 +33,7 @@ await build({
     bundle: true,
     platform: "node",
     format: "cjs",
-    target: "node20",
+    target: "node24",
     outdir: "dist",
     outExtension: { ".js": ".cjs" },
     sourcemap: true,

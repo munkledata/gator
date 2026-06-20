@@ -1,9 +1,11 @@
 node_modules/
 dist/
+build/
 release/
 .vscode
 .DS_Store
 **/*.log
+*.pid
 .env
 .build
 .swiftpm

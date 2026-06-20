@@ -37,10 +37,6 @@ export const DevicesSlice = createSlice({
                 state.devices.push(i);
             }
         },
-        add: (state, action: PayloadAction<DeviceItem>) => {
-            if (deviceExists(state, action.payload)) return;
-            state.devices.push(action.payload);
-        },
         clear: (state) => {
             state.devices = [];
             clearDevices().then(() => {
@@ -54,6 +50,6 @@ export const DevicesSlice = createSlice({
 });
 
 // Action creators are generated for each case reducer function
-export const { add, addAll, clear } = DevicesSlice.actions;
+export const { addAll, clear } = DevicesSlice.actions;
 
 export default DevicesSlice.reducer;

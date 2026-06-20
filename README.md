@@ -1,227 +1,97 @@
-# BlueBubbles Server
+# Gator Server
 
-This is the back-end server for the BlueBubbles App. It allows you to forward your iMessages to and from an Android device via the BlueBubbles App.
+Gator Server is the macOS backend for the BlueBubbles app ecosystem. It reads your Mac's
+iMessage database and exposes it to BlueBubbles clients (phone apps, browsers) over a local
+HTTP + Socket.IO API — with push notifications, webhooks, scheduled messages, contacts, and
+remote-access tunnels. It is packaged from, and wire-compatible with, BlueBubbles Server.
 
-## Pre-requisites
+## Architecture
 
--   NodeJS: https://nodejs.org/en/
--   Git: https://git-scm.com/
+The repo is an npm workspace (`packages/*`). The original monolithic `Server()` god-object has
+been strangled into a **headless daemon**; the Electron app is now a thin shell around it.
 
-**Warning**: Yarn may not work for this project. You may run into build errors.
+| Package | Role |
+| --- | --- |
+| `@bluebubbles/protocol` | **Frozen v1 wire contracts** shared by every client. Byte-stable — thousands of deployed clients depend on it, so treat it as an API contract, not editable code. |
+| `@bluebubbles/bbd` | The **headless daemon** — all backend logic. Reads the iMessage `chat.db`, drives the private-API write path, runs the unified API (Fastify + Socket.IO), notifications (FCM / Web Push), the scheduler, webhooks, contacts, FaceTime/FindMy, tunnels + dynamic DNS, and a SQLite config store (Drizzle). Also serves the built UI as static files. Bundled to CommonJS with esbuild. |
+| `@bluebubbles/server` | The **Electron shell** (`src/main.ts` + `src/preload.ts`). It `utilityProcess.fork()`s the bbd daemon, opens a window pointed at the local server, and provides the menu-bar tray plus a few host-only IPC actions (open Finder/System Settings, relaunch, reset). Packaged with electron-builder. |
+| `@bluebubbles/ui` | The **renderer** — a React + Mantine SPA built with Vite. It runs "as a browser pointed at localhost": it talks to the daemon over HTTP/Socket exactly as a phone would. |
+
+Data flow:
+
+```
+UI (renderer)  ⇄  HTTP / Socket.IO  ⇄  bbd daemon  ⇄  chat.db · private API · FCM · tunnels
+```
+
+The Electron shell only hosts the window and the daemon process — so the eventual fully-headless
+build is just "stop forking the daemon, start it as a LaunchAgent."
+
+## Prerequisites
+
+- **Node.js 24+** (see `.nvmrc`; the native addons — better-sqlite3, node-mac-contacts,
+  node-mac-permissions — build cleanly on Node 24 LTS)
+- **macOS** (the daemon reads the local Messages database and uses macOS-only native modules)
+- **Git**
+
+> Use **npm**, not Yarn — Yarn can hit native-build errors on this project.
 
 ## Development
 
-1. Clone the repository
-    - `git clone git@github.com:BlueBubblesApp/BlueBubbles-Server.git`
-2. Navigate into the repository on your local machine
-    - `cd BlueBubbles-Server`
-3. Install the server dependencies
-    - `npm install`
-4. Run the dev server (this will start both the renderer and server)
-    - `npm run start`
+```bash
+git clone git@github.com:BlueBubblesApp/BlueBubbles-Server.git
+cd BlueBubbles-Server
+nvm use                                # Node 24 (optional, if you use nvm)
 
-### macOS Warning
+npm install                            # installs all workspaces; a postinstall rebuilds the
+                                       # native addons against Electron's ABI
 
-If you are using macOS 10.x and are having issues building/running the server, please downgrade the `node-mac-permissions` dependency to `v2.2.0`. The reason it's on a newer version is to fix a production crashing issue on Big Sur+. Please downgrade it manually for testing on macOS v10.x.
+# One-time: build the two things the Electron shell expects to exist —
+npm run build-ui                       # build the UI and copy it where the daemon serves it
+npm run build -w @bluebubbles/bbd      # bundle the daemon the shell forks (dist/daemon-entry.cjs)
+
+npm run start                          # launch the Electron shell (it forks the daemon and
+                                       # opens a window against the locally served UI)
+```
+
+For fast UI iteration with hot-reload, run the Vite dev server on its own and point a browser at
+it (it talks to a running daemon over HTTP/Socket):
 
 ```bash
-cd packages/server
-npm install node-mac-permissions@2.2.0
+npm run start -w @bluebubbles/ui       # Vite dev server on http://localhost:3000
 ```
 
-## Structure / Directory Map
+### Testing the daemon
 
-### Back-end
+`bbd` is the package with the test suite:
 
-* Backend Code: `/bluebubbles-server/src/`
-* BlueBubbles Server: `/bluebubbles-server/src/server/index.ts`
-    - **Description**: This class is the main entry point to the whole backend. This classes manages the ngrok connection, the config database connection, the socket.io connection, and handles any inter-process-communications (IPC) from the "renderer" (UI).
-* BlueBubbles Types: `/bluebubbles-server/src/server/types.ts`
-    - **Description**: Holds the types for the BlueBubbles server. Defines what fields are required and optional, as well as which keys are required in a request/response
-* iMessage Library: `/bluebubbles-server/src/server/api/imessage`
-    - **Description**: This directory contains all of the classes and code needed to communicate with the iMessage Chat database. We use TypeORM as our decorator library for connecting to the database. This allows us to request information from the database in an object-oriented way
-* iMessage Database Models: `/bluebubbles-server/src/server/api/imessage/entity`
-    - **Description**" This directory contains all of the entities within the iMessage Chat database. These are also known as database "models". They defined the columns and their types. These files determine what "properties" are associated with each entity, and what we can get from the database table
-* iMessage Database Transformers: `/bluebubbles-server/src/server/api/imessage/transformers`
-    - **Description**: This directory contains what we call "transformers". They allow us to automatically convert values that we get from the database, as well as insert into the database. These are super helpful for the iMessage database. One instance they really help is with date conversions. iMessage stores dates as seconds since 2001. This is opposed to a "normal" seconds since EPOCH. On top of that, they switched the date formats from v10.12 to v10.13. The transformers allows us to seemlessly convert those date without having to worry about it in our "fetching" code. There are also transformers for integers to booleans as well as reaction IDs to strings
-* iMessage Database Listeners: `/bluebubbles-server/src/server/api/imessage/listeners`
-    - **Description**: These classes are "listeners". They allow you to listen on certain things. For instance, the MessageListener allows you to "listen" for new messages. It does this by polling the database for new information, then "emitting" that message to whoever is listening. These classes inherit the JS EventEmitter class
-* Filesystem Lib: `/bluebubbles-server/src/fileSystem`
-    - **Description**: This class allows us, and helps us, interact with the macOS filesystem. Mostly, reading/writing files to the app's directory.
-* Filesystem Scripts: `/bluebubbles-server/src/fileSystem/scripts.ts`
-    - **Description**: File that holds the Apple Scripts that get executed when sending a message, creating a chat, etc.
-* Server Helpers: `/bluebubbles-server/src/helpers`
-    - **Description**: Some helpers for executing actions from the client, or sending results back to the client
-* Socket Server: `/bluebubbles-server/src/services/socket`
-    - **Description**: The socket server that handles all incoming requests from connected sockets. Allows clients to request for bulk information such as getting chats, messages, etc.
-* FCM Server: `/bluebubbles-server/src/services/fcm`
-    - **Description**: This class will handle all communication with Google Firebase. This includes registering devices with FCM, sending notifications, etc.
-
-### Front-end
-
-* Frontend Code: `/bluebubbles-server-ui/src/`
-* Fronend Layouts: `/bluebubbles-server-ui/src/layouts`
-    - **Description**: This directory contains the layouts for the frontend. In essence, these are the "containers" for all the pages.
-* Frontend Containers: `/bluebubbles-server-ui/src/containers`
-    - **Description**: The components in this directory are "containers" as in they will contain all the rest of the components. This typically is some sort of navigation or SPA routing container.
-* Frontend Components: `/bluebubbles-server-ui/src/components`
-    - **Description**: These are the re-usable components that you may use anywhere within the frontend. These may be "cards", or "buttons", or any other custom UI element.
-* Frontend Entrypoint: `/bluebubbles-server-ui/src/app.tsx`
-
-## Current Feature-set
-
-* Map the iMessage Chat database and be able to read from it
-* Listen for changes in the messages database (new messages or updated messages)
-* Configure an ngrok connection to avoid port forwarding
-* Sending notifications over Google FCM to update the client with new messages or server updates
-* Updating the Google FCM database with new server information (incase notification doesn't get to the device)
-* Attachment chunking to avoid failed downloads on slower connections
-* Change the default socket port for the socket.io connection
-* Socket Handlers:
-    - Add FCM Device: `add-fcm-device`
-    - Get All Chats (with last message timestamp): `get-chats`
-    - Get Messages from a Chat: `get-chat-messages`
-    - Get Attachment by GUID: `get-attachment`
-    - Get Attachment by Chunk: `get-attachment-chunk`
-    - Get Last Chat Message: `get-last-chat-message`
-    - Send Message: `send-message`
-    - Start a Chat: `start-chat`
-
-## Response Types
-
-This section will describe what information is returned back to the client from the server
-
-### Response Container
-
-This is the basic format of all responses
-
-#### Response Format
-
-```typescript
-const ResponseFormat = {
-    status: ValidStatuses;
-    message: ResponseMessages | string;
-    error?: Error;
-    data?: ResponseData;
-};
+```bash
+npm run typecheck -w @bluebubbles/bbd
+npm test -w @bluebubbles/bbd           # tsx --test over packages/bbd/test
 ```
 
-#### Valid Statuses
+### macOS 10.x note
 
-```typescript
-type ValidStatuses = 200 | 201 | 400 | 401 | 403 | 404 | 500;
+`node-mac-permissions` is pinned to a newer release to fix a production crash on Big Sur+. If you
+are building on macOS 10.x and hit issues, downgrade it locally:
+
+```bash
+npm install node-mac-permissions@2.2.0 -w @bluebubbles/server
 ```
 
-#### Response Messages
+## Building a release
 
-```typescript
-enum ResponseMessages {
-    SUCCESS = 'Success',
-    BAD_REQUEST = 'Bad Request',
-    SERVER_ERROR = 'Server Error',
-    UNAUTHORIZED = 'Unauthorized',
-    FORBIDDEN = 'Forbidden',
-    NO_DATA = 'No Data'
-};
+```bash
+npm run build      # builds the UI (Vite) → copies it into the shell, then builds and
+                   # packages the Electron app via electron-builder
 ```
 
-#### Response Data
+The packaged artifacts land in `./dist` (e.g. `Gator-<version>-arm64.dmg`). `npm run release`
+additionally publishes to GitHub. Packaging configuration lives in
+`packages/server/scripts/electron-builder-config.js`; the bbd daemon bundle and the native
+modules it needs at runtime are shipped via `extraResources`.
 
-```typescript
-type ResponseData =
-    MessageResponse |
-    HandleResponse |
-    ChatResponse |
-    AttachmentResponse |
-    (MessageResponse | HandleResponse | ChatResponse | AttachmentResponse)[] |
-    Uint8Array |
-    null;
-```
+## Wire protocol
 
-### Response Data
-
-Within each response container, there is an optional `data` key that contains any data that is returned by the server. That data includes different "views" from the database, whether it be chats, messages, etc.
-
-#### Message Response
-
-```typescript
-type MessageResponse = {
-    guid: string;
-    text: string;
-    handle?: HandleResponse | null;
-    chats?: ChatResponse[];
-    attachments?: AttachmentResponse[];
-    subject: string;
-    country: string;
-    error: boolean;
-    dateCreated: number;
-    dateRead: number | null;
-    dateDelivered: number | null;
-    isFromMe: boolean;
-    isDelayed: boolean;
-    isAutoReply: boolean;
-    isSystemMessage: boolean;
-    isServiceMessage: boolean;
-    isForward: boolean;
-    isArchived: boolean;
-    cacheRoomnames: string | null;
-    isAudioMessage: boolean;
-    datePlayed: number | null;
-    itemType: number;
-    groupTitle: string | null;
-    isExpired: boolean;
-    associatedMessageGuid: string | null;
-    associatedMessageType: number | null;
-    expressiveSendStyleId: string | null;
-    timeExpressiveSendStyleId: number | null;
-};
-```
-
-#### Chat Response
-
-```typescript
-type ChatResponse = {
-    guid: string;
-    participants?: HandleResponse[];
-    messages?: MessageResponse[];
-    style: number;
-    chatIdentifier: string;
-    isArchived: boolean;
-    displayName: string;
-    groupId: string;
-};
-```
-
-#### Handle Response
-
-```typescript
-type HandleResponse = {
-    messages?: MessageResponse[];
-    chats?: ChatResponse[];
-    address: string;
-    country: string;
-    uncanonicalizedId: string
-};
-```
-
-#### Attachment Response
-
-```typescript
-export type AttachmentResponse = {
-    guid: string;
-    messages: string[];
-    data: Uint8Array;
-    uti: string;
-    mimeType: string;
-    transferState: number;
-    totalBytes: number;
-    isOutgoing: boolean;
-    transferName: string;
-    isSticker: boolean;
-    hideAttachment: boolean;
-};
-```
-
-#### UInt8Array Response
-
-This response is used when chunking attachments. It allows us to send the data for an attachment in chunks. These chunks can be concatenated together to form the actual attachment. This will allow us to send large attachments over slow connections, or just receiving large attachments over normal connections. We can also use chunking to show a status (progress bar) for receiving attachments
+The client-facing request/response envelope and event formats live in **`packages/protocol`**
+(`v1`). This contract is frozen for backwards compatibility, so changes there must be additive
+and non-breaking.

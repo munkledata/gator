@@ -49,5 +49,3 @@ export const theme = createTheme({
     primaryShade: { light: 6, dark: 6 },
     colors: { gator, brand, dark: navy }
 });
-
-export const baseTheme = { colors: { brand: { primary: '#4a96e6' } } };

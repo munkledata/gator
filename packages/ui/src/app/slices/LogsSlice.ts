@@ -33,17 +33,11 @@ export const LogsSlice = createSlice({
             state.logs.sort((a, b) => a.timestamp > b.timestamp ? -1 : 1);
             state.logs = state.logs.slice(0, state.max);
         },
-        prune: (state) => {
-            state.logs = state.logs.slice(0, state.max);
-        },
         setDebug: (state, action: PayloadAction<boolean>) => {
             state.debug = action.payload;
         },
         setMessagesAppLogs: (state, action: PayloadAction<boolean>) => {
             state.messagesAppLogs = action.payload;
-        },
-        filter: (state, action: PayloadAction<(item: LogItem) => boolean>) => {
-            state.logs = state.logs.filter(action.payload);
         },
         clear: (state) => {
             state.logs = [];
@@ -56,6 +50,6 @@ export const LogsSlice = createSlice({
 });
 
 // Action creators are generated for each case reducer function
-export const { add, prune, setDebug, setMessagesAppLogs, clear, filter } = LogsSlice.actions;
+export const { add, setDebug, setMessagesAppLogs, clear } = LogsSlice.actions;
 
 export default LogsSlice.reducer;

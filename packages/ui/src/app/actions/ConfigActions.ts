@@ -17,11 +17,3 @@ export const onSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         store.dispatch(setConfig({ name: targetId, value: e.target.value }));
     }
 };
-
-export const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const state = store.getState().config;
-    const targetId = e.target.id;
-    if (Object.keys(state).includes(targetId)) {
-        store.dispatch(setConfig({ name: targetId, value: e.target.value }));
-    }
-};

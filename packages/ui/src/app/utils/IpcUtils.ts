@@ -1,7 +1,6 @@
 import { ScheduledMessageItem } from 'app/components/tables/ScheduledMessagesTable';
 import { invoke } from 'lib/apiClient';
 import { MultiSelectValue } from '../types';
-import { showErrorToast, showSuccessToast } from './ToastUtils';
 
 export const getConfig = async () => {
     return await invoke('get-config');
@@ -110,27 +109,6 @@ export const updateWebhook = async ({ id, url, events }: { id: number, url?: str
     return await invoke('update-webhook', { id, url, events });
 };
 
-export const reinstallHelperBundle = async () => {
-    const res = await invoke('reinstall-helper-bundle');
-    if (res.success) {
-        showSuccessToast({
-            id: 'settings',
-            description: res.message
-        });
-    } else {
-        showErrorToast({
-            id: 'settings',
-            description: res.message
-        });
-    }
-};
-
-export const syncInvokeIpc = async (event: string, data: any = null): Promise<any> => {
-    return new Promise((resolve, reject) => {
-        invoke(event, data).then(resolve).catch(reject);
-    });
-};
-
 export const openFullDiskPrefs = async () => {
     return await invoke('open-fulldisk-preferences');
 };
@@ -167,20 +145,12 @@ export const getBinaryPath = async () => {
     return await invoke('get-binary-path');
 };
 
-export const installUpdate = async () => {
-    return await invoke('install-update');
-};
-
 export const getContactsOauthUrl = async () => {
     return await invoke('get-contacts-oauth-url');
 };
 
 export const restartOauthService = async () => {
     return await invoke('restart-oauth-service');
-};
-
-export const getCurrentPermissions = async () => {
-    return await invoke('get-current-permissions');
 };
 
 export const saveLanUrl = async () => {

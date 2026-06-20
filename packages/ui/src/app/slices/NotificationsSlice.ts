@@ -54,9 +54,6 @@ export const NotificationsSlice = createSlice({
                 state.notifications = state.notifications.reverse();
             }
         },
-        prune: (state) => {
-            state.notifications = state.notifications.slice(0, state.max);
-        },
         clear: (state, action: PayloadAction<NotificationClearParams>) => {
             if (action.payload.delete ?? true) {
                 clearAlerts(action.payload.showToast ?? true);
@@ -81,6 +78,6 @@ export const NotificationsSlice = createSlice({
 });
 
 // Action creators are generated for each case reducer function
-export const { add, prune, readAll, addAll, clear } = NotificationsSlice.actions;
+export const { add, readAll, addAll, clear } = NotificationsSlice.actions;
 
 export default NotificationsSlice.reducer;

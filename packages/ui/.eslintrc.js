@@ -7,7 +7,7 @@ module.exports = {
         "build",
         "dist",
         "node_modules",
-        "config-overrides.js"
+        "vite.config.ts"
     ],
     "extends": [
         "eslint:recommended",

@@ -37,18 +37,6 @@ export const showSuccessToast = ({
     showToast({ id, title, description, status, duration, isClosable, onCloseComplete });
 };
 
-export const showInfoToast = ({
-    id, title = 'Info', description, status = 'info', duration, isClosable, onCloseComplete
-}: ToastParams): void => {
-    showToast({ id, title, description, status, duration, isClosable, onCloseComplete });
-};
-
-export const showWarnToast = ({
-    id, title = 'Warning', description, status = 'warning', duration, isClosable, onCloseComplete
-}: ToastParams): void => {
-    showToast({ id, title, description, status, duration, isClosable, onCloseComplete });
-};
-
 export const showErrorToast = ({
     id, title = 'Error', description, status = 'error', duration, isClosable, onCloseComplete
 }: ToastParams): void => {
