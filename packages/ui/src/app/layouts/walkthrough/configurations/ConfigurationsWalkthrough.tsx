@@ -5,8 +5,6 @@ import {
 } from '@mantine/core';
 import { AutoStartMethodField } from '../../../components/fields/AutoStartMethodField';
 import { AutoCaffeinateField } from '../../../components/fields/AutoCaffeinateField';
-import { CheckForUpdatesField } from '../../../components/fields/CheckForUpdatesField';
-import { UseOledDarkModeField } from '../../../components/fields/OledDarkThemeField';
 import { OpenFindMyOnStartupField } from 'app/components/fields/OpenFindMyOnStartupField';
 
 
@@ -26,12 +24,6 @@ export const ConfigurationsWalkthrough = (): JSX.Element => {
                 <AutoStartMethodField />
                 <Box my={12} />
                 <AutoCaffeinateField />
-                <Text fz='3xl' mt={20}>Update Settings</Text>
-                <Box my={12} />
-                <CheckForUpdatesField />
-                <Text fz='3xl' mt={20}>Theme Settings</Text>
-                <Box my={12} />
-                <UseOledDarkModeField />
             </Box>
         </Box>
     );

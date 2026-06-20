@@ -8,7 +8,7 @@ import {
     Menu,
     Button,
     Popover,
-    Title,
+    Card,
     Anchor
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -56,16 +56,14 @@ export const ApiLayout = (): JSX.Element => {
                         else you can do in the API, please see the documentation below:
                     </Text>
                     <Box style={{ flex: 1 }} />
-                    <Box maw='sm' px='5' pb={20} pt={8} style={{ borderWidth: '1px', borderRadius: 'xl' }}>
-                        <Text c='gray'>
+                    <Card withBorder radius='md' padding='md' maw={420}>
+                        <Text fz='xs' c='dimmed' lineClamp={1}>
                             https://documenter.getpostman.com
                         </Text>
-                        <Title order={5} mt={8}>
-                            <Anchor href='https://documenter.getpostman.com/view/765844/UV5RnfwM' target='_blank'>
-                                Click to view API documentation
-                            </Anchor>
-                        </Title>
-                    </Box>
+                        <Anchor href='https://documenter.getpostman.com/view/765844/UV5RnfwM' target='_blank' fw={600} fz='lg' mt={4} style={{ display: 'inline-block' }}>
+                            Click to view API documentation
+                        </Anchor>
+                    </Card>
 
                 </Stack>
                 <Stack p={20}>

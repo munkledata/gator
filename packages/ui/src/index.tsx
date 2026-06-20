@@ -143,7 +143,7 @@ const root = createRoot(domNode);
 root.render(
     <React.StrictMode>
         <Provider store={store}>
-            <MantineProvider theme={theme} defaultColorScheme="auto">
+            <MantineProvider theme={theme} forceColorScheme="dark">
                 <Notifications />
                 <App />
             </MantineProvider>

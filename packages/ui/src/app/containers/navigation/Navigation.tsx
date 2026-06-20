@@ -11,21 +11,19 @@ import {
     Drawer,
     Text,
     Tooltip,
-    Switch,
     useMantineColorScheme,
     Menu,
     Button,
     Badge,
-    Divider,
     BoxProps,
     FlexProps
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { FiHome, FiSettings, FiMenu, FiBell, FiGithub, FiMessageCircle, FiTrash } from 'react-icons/fi';
 import { FaDiscord, FaGoogle } from 'react-icons/fa';
-import { AiOutlineBug, AiOutlineHome, AiOutlineApi, AiOutlineHeart, AiOutlineDownload } from 'react-icons/ai';
+import { AiOutlineBug, AiOutlineHome, AiOutlineApi, AiOutlineHeart } from 'react-icons/ai';
 import { BsChevronDown, BsCheckAll, BsBook, BsPersonCircle, BsFillCalendarCheckFill, BsPhone } from 'react-icons/bs';
-import { MdOutlineAttachMoney, MdOutlineLightMode, MdOutlineDarkMode } from 'react-icons/md';
+import { MdOutlineAttachMoney } from 'react-icons/md';
 import { IconType } from 'react-icons';
 
 import { ContactsLayout } from 'app/layouts/contacts/ContactsLayout';
@@ -42,23 +40,8 @@ import { NotificationsTable } from '../../components/tables/NotificationsTable';
 import './styles.css';
 
 import { useAppSelector, useAppDispatch } from '../../hooks';
-import { installUpdate } from '../../utils/IpcUtils';
-import { showSuccessToast } from '../../utils/ToastUtils';
 import { readAll, clear as clearAlerts, NotificationItem } from '../../slices/NotificationsSlice';
 import { ScheduledMessagesLayout } from 'app/layouts/scheduledMessages/ScheduledMessagesLayout';
-
-
-const downloadAndInstallUpdate = async () => {
-    await installUpdate();
-    showSuccessToast({
-        id: 'update',
-        title: 'Update Downloading',
-        description: (
-            'Downloading & Installing update in the background. ' +
-            'The server will automatically restart when the update is complete.'
-        )
-    });
-};
 
 interface LinkItemProps {
     name: string;
@@ -231,12 +214,8 @@ interface MobileProps extends FlexProps {
     unreadCount: number;
 }
 const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileProps) => {
-    const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-    const colorMode = colorScheme === 'auto' ? 'light' : colorScheme;
-    const useOled = useAppSelector(state => state.config.use_oled_dark_mode ?? false);
-    const updateAvailable: boolean = (useAppSelector(state => state.config.update_available?.show) ?? false);
-    const updateVersion: string = (useAppSelector(state => state.config.update_available?.version) ?? '');
-    const bgColor = (colorMode === 'light') ? 'white' : (useOled ? 'black' : 'gray.8');
+    const { colorScheme } = useMantineColorScheme();
+    const bgColor = 'gray.8';
 
     return (
         <Flex
@@ -269,33 +248,6 @@ const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileP
             </Text>
 
             <Group>
-                {(updateAvailable) ? (
-                    <Box style={{ position: 'relative', float: 'left' }}>
-                        <Tooltip label="Update Available" aria-label="update-tip" withArrow>
-                            <ActionIcon
-                                size="lg"
-                                variant="ghost"
-                                aria-label="update"
-                                onClick={downloadAndInstallUpdate}
-                            >
-                                <AiOutlineDownload />
-                            </ActionIcon>
-                        </Tooltip>
-                        <Badge
-                            variant='solid'
-                            color='green'
-                            m={0}
-                            fz={10}
-                            style={{
-                                borderRadius: 'lg',
-                                position: 'absolute',
-                                top: 2,
-                                right: 8,
-                                zIndex: 2
-                            }}
-                        >v{updateVersion}</Badge>
-                    </Box>
-                ): null}
                 <Tooltip label="Website Home" aria-label="website-tip" withArrow>
                     <Anchor href="https://bluebubbles.app" style={{ textDecoration: 'none' }} target="_blank">
                         <ActionIcon size="lg" variant="ghost" aria-label="website">
@@ -365,16 +317,6 @@ const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileP
                             }}
                         >{unreadCount}</Badge>
                     ) : null}
-                </Box>
-                <Box style={{ flex: 1 }} />
-                <Divider orientation="vertical" w={1} h={15} style={{ borderColor: 'gray' }} />
-                <Box style={{ flex: 1 }} />
-                <Box style={{ flex: 1 }} />
-                <Box style={{ flex: 1 }} />
-                <Box style={{ display: 'flex', alignItems: 'center' }}>
-                    <Box mr={8}><MdOutlineDarkMode size={20} /></Box>
-                    <Switch id='theme-mode-toggle' onChange={toggleColorScheme} checked={colorMode === 'light'} />
-                    <Box ml={8}><MdOutlineLightMode size={20} /></Box>
                 </Box>
             </Group>
         </Flex>

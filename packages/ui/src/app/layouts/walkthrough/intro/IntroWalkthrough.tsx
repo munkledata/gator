@@ -2,10 +2,56 @@ import React from 'react';
 import {
     Box,
     Text,
-    Title,
     Anchor,
-    Group
+    Card,
+    SimpleGrid
 } from '@mantine/core';
+
+interface Resource {
+    url: string;
+    display: string;
+    title: string;
+    body: string;
+}
+
+const RESOURCES: Resource[] = [
+    {
+        url: 'https://bluebubbles.app/install',
+        display: 'https://bluebubbles.app/install',
+        title: 'Installation Guide',
+        body: 'Let us help walk you through the full setup of BlueBubbles. This guide will take you step by step to set up the BlueBubbles Server and connect your devices.'
+    },
+    {
+        url: 'https://docs.bluebubbles.app',
+        display: 'https://docs.bluebubbles.app',
+        title: 'Documentation & User Guide',
+        body: 'Read about what BlueBubbles has to offer, how to set it up, and how to use the plethora of features. This documentation also provides more links to other useful articles.'
+    },
+    {
+        url: 'https://documenter.getpostman.com/view/765844/UV5RnfwM',
+        display: 'https://documenter.getpostman.com',
+        title: 'REST API',
+        body: 'If you\'re a developer looking to utilize the REST API to interact with iMessage in unique ways, look no further. Perform automation, orchestration, or basic scripting!'
+    },
+    {
+        url: 'https://bluebubbles.app/faq',
+        display: 'https://bluebubbles.app/faq',
+        title: 'FAQ',
+        body: 'If you have any questions, someone else has likely already asked them! View our frequently asked questions to figure out how you may be able to solve an issue.'
+    },
+    {
+        url: 'https://bluebubbles.app/web',
+        display: 'https://bluebubbles.app/web',
+        title: 'BlueBubbles Web',
+        body: 'BlueBubbles is not limited to running on your Android device. It can also be run in your browser so you can use it on the go! Connect it to this server once setup is complete.'
+    },
+    {
+        url: 'https://bluebubbles.app/donate',
+        display: 'https://bluebubbles.app/donate',
+        title: 'Support Us',
+        body: 'BlueBubbles was created and is currently run by independent engineers in their free time. Any sort of support is greatly appreciated! This can be monetary, or just a review.'
+    }
+];
 
 export const IntroWalkthrough = (): JSX.Element => {
     return (
@@ -22,104 +68,17 @@ export const IntroWalkthrough = (): JSX.Element => {
                 <Text fz='md' my={20}>
                     In addition to the links in the navigation bar, use the links below to learn more about BlueBubbles and how to use it!
                 </Text>
-                <Group wrap='wrap' gap='md' align='stretch'>
-                    <Box>
-                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
-                            <Text c='gray'>
-                                https://bluebubbles.app/install
-                            </Text>
-                            <Title order={4} my={8}>
-                                <Anchor href='https://bluebubbles.app/install' target='_blank'>
-                                    Installation Guide
-                                </Anchor>
-                            </Title>
-                            <Text>
-                                Let us help walk you through the full setup of BlueBubbles. This guide will take you step
-                                by step to set up the BlueBubbles Server and connect your devices.
-                            </Text>
-                        </Box>
-                    </Box>
-                    <Box>
-                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
-                            <Text c='gray'>
-                                https://docs.bluebubbles.app
-                            </Text>
-                            <Title order={4} my={8}>
-                                <Anchor href='https://docs.bluebubbles.app' target='_blank'>
-                                    Documentation &amp; User Guide
-                                </Anchor>
-                            </Title>
-                            <Text>
-                                Read about what BlueBubbles has to offer, how to set it up, and how to use the plethora
-                                of features. This documentation also provides more links to other useful articles.
-                            </Text>
-                        </Box>
-                    </Box>
-                    <Box>
-                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
-                            <Text c='gray'>
-                                https://documenter.getpostman.com
-                            </Text>
-                            <Title order={4} my={8}>
-                                <Anchor href='https://documenter.getpostman.com/view/765844/UV5RnfwM' target='_blank'>
-                                    REST API
-                                </Anchor>
-                            </Title>
-                            <Text>
-                                If you're a developer looking to utilize the REST API to interact with iMessage in unique
-                                ways, look no further. Perform automation, orchestration, or basic scripting!
-                            </Text>
-                        </Box>
-                    </Box>
-                    <Box>
-                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
-                            <Text c='gray'>
-                                https://bluebubbles.app/faq
-                            </Text>
-                            <Title order={4} my={8}>
-                                <Anchor href='https://bluebubbles.app/faq' target='_blank'>
-                                    FAQ
-                                </Anchor>
-                            </Title>
-                            <Text>
-                                If you have any questions, someone else has likely already asked them! View our frequently
-                                asked questions to figure out how you may be able to solve an issue.
-                            </Text>
-                        </Box>
-                    </Box>
-                    <Box>
-                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
-                            <Text c='gray'>
-                                https://bluebubbles.app/web
-                            </Text>
-                            <Title order={4} my={8}>
-                                <Anchor href='https://bluebubbles.app/web' target='_blank'>
-                                    BlueBubbles Web
-                                </Anchor>
-                            </Title>
-                            <Text>
-                                BlueBubbles is not limited to running on your Android device. It can also be run in your
-                                browser so you can use it on the go! Connect it to this server once setup is complete.
-                            </Text>
-                        </Box>
-                    </Box>
-                    <Box>
-                        <Box maw='sm' px={20} pb={20} pt={12} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }}>
-                            <Text c='gray'>
-                                https://bluebubbles.app/donate
-                            </Text>
-                            <Title order={4} my={8}>
-                                <Anchor href='https://bluebubbles.app/donate' target='_blank'>
-                                    Support Us
-                                </Anchor>
-                            </Title>
-                            <Text>
-                                BlueBubbles was created and is currently run by independent engineers in their free time.
-                                Any sort of support is greatly appreciated! This can be monetary, or just a review.
-                            </Text>
-                        </Box>
-                    </Box>
-                </Group>
+                <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing='md'>
+                    {RESOURCES.map(r => (
+                        <Card key={r.title} withBorder radius='md' padding='md'>
+                            <Text fz='xs' c='dimmed' lineClamp={1}>{r.display}</Text>
+                            <Anchor href={r.url} target='_blank' fw={600} fz='lg' mt={4} mb={8} style={{ display: 'inline-block' }}>
+                                {r.title}
+                            </Anchor>
+                            <Text fz='sm'>{r.body}</Text>
+                        </Card>
+                    ))}
+                </SimpleGrid>
             </Box>
         </Box>
     );

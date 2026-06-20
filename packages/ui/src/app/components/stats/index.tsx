@@ -133,8 +133,8 @@ export const StatBox = (
     { title: string, text: string | number | null, color: string }
 ): JSX.Element => {
     return (
-        <Box maw='sm' p={20} m={4} style={{ borderWidth: '1px', borderRadius: 'lg', overflow: 'hidden' }}>
-            <Badge px='2' color={color} mb={8} style={{ borderRadius: 'full' }}>
+        <Box maw='sm' p={20} m={4} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}>
+            <Badge color={color} mb={8}>
                 {title}
             </Badge>
             <Box style={{ flex: 1 }} />

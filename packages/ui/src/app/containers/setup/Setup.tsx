@@ -7,14 +7,12 @@ import {
     Anchor,
     Text,
     Tooltip,
-    Switch,
-    Divider,
     useMantineColorScheme
 } from '@mantine/core';
 import { FiGithub, FiMessageCircle } from 'react-icons/fi';
 import { FaDiscord } from 'react-icons/fa';
 import { AiOutlineHome } from 'react-icons/ai';
-import { MdOutlineAttachMoney, MdOutlineLightMode, MdOutlineDarkMode } from 'react-icons/md';
+import { MdOutlineAttachMoney } from 'react-icons/md';
 import { WalkthroughLayout } from '../../layouts/walkthrough/WalkthroughLayout';
 import logo from '../../../images/logo/icon-64.png';
 
@@ -31,7 +29,7 @@ export const Setup = (): JSX.Element => {
 };
 
 const NavBar = (): JSX.Element => {
-    const { colorScheme, colorScheme: colorMode, toggleColorScheme: toggleColorMode } = useMantineColorScheme();
+    const { colorScheme } = useMantineColorScheme();
 
     return (
         <Flex
@@ -76,16 +74,6 @@ const NavBar = (): JSX.Element => {
                             <ActionIcon size="lg" variant="ghost" aria-label="github"><FiGithub /></ActionIcon>
                         </Anchor>
                     </Tooltip>
-                    <Box style={{ flex: 1 }} />
-                    <Divider orientation="vertical" w={1} h={15} style={{ borderColor: 'gray' }} />
-                    <Box style={{ flex: 1 }} />
-                    <Box style={{ flex: 1 }} />
-                    <Box style={{ flex: 1 }} />
-                    <Box style={{ display: 'flex', alignItems: 'center' }}>
-                        <Box mr={8}><MdOutlineDarkMode size={20} /></Box>
-                        <Switch id='theme-mode-toggle' onChange={toggleColorMode} checked={colorMode === 'light'} />
-                        <Box ml={8}><MdOutlineLightMode size={20} /></Box>
-                    </Box>
                 </Group>
             </Flex>
         </Flex>
