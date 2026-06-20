@@ -149,6 +149,8 @@ function registerShellHandlers(): void {
     const handlers: Record<string, (data?: unknown) => unknown> = {
         "open-log-location": () => shell.openPath(app.getPath("logs")),
         "open-app-location": () => shell.showItemInFolder(app.getPath("exe")),
+        // Open a URL in the user's default browser (used by the Firebase OAuth flow).
+        "open-external": data => shell.openExternal(String(data ?? "")),
         "open-fulldisk-preferences": () => sysPref("Privacy_AllFiles"),
         "open-accessibility-preferences": () => sysPref("Privacy_Accessibility"),
         "get-binary-path": () => app.getPath("exe"),

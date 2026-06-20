@@ -31,9 +31,11 @@ export interface CoreOperationDeps {
 function sanitizeConfig(deps: CoreOperationDeps) {
     const { password, notifications, ...rest } = deps.configStore.getConfig();
     void password;
-    // The FCM service account holds a private key — never expose it over the API.
-    const { serviceAccount, ...fcm } = notifications.fcm;
+    // The FCM service account holds a private key, and the OAuth client secret is a
+    // credential too — never expose either over the API.
+    const { serviceAccount, oauthClientSecret, ...fcm } = notifications.fcm;
     void serviceAccount;
+    void oauthClientSecret;
     return { ...rest, notifications: { ...notifications, fcm } };
 }
 

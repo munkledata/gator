@@ -30,6 +30,9 @@ export * from "./notifications/NotificationRegistry";
 export { FcmProvider, type FcmFetch, type FcmResponse, type FcmProviderDeps } from "./notifications/FcmProvider";
 export { parseServiceAccount, type FcmServiceAccount } from "./notifications/fcm/serviceAccount";
 export { nodeRs256Signer, type JwtSigner } from "./notifications/fcm/sign";
+export * from "./notifications/fcm/googleOAuth";
+export { provisionFirebase, type ProvisionResult } from "./notifications/fcm/firebaseProvisioner";
+export { FirebaseSetupService, type SetupState, type SetupStatus } from "./notifications/fcm/FirebaseSetupService";
 export { WebPushProvider, type WebPushTransport } from "./notifications/WebPushProvider";
 export * from "./notifications/buildNotificationRegistry";
 

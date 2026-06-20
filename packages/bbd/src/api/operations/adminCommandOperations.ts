@@ -13,6 +13,7 @@ import type { MacPermissions } from "../../host-platform/MacPermissions";
 import type { CloudflareDdns } from "../../networking/CloudflareDdns";
 import { parseServiceAccount } from "../../notifications/fcm/serviceAccount";
 import { assertSecureServerAddress } from "../../config/serverAddress";
+import type { FirebaseSetupService } from "../../notifications/fcm/FirebaseSetupService";
 import type { Logger } from "../../core/logger";
 
 export interface AdminCommandDeps {
@@ -26,6 +27,7 @@ export interface AdminCommandDeps {
     stats: StatsReader;
     permissions: MacPermissions;
     cloudflareDdns: CloudflareDdns;
+    firebaseSetup: FirebaseSetupService;
     version: string;
     /** Push a Socket.IO event to all connected clients (former main->renderer pushes). */
     emit: (event: string, data: unknown) => void;
@@ -45,7 +47,7 @@ const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === "ob
  * so the UI needs no password — see execute.ts.
  */
 export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[] {
-    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, emit, logger } =
+    const { configService, configStore, chatReader, contacts, scheduledStore, webhookStore, transport, stats, permissions, cloudflareDdns, firebaseSetup, emit, logger } =
         deps;
 
     // Lightweight in-memory alert log (the legacy server's server-side notifications).
@@ -180,15 +182,57 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
             emit("config-update", readConfig());
             return { success: true };
         },
+        // Save the user's own Google OAuth client (for the automatic setup flow).
+        "set-fcm-oauth-client": async d => {
+            const str = (a: unknown, b: unknown): string | undefined => {
+                const v = typeof a === "string" ? a : typeof b === "string" ? b : "";
+                return v.trim() ? v.trim() : undefined;
+            };
+            const notifications = configStore.getConfig().notifications;
+            await configService.update({
+                notifications: {
+                    ...notifications,
+                    fcm: {
+                        ...notifications.fcm,
+                        oauthClientId: str(d.clientId, d.client_id),
+                        oauthClientSecret: str(d.clientSecret, d.client_secret)
+                    }
+                }
+            });
+            emit("config-update", readConfig());
+            return { success: true, configured: Boolean(str(d.clientId, d.client_id)) };
+        },
         "get-fcm-status": () => {
             const fcm = configStore.getConfig().notifications.fcm;
             const account = parseServiceAccount(fcm.serviceAccount ?? null);
             return {
                 configured: Boolean(account) && fcm.enabled,
                 projectId: account?.projectId ?? null,
-                clientEmail: account?.clientEmail ?? null
+                clientEmail: account?.clientEmail ?? null,
+                // Whether the automatic (Google sign-in) setup is available.
+                oauthClientConfigured: Boolean(fcm.oauthClientId)
             };
         },
+
+        // Automatic Firebase setup: begin the Google OAuth flow (returns the consent URL
+        // for the UI to open in the browser), and report provisioning status.
+        "start-firebase-setup": () => {
+            const fcm = configStore.getConfig().notifications.fcm;
+            const clientId = String(fcm.oauthClientId ?? "");
+            if (!clientId) {
+                return { success: false, message: "Add your Google OAuth client ID before starting automatic setup." };
+            }
+            try {
+                const { url } = firebaseSetup.begin({
+                    clientId,
+                    clientSecret: fcm.oauthClientSecret ? String(fcm.oauthClientSecret) : undefined
+                });
+                return { success: true, url };
+            } catch (e) {
+                return { success: false, message: (e as Error)?.message ?? "Failed to start setup" };
+            }
+        },
+        "get-firebase-setup-status": () => firebaseSetup.getState(),
 
         // --- registered push devices (the config store's device table) ---
         "get-devices": () => configStore.listDevices(),

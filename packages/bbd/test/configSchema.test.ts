@@ -41,6 +41,12 @@ test("legacy config persisted with the removed UnifiedPush provider loads instea
     assert.equal("unifiedpush" in c.notifications, false);
 });
 
+test("a legacy tunnelProvider of 'cloudflare' (removed option) coerces to 'none' instead of crashing", () => {
+    const c = parseConfig({ tunnelProvider: "cloudflare" });
+    assert.equal(c.tunnelProvider, "none");
+    assert.equal(parseConfigSafe({ tunnelProvider: "cloudflare" }).success, true);
+});
+
 test("the FCM service account round-trips through the schema", () => {
     const account = { project_id: "p", client_email: "a@b.iam", private_key: "KEY" };
     const c = parseConfig({ notifications: { fcm: { enabled: true, serviceAccount: account } } });

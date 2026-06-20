@@ -19,11 +19,39 @@ export interface FcmStatus {
     configured: boolean;
     projectId: string | null;
     clientEmail: string | null;
+    /** Whether a Google OAuth client is configured (so automatic setup is available). */
+    oauthClientConfigured?: boolean;
 }
 
 /** Whether the Firebase service account is configured (and, if so, which project). */
 export const getFcmStatus = async (): Promise<FcmStatus> => {
     return await invoke('get-fcm-status');
+};
+
+/** Save the user's own Google OAuth client (for the automatic Firebase setup). */
+export const setFcmOAuthClient = async (clientId: string, clientSecret?: string) => {
+    return await invoke('set-fcm-oauth-client', { clientId, clientSecret });
+};
+
+/** Begin the automatic setup; returns the Google consent URL to open in the browser. */
+export const startFirebaseSetup = async (): Promise<{ success: boolean; url?: string; message?: string }> => {
+    return await invoke('start-firebase-setup');
+};
+
+export interface FirebaseSetupState {
+    status: 'idle' | 'awaiting-consent' | 'provisioning' | 'completed' | 'error';
+    step?: string;
+    projectId?: string;
+    error?: string;
+}
+
+export const getFirebaseSetupStatus = async (): Promise<FirebaseSetupState> => {
+    return await invoke('get-firebase-setup-status');
+};
+
+/** Open a URL in the user's default browser (Electron host only). */
+export const openExternalUrl = async (url: string) => {
+    return await invoke('open-external', url);
 };
 
 export const getAlerts = async () => {

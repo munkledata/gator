@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
     NativeSelect,
     Flex,
@@ -14,8 +14,6 @@ import { AiOutlineEdit } from 'react-icons/ai';
 import { BiCopy } from 'react-icons/bi';
 import { setConfig } from '../../slices/ConfigSlice';
 import { copyToClipboard } from '../../utils/GenericUtils';
-import { ConfirmationItems } from '../../utils/ToastUtils';
-import { ConfirmationDialog } from '../modals/ConfirmationDialog';
 import { saveLanUrl } from 'app/utils/IpcUtils';
 import { ZrokSetupDialog } from '../modals/ZrokSetupDialog';
 
@@ -25,33 +23,15 @@ export interface ProxySetupFieldProps {
     showAddress?: boolean;
 }
 
-const confirmationActions: ConfirmationItems = {
-    confirmation: {
-        message: (
-            'Cloudflare registers brand new domains on the fly to assign to your server. After ' +
-            'switching your proxy service to Cloudflare, it is highly recommended that you toggle your ' + 
-            'client device\'s WiFi/Network off and then back on.<br /><br />Note: This is to ensure that new ' +
-            'domains can be found by your device\'s DNS service.'
-        ),
-        func: () => {
-            // Do nothing
-        }
-    }
-};
-
 export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFieldProps): JSX.Element => {
     const dispatch = useAppDispatch();
     const dnsRef = useRef(null);
     const zrokRef = useRef(null);
-    const alertRef = useRef(null);
     const proxyService: string = (useAppSelector(state => state.config.proxy_service) ?? '').toLowerCase().replace(' ', '-');
     const address: string = useAppSelector(state => state.config.server_address) ?? '';
     const port: number = useAppSelector(state => state.config.socket_port) ?? 1234;
     const [dnsModalOpen, setDnsModalOpen] = useDisclosure();
     const [zrokModalOpen, setZrokModalOpen] = useDisclosure();
-    const [requiresConfirmation, confirm] = useState((): string | null => {
-        return null;
-    });
 
     return (
         <Box>
@@ -72,8 +52,6 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                         } else if (e.target.value === 'zrok') {
                             shouldSave = false;
                             setZrokModalOpen.open();
-                        } else if (e.target.value === 'cloudflare') {
-                            confirm('confirmation');
                         } else if (e.target.value === 'lan-url') {
                             saveLanUrl();
                         }
@@ -83,8 +61,7 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                         }
                     }}
                 >
-                    <option value='cloudflare'>Cloudflare (Recommended)</option>
-                    <option value='zrok'>Zrok</option>
+                    <option value='zrok'>Zrok (Recommended)</option>
                     <option value='dynamic-dns'>Dynamic DNS / Custom URL</option>
                     <option value='lan-url'>LAN URL</option>
                 </NativeSelect>
@@ -136,19 +113,6 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                 }}
                 isOpen={zrokModalOpen}
                 onClose={() => setZrokModalOpen.close()}
-            />
-
-            <ConfirmationDialog
-                title="Notice"
-                modalRef={alertRef}
-                onClose={() => confirm(null)}
-                body={confirmationActions[requiresConfirmation as string]?.message}
-                acceptText="OK"
-                declineText={null}
-                onAccept={() => {
-                    confirmationActions[requiresConfirmation as string].func();
-                }}
-                isOpen={requiresConfirmation !== null}
             />
         </Box>
     );

@@ -56,6 +56,9 @@ import { buildWebhookOperations } from "./api/operations/webhookOperations";
 import { wireMessageFanout } from "./serialize/messageFanout";
 import { buildNotificationRegistry } from "./notifications/buildNotificationRegistry";
 import { parseServiceAccount } from "./notifications/fcm/serviceAccount";
+import { FirebaseSetupService } from "./notifications/fcm/FirebaseSetupService";
+import { mountFirebaseSetupRoutes } from "./api/firebaseSetupRoutes";
+import type { OAuthFetch } from "./notifications/fcm/googleOAuth";
 import type { Service } from "./core/lifecycle";
 
 export const BBD_VERSION = "2.0.0-bbd";
@@ -158,6 +161,19 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         fcmCredentials: () => parseServiceAccount(configStore.getConfig().notifications.fcm.serviceAccount ?? null)
     });
 
+    // Automatic Firebase setup (Google OAuth -> provision project -> service account).
+    // The redirect lands on the loopback /oauth/callback route mounted below.
+    const firebaseSetup = new FirebaseSetupService({
+        fetch: globalThis.fetch as unknown as OAuthFetch,
+        redirectUri: `http://127.0.0.1:${port}/oauth/callback`,
+        saveServiceAccount: async account => {
+            const n = configStore.getConfig().notifications;
+            await configService.update({ notifications: { ...n, fcm: { ...n.fcm, enabled: true, serviceAccount: account } } });
+        },
+        emit: state => io?.emit("firebase-setup-status", state),
+        logger
+    });
+
     // Cloudflare dynamic DNS — reads its (flat camelCase) settings from the live config each tick.
     const cloudflareDdns = new CloudflareDdns(() => {
         const c = configStore.getConfig() as Record<string, unknown>;
@@ -177,6 +193,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             configService,
             configStore,
             cloudflareDdns,
+            firebaseSetup,
             chatReader,
             contacts,
             scheduledStore,
@@ -215,6 +232,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         async start() {
             mountFastify(app, registry, { logger, auth });
             mountAttachmentRoutes(app, { streamer: attachmentStreamer, auth });
+            mountFirebaseSetupRoutes(app, firebaseSetup);
             // The Electron shell serves its bundled UI from the same origin as the API,
             // so the renderer's apiClient is same-origin and the headless extraction is free.
             if (options.serveUiFrom) serveStaticUi(app, options.serveUiFrom);

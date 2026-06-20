@@ -28,7 +28,15 @@ const NotificationsConfigShape = z
                  * Stored as the parsed object or the raw string; {@link parseServiceAccount}
                  * accepts either.
                  */
-                serviceAccount: z.unknown().optional()
+                serviceAccount: z.unknown().optional(),
+                /**
+                 * The user's own Google OAuth client (a "Desktop app" client ID, no secret)
+                 * for the automatic setup flow. Optional: when unset, only the manual
+                 * service-account upload is available.
+                 */
+                oauthClientId: z.string().optional(),
+                /** Only needed if the OAuth client is a "Web application" type. */
+                oauthClientSecret: z.string().optional()
             })
             .default({}),
         webpush: z
@@ -67,7 +75,9 @@ export const ConfigSchema = z
         autoStart: z.boolean().default(false),
         enablePrivateApi: z.boolean().default(false),
         encryptComs: z.boolean().default(false),
-        tunnelProvider: z.enum(["cloudflare", "zrok", "lan", "none"]).default("none"),
+        // Cloudflare tunnel was removed as an option; a legacy stored "cloudflare" is
+        // coerced to "none" by parseConfig's preprocess so it can't fail the enum on boot.
+        tunnelProvider: z.enum(["zrok", "lan", "none"]).default("none"),
         // Cloudflare dynamic DNS — keep a custom-domain A record pointed at the
         // server's current public IP (for a home/dynamic-IP server). Flat keys so the
         // UI's snake_case <-> camelCase mapping round-trips them like the other config.
@@ -91,10 +101,21 @@ export type NotificationsConfig = z.infer<typeof NotificationsConfigSchema>;
 /** The fully-defaulted config (parsing an empty object yields every default). */
 export const DEFAULT_CONFIG: Config = ConfigSchema.parse({});
 
+/** Coerce removed/renamed enum values from older builds before validation. */
+function coerceLegacy(input: unknown): unknown {
+    if (input && typeof input === "object" && !Array.isArray(input)) {
+        const v = { ...(input as Record<string, unknown>) };
+        // Cloudflare tunnel was removed as an option.
+        if (v.tunnelProvider === "cloudflare") v.tunnelProvider = "none";
+        return v;
+    }
+    return input;
+}
+
 export function parseConfig(input: unknown): Config {
-    return ConfigSchema.parse(input);
+    return ConfigSchema.parse(coerceLegacy(input));
 }
 
 export function parseConfigSafe(input: unknown): z.SafeParseReturnType<unknown, Config> {
-    return ConfigSchema.safeParse(input);
+    return ConfigSchema.safeParse(coerceLegacy(input));
 }
