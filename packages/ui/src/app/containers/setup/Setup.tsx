@@ -51,27 +51,27 @@ const NavBar = (): JSX.Element => {
                 <Group>
                     <Tooltip label="Website Home" aria-label="website-tip" withArrow>
                         <Anchor href="https://bluebubbles.app" style={{ textDecoration: 'none' }} target="_blank">
-                            <ActionIcon size="lg" variant="ghost" aria-label="website"><AiOutlineHome /></ActionIcon>
+                            <ActionIcon size="lg" variant="subtle" aria-label="website"><AiOutlineHome /></ActionIcon>
                         </Anchor>
                     </Tooltip>
                     <Tooltip label="BlueBubbles Web" aria-label="website-tip" withArrow>
                         <Anchor href="https://bluebubbles.app/web" style={{ textDecoration: 'none' }} target="_blank">
-                            <ActionIcon size="lg" variant="ghost" aria-label="bluebubbles web"><FiMessageCircle /></ActionIcon>
+                            <ActionIcon size="lg" variant="subtle" aria-label="bluebubbles web"><FiMessageCircle /></ActionIcon>
                         </Anchor>
                     </Tooltip>
                     <Tooltip label="Support Us" aria-label="donate-tip" withArrow>
                         <Anchor href="https://bluebubbles.app/donate" style={{ textDecoration: 'none' }} target="_blank">
-                            <ActionIcon size="lg" variant="ghost" aria-label="donate"><MdOutlineAttachMoney /></ActionIcon>
+                            <ActionIcon size="lg" variant="subtle" aria-label="donate"><MdOutlineAttachMoney /></ActionIcon>
                         </Anchor>
                     </Tooltip>
                     <Tooltip label="Join our Discord" aria-label="discord-tip" withArrow>
                         <Anchor href="https://discord.gg/yC4wr38" style={{ textDecoration: 'none' }} target="_blank">
-                            <ActionIcon size="lg" variant="ghost" aria-label="discord"><FaDiscord /></ActionIcon>
+                            <ActionIcon size="lg" variant="subtle" aria-label="discord"><FaDiscord /></ActionIcon>
                         </Anchor>
                     </Tooltip>
                     <Tooltip label="Read our Source Code" aria-label="github-tip" withArrow>
                         <Anchor href="https://github.com/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
-                            <ActionIcon size="lg" variant="ghost" aria-label="github"><FiGithub /></ActionIcon>
+                            <ActionIcon size="lg" variant="subtle" aria-label="github"><FiGithub /></ActionIcon>
                         </Anchor>
                     </Tooltip>
                 </Group>

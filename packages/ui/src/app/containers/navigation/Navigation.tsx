@@ -169,10 +169,10 @@ const SidebarContent = ({ onClose, display, ...rest }: SidebarProps) => {
             <Flex h="20" align="center" mx="6" justify="flex-start">
                 <img src={logo} className="logo" alt="logo" height={48} />
                 <Text fz="1xl" ml={8}>BlueBubbles</Text>
-                <CloseButton style={{ display: { base: 'flex', md: 'none' } } as unknown as React.CSSProperties} onClick={onClose} />
+                <CloseButton className="mobile-only" onClick={onClose} />
             </Flex>
             {LinkItems.map(link => (
-                <RouterLink key={link.name} to={link.to}>
+                <RouterLink key={link.name} to={link.to} style={{ textDecoration: 'none', color: 'inherit' }}>
                     <NavItem icon={link.icon} to={link.to}>{link.name}</NavItem>
                 </RouterLink>
             ))}
@@ -236,56 +236,56 @@ const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileP
         >
             <ActionIcon
                 onClick={onOpen}
-                variant="outline"
+                variant="subtle"
                 aria-label="open menu"
-                style={{ display: { base: 'flex', md: 'none' } } as unknown as React.CSSProperties}
+                className="mobile-only"
             >
                 <FiMenu />
             </ActionIcon>
 
-            <Text fz="2xl" fw="bold" style={{ display: { base: 'flex', md: 'none' } } as unknown as React.CSSProperties} {...{ fontFamily: 'monospace' } as any}>
+            <Text fz="2xl" fw="bold" className="mobile-only" {...{ fontFamily: 'monospace' } as any}>
                 <img style={{ minWidth: '48px' }} src={logo} className="logo-small" alt="logo" />
             </Text>
 
             <Group>
                 <Tooltip label="Website Home" aria-label="website-tip" withArrow>
                     <Anchor href="https://bluebubbles.app" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="ghost" aria-label="website">
+                        <ActionIcon size="lg" variant="subtle" aria-label="website">
                             <AiOutlineHome />
                         </ActionIcon>
                     </Anchor>
                 </Tooltip>
                 <Tooltip label="BlueBubbles Web" aria-label="web-tip" withArrow>
                     <Anchor href="https://bluebubbles.app/web" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="ghost" aria-label="bluebubbles web">
+                        <ActionIcon size="lg" variant="subtle" aria-label="bluebubbles web">
                             <FiMessageCircle />
                         </ActionIcon>
                     </Anchor>
                 </Tooltip>
                 <Tooltip label="Sponsor Us" aria-label="sponsor-tip" withArrow>
                     <Anchor href="https://github.com/sponsors/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="ghost" aria-label="donate">
+                        <ActionIcon size="lg" variant="subtle" aria-label="donate">
                             <AiOutlineHeart />
                         </ActionIcon>
                     </Anchor>
                 </Tooltip>
                 <Tooltip label="Support Us" aria-label="donate-tip" withArrow>
                     <Anchor href="https://bluebubbles.app/donate" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="ghost" aria-label="donate">
+                        <ActionIcon size="lg" variant="subtle" aria-label="donate">
                             <MdOutlineAttachMoney />
                         </ActionIcon>
                     </Anchor>
                 </Tooltip>
                 <Tooltip label="Join our Discord" aria-label="discord-tip" withArrow>
                     <Anchor href="https://discord.gg/yC4wr38" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="ghost" aria-label="discord">
+                        <ActionIcon size="lg" variant="subtle" aria-label="discord">
                             <FaDiscord />
                         </ActionIcon>
                     </Anchor>
                 </Tooltip>
                 <Tooltip label="Read our Source Code" aria-label="github-tip" withArrow>
                     <Anchor href="https://github.com/BlueBubblesApp" style={{ textDecoration: 'none' }} target="_blank">
-                        <ActionIcon size="lg" variant="ghost" aria-label="github">
+                        <ActionIcon size="lg" variant="subtle" aria-label="github">
                             <FiGithub />
                         </ActionIcon>
                     </Anchor>
@@ -293,7 +293,7 @@ const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileP
                 <Box style={{ position: 'relative', float: 'left' }}>
                     <ActionIcon
                         size="lg"
-                        variant="ghost"
+                        variant="subtle"
                         aria-label="notifications"
                         onClick={() => onNotificationOpen()}
                         style={{ verticalAlign: 'middle', zIndex: 1 }}
