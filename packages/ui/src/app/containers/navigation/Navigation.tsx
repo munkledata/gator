@@ -9,6 +9,7 @@ import {
     Group,
     Anchor,
     Drawer,
+    Stack,
     Text,
     Tooltip,
     useMantineColorScheme,
@@ -151,30 +152,29 @@ interface SidebarProps extends BoxProps {
 }
 
 const SidebarContent = ({ onClose, display, ...rest }: SidebarProps) => {
-    const { colorScheme } = useMantineColorScheme();
     return (
         <Box
-            miw='16em'
-            w={60}
+            w='16em'
             pos="fixed"
-            h="full"
+            h="100vh"
             style={{
-                borderRight: '1px',
-                borderRightColor: (colorScheme === 'dark' ? 'gray.700' : 'gray.200'),
+                borderRight: '1px solid var(--mantine-color-dark-4)',
                 display
             } as unknown as React.CSSProperties}
             {...rest}
         >
-            <Flex h="20" align="center" mx="6" justify="flex-start">
-                <img src={logo} className="logo" alt="logo" height={48} />
-                <Text fz="1xl" ml={8}>BlueBubbles</Text>
-                <CloseButton className="mobile-only" onClick={onClose} />
+            <Flex h={64} align="center" px="md" gap={10} justify="flex-start">
+                <img src={logo} className="logo" alt="logo" height={40} />
+                <Text fz="xl" fw={700}>Gator</Text>
+                <CloseButton className="mobile-only" onClick={onClose} ml="auto" />
             </Flex>
-            {LinkItems.map(link => (
-                <RouterLink key={link.name} to={link.to} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <NavItem icon={link.icon} to={link.to}>{link.name}</NavItem>
-                </RouterLink>
-            ))}
+            <Stack gap={2} px="xs" mt={4}>
+                {LinkItems.map(link => (
+                    <RouterLink key={link.name} to={link.to} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <NavItem icon={link.icon} to={link.to}>{link.name}</NavItem>
+                    </RouterLink>
+                ))}
+            </Stack>
         </Box>
     );
 };
@@ -189,18 +189,20 @@ const NavItem = ({ icon: IconComp, to, children, ...rest }: NavItemProps) => {
     return (
         <Flex
             align="center"
-            p="4"
-            mx="4"
+            gap={12}
+            px="md"
+            py={9}
             role="group"
-            c={location.pathname === to ? 'brand.4' : 'gray.3'}
+            className="nav-item"
+            c={location.pathname === to ? 'gator.4' : 'gray.3'}
             style={{
-                borderRadius: 'lg',
+                borderRadius: 'var(--mantine-radius-md)',
                 cursor: 'pointer'
             }}
             {...rest}
         >
             {IconComp && (
-                <IconComp {...{ mr: '4', fontSize: '16' } as any} />
+                <IconComp size={18} />
             )}
             {children}
         </Flex>
@@ -214,7 +216,7 @@ interface MobileProps extends FlexProps {
 }
 const MobileNav = ({ onOpen, onNotificationOpen, unreadCount, ...rest }: MobileProps) => {
     const { colorScheme } = useMantineColorScheme();
-    const bgColor = 'gray.8';
+    const bgColor = 'dark.6';
 
     return (
         <Flex

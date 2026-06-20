@@ -2,6 +2,21 @@
     height: 48px;
 }
 
+/* The gator badge is a rounded square; clip the residual corner so it sits
+   cleanly against the navy header. */
+.logo,
+.logo-small {
+    border-radius: 22%;
+}
+
+/* Sidebar nav items: subtle hover highlight against the navy sidebar. */
+.nav-item {
+    transition: background-color 120ms ease;
+}
+.nav-item:hover {
+    background-color: var(--mantine-color-dark-6);
+}
+
 /* These elements belong to the mobile drawer / top bar only. Their original
    responsive `display` props were Chakra-isms that don't work in Mantine, so
    hide them on desktop where the fixed sidebar is always visible. */

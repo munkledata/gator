@@ -45,7 +45,7 @@ const NavBar = (): JSX.Element => {
         >
             <Flex align="center" justify="flex-start">
                 <img src={logo} className="logo" alt="logo" height={48} />
-                <Text fz="1xl" ml={8}>BlueBubbles</Text>
+                <Text fz="1xl" ml={8}>Gator</Text>
             </Flex>
             <Flex justify="flex-end">
                 <Group>

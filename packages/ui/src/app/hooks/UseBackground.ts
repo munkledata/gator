@@ -1,4 +1,4 @@
-// The app is dark mode only, so the background is a single dark shade.
+// The app is dark mode only; use the themed navy surface shade.
 export const useBackground = (): string => {
-    return 'gray.8';
+    return 'dark.6';
 };
