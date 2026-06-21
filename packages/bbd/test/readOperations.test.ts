@@ -72,6 +72,13 @@ function seedTwoChats(): Database.Database {
     m.run("b-new", "b new", 4000); // msg 4 → chat 2 (newest for B)
     db.prepare("INSERT INTO chat_message_join(chat_id, message_id) VALUES (1,1),(1,2),(2,3),(2,4)").run();
     db.prepare("INSERT INTO chat_handle_join(chat_id, handle_id) VALUES (1,1),(2,2)").run();
+    // Disjoint attachments to prove the batched attachment hydration keys each message by
+    // its own guid (no cross-contamination): att-a → msg "a-new", att-b → msg "b-new".
+    const a = db.prepare("INSERT INTO attachment(guid, mime_type, transfer_name, total_bytes) VALUES (?,?,?,?)");
+    a.run("att-a", "image/jpeg", "a.jpg", 11); // attachment 1
+    a.run("att-b", "image/gif", "b.gif", 22); // attachment 2
+    // msg "a-new" is ROWID 2; msg "b-new" is ROWID 4.
+    db.prepare("INSERT INTO message_attachment_join(message_id, attachment_id) VALUES (2,1),(4,2)").run();
     return db;
 }
 
@@ -204,6 +211,86 @@ test("get-chat-messages returns a chat's messages, newest first, bound by guid",
         auth
     );
     assert.equal((none.data as { messages: unknown[] }).messages.length, 0);
+});
+
+test("get-chat-messages WITHOUT `with` omits attachments (byte-identical to before)", async () => {
+    const by = ops(seed());
+    const r = await executeOperation(
+        by("get-chat-messages"),
+        { input: { guid: "iMessage;-;+15551234567" }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    const msgs = (r.data as { messages: Record<string, unknown>[] }).messages;
+    assert.equal(msgs.length, 2);
+    for (const m of msgs) assert.equal("attachments" in m, false);
+});
+
+test("get-chat-messages WITH attachments nests each message's own attachments", async () => {
+    const by = ops(seed());
+    // The app passes `with` as a comma-string query param.
+    const r = await executeOperation(
+        by("get-chat-messages"),
+        {
+            input: {
+                guid: "iMessage;-;+15551234567",
+                with: "chats,chats.participants,attachments,attributedBody,messageSummaryInfo,payloadData"
+            },
+            credential: "pw"
+        },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    type Row = { guid: string; attachments: { guid: string; mimeType: string; totalBytes: number }[] };
+    const msgs = (r.data as { messages: Row[] }).messages;
+    const m1 = msgs.find(m => m.guid === "m1")!;
+    // m1 carries its own attachment (att-1), not m2's (none).
+    assert.equal(m1.attachments.length, 1);
+    assert.equal(m1.attachments[0]!.guid, "att-1");
+    assert.equal(m1.attachments[0]!.mimeType, "image/png");
+    assert.equal(m1.attachments[0]!.totalBytes, 4096);
+});
+
+test("get-chat-messages WITH attachments gives a message with none an empty array (requested but empty)", async () => {
+    const by = ops(seed());
+    // `attachment` (singular) is tolerated too.
+    const r = await executeOperation(
+        by("get-chat-messages"),
+        { input: { guid: "iMessage;-;+15551234567", with: ["attachment"] }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    type Row = { guid: string; attachments: unknown[] };
+    const msgs = (r.data as { messages: Row[] }).messages;
+    const m2 = msgs.find(m => m.guid === "m2")!;
+    // present (requested) but empty — `[]`, not an omitted key.
+    assert.equal("attachments" in m2, true);
+    assert.deepEqual(m2.attachments, []);
+});
+
+test("get-chat-messages attachment batching: each message gets only its own (no cross-contamination)", async () => {
+    const by = ops(seedTwoChats());
+    // ChatB has two messages (b-old, b-new); only b-new has an attachment (att-b).
+    const r = await executeOperation(
+        by("get-chat-messages"),
+        { input: { guid: "iMessage;-;+2222", with: "attachments" }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    type Row = { guid: string; attachments: { guid: string }[] };
+    const msgs = (r.data as { messages: Row[] }).messages;
+    const bNew = msgs.find(m => m.guid === "b-new")!;
+    const bOld = msgs.find(m => m.guid === "b-old")!;
+    // b-new gets att-b only (not chat A's att-a); b-old gets [].
+    assert.deepEqual(
+        bNew.attachments.map(a => a.guid),
+        ["att-b"]
+    );
+    assert.deepEqual(bOld.attachments, []);
 });
 
 test("get-handles returns serialized handles", async () => {

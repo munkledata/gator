@@ -1,5 +1,11 @@
 import { appleDateToUnixMs } from "../data/imessage/appleConstants";
+import { serializeAttachment } from "./attachmentSerializer";
 import type { MessageV1 } from "@bluebubbles/protocol";
+
+/** Optional hydration the chat-messages handler batch-fetches and threads in per message. */
+export interface MessageExtra {
+    attachments?: Record<string, unknown>[];
+}
 
 /**
  * The canonical wire shape lives in `@bluebubbles/protocol` (the frozen v1 contract).
@@ -46,8 +52,8 @@ const bool = (v: unknown): boolean => v === 1 || v === true;
  * Dates go through the centralized Cocoa-epoch conversion; reaction codes through
  * the centralized map. Missing columns (older macOS) serialize to null, never throw.
  */
-export function serializeMessage(row: Record<string, unknown>): MessageV1 {
-    return {
+export function serializeMessage(row: Record<string, unknown>, extra?: MessageExtra): MessageV1 {
+    const out: MessageV1 = {
         guid: str(row["guid"]) ?? "",
         text: str(row["text"]),
         subject: str(row["subject"]),
@@ -72,4 +78,9 @@ export function serializeMessage(row: Record<string, unknown>): MessageV1 {
         threadOriginatorGuid: str(row["thread_originator_guid"]),
         partCount: numOrNull(row["part_count"])
     };
+    // Presence (the property existing on `extra`), not value, drives the wire field: an
+    // absent property means attachments weren't requested (key omitted — byte-identical to
+    // before); a present one always emits, even when empty (`[]`).
+    if (extra && "attachments" in extra) out.attachments = (extra.attachments ?? []).map(serializeAttachment);
+    return out;
 }

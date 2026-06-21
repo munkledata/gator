@@ -45,6 +45,12 @@ export interface MessageV1 {
     expressiveSendStyleId: string | null;
     threadOriginatorGuid: string | null;
     partCount: number | null;
+    /**
+     * Additive: appears only when the caller passed the matching `attachments` `with`
+     * hydration. A no-`with` query is byte-identical to before — the key is omitted
+     * entirely, not set to undefined or `[]`.
+     */
+    attachments?: AttachmentV1[];
 }
 
 /**

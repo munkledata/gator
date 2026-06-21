@@ -4,7 +4,7 @@ import type { ChatReader } from "../../data/imessage/ChatReader";
 import type { HandleReader } from "../../data/imessage/HandleReader";
 import type { AttachmentReader } from "../../data/imessage/AttachmentReader";
 import { serializeChat, type ChatExtra } from "../../serialize/chatSerializer";
-import { serializeMessage } from "../../serialize/messageSerializer";
+import { serializeMessage, type MessageExtra } from "../../serialize/messageSerializer";
 import { serializeHandle } from "../../serialize/handleSerializer";
 import { serializeAttachment } from "../../serialize/attachmentSerializer";
 
@@ -17,7 +17,15 @@ const Pagination = {
 // ["participants", "lastMessage"]. Accepted leniently — unknown entries are ignored
 // by the handler, so it's forward-compatible with future hydration kinds.
 const GetChatsInput = z.object({ with: z.array(z.string()).optional(), ...Pagination });
-const GetChatMessagesInput = z.object({ guid: z.string().min(1), ...Pagination });
+// `with` here is the app's comma-string query param (e.g.
+// "chats,chats.participants,attachments,attributedBody,..."); an array is also tolerated.
+// Normalized to a Set by {@link wantSet}; only the `attachments` token is acted on, the
+// rest are ignored, so it's forward-compatible with future hydration kinds.
+const GetChatMessagesInput = z.object({
+    guid: z.string().min(1),
+    with: z.union([z.string(), z.array(z.string())]).optional(),
+    ...Pagination
+});
 const GetHandlesInput = z.object({ ...Pagination });
 const GetAttachmentsInput = z.object({ guid: z.string().min(1) });
 
@@ -25,6 +33,17 @@ export interface ReadOperationDeps {
     chatReader: ChatReader;
     handleReader: HandleReader;
     attachmentReader: AttachmentReader;
+}
+
+/**
+ * Normalize the chat-messages `with` param (a comma-string from the app, or an array)
+ * into a Set of trimmed, non-empty tokens. Unknown tokens are kept but ignored by the
+ * handler. Absent input yields an empty Set (no hydration).
+ */
+function wantSet(value: string | string[] | undefined): Set<string> {
+    if (value === undefined) return new Set();
+    const tokens = Array.isArray(value) ? value : value.split(",");
+    return new Set(tokens.map(t => t.trim()).filter(t => t.length > 0));
 }
 
 /**
@@ -77,11 +96,29 @@ export function buildReadOperations(deps: ReadOperationDeps): Operation[] {
             auth: true,
             input: GetChatMessagesInput,
             summary: "Messages in a chat (newest first)",
-            handler: (_ctx, input) => ({
-                messages: deps.chatReader
-                    .getChatMessages({ chatGuid: input.guid, limit: input.limit, offset: input.offset })
-                    .map(serializeMessage)
-            })
+            handler: (_ctx, input) => {
+                const messages = deps.chatReader.getChatMessages({
+                    chatGuid: input.guid,
+                    limit: input.limit,
+                    offset: input.offset
+                });
+
+                const want = wantSet(input.with);
+                // No attachment hydration requested → byte-identical to before (bare serializeMessage).
+                if (!want.has("attachments") && !want.has("attachment")) {
+                    return { messages: messages.map(row => serializeMessage(row)) };
+                }
+
+                // Batch-fetch this page's attachments in one query, keyed by message guid.
+                const guids = messages.map(row => String(row["guid"]));
+                const byGuid = deps.attachmentReader.getMessageAttachmentsBatch(guids);
+                return {
+                    messages: messages.map(row => {
+                        const extra: MessageExtra = { attachments: byGuid.get(String(row["guid"])) ?? [] };
+                        return serializeMessage(row, extra);
+                    })
+                };
+            }
         }),
         defineOperation({
             name: "get-handles",
