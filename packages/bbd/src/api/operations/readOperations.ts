@@ -3,7 +3,7 @@ import { defineOperation, type Operation } from "../Operation";
 import type { ChatReader } from "../../data/imessage/ChatReader";
 import type { HandleReader } from "../../data/imessage/HandleReader";
 import type { AttachmentReader } from "../../data/imessage/AttachmentReader";
-import { serializeChat } from "../../serialize/chatSerializer";
+import { serializeChat, type ChatExtra } from "../../serialize/chatSerializer";
 import { serializeMessage } from "../../serialize/messageSerializer";
 import { serializeHandle } from "../../serialize/handleSerializer";
 import { serializeAttachment } from "../../serialize/attachmentSerializer";
@@ -13,7 +13,10 @@ const Pagination = {
     offset: z.coerce.number().int().min(0).optional()
 };
 
-const GetChatsInput = z.object({ ...Pagination });
+// `with` selects optional hydration the app requests for inbox rows, e.g.
+// ["participants", "lastMessage"]. Accepted leniently — unknown entries are ignored
+// by the handler, so it's forward-compatible with future hydration kinds.
+const GetChatsInput = z.object({ with: z.array(z.string()).optional(), ...Pagination });
 const GetChatMessagesInput = z.object({ guid: z.string().min(1), ...Pagination });
 const GetHandlesInput = z.object({ ...Pagination });
 const GetAttachmentsInput = z.object({ guid: z.string().min(1) });
@@ -40,9 +43,32 @@ export function buildReadOperations(deps: ReadOperationDeps): Operation[] {
             auth: true,
             input: GetChatsInput,
             summary: "List chats",
-            handler: (_ctx, input) => ({
-                chats: deps.chatReader.getChats({ limit: input.limit, offset: input.offset }).map(serializeChat)
-            })
+            handler: (_ctx, input) => {
+                const chats = deps.chatReader.getChats({ limit: input.limit, offset: input.offset });
+
+                const want = new Set(input.with ?? []);
+                // No hydration requested → byte-identical to before (bare serializeChat).
+                if (want.size === 0) return { chats: chats.map(row => serializeChat(row)) };
+
+                // Batch-fetch only what's asked for, keyed by chat ROWID, for this page.
+                const rowIds = chats.map(c => Number(c["ROWID"]));
+                const participants = want.has("participants")
+                    ? deps.chatReader.getParticipants(rowIds)
+                    : undefined;
+                const lastMessages = want.has("lastMessage")
+                    ? deps.chatReader.getLastMessages(rowIds)
+                    : undefined;
+
+                return {
+                    chats: chats.map(row => {
+                        const rowId = Number(row["ROWID"]);
+                        const extra: ChatExtra = {};
+                        if (participants) extra.participants = participants.get(rowId) ?? [];
+                        if (lastMessages) extra.lastMessage = lastMessages.get(rowId);
+                        return serializeChat(row, extra);
+                    })
+                };
+            }
         }),
         defineOperation({
             name: "get-chat-messages",

@@ -1,6 +1,7 @@
 import type DatabaseType from "better-sqlite3";
 import type { ColumnSet } from "./schema";
 import { WANTED_MESSAGE_COLUMNS } from "./MessageReader";
+import { WANTED_HANDLE_COLUMNS } from "./HandleReader";
 
 /** Chat columns we'd like; projected to what the macOS version actually has. */
 export const WANTED_CHAT_COLUMNS: readonly string[] = [
@@ -37,15 +38,19 @@ export class ChatReader {
     readonly #db: DatabaseType.Database;
     readonly #chat: ColumnSet;
     readonly #message: ColumnSet;
+    readonly #handle: ColumnSet | undefined;
     readonly #chatCols: string[];
     readonly #messageCols: string[];
+    readonly #handleCols: string[];
 
-    constructor(db: DatabaseType.Database, schema: { chat: ColumnSet; message: ColumnSet }) {
+    constructor(db: DatabaseType.Database, schema: { chat: ColumnSet; message: ColumnSet; handle?: ColumnSet }) {
         this.#db = db;
         this.#chat = schema.chat;
         this.#message = schema.message;
+        this.#handle = schema.handle;
         this.#chatCols = this.#chat.project(WANTED_CHAT_COLUMNS);
         this.#messageCols = this.#message.project(WANTED_MESSAGE_COLUMNS);
+        this.#handleCols = this.#handle ? this.#handle.project(WANTED_HANDLE_COLUMNS) : [];
     }
 
     getChats(params: GetChatsParams = {}): Record<string, unknown>[] {
@@ -73,5 +78,65 @@ export class ChatReader {
             string,
             unknown
         >[];
+    }
+
+    /**
+     * Batched participant lookup for the `with: ["participants"]` chat-query hydration.
+     * One query joins chat_handle_join (chat_id) → handle (ROWID) for all given chats,
+     * avoiding the N+1 that a per-chat query would incur. The injected `chat_id`
+     * (carried from the chat ROWID) keys the result; handle rows are returned raw for
+     * {@link serializeHandle}. The chat_id is selected (not in WANTED_HANDLE_COLUMNS,
+     * so it can't clash) purely to group the rows back onto their chat.
+     */
+    getParticipants(chatRowIds: number[]): Map<number, Record<string, unknown>[]> {
+        const out = new Map<number, Record<string, unknown>[]>();
+        if (chatRowIds.length === 0 || this.#handleCols.length === 0) return out;
+        const placeholders = chatRowIds.map(() => "?").join(",");
+        const cols = this.#handleCols.map(c => `handle.${c}`).join(", ");
+        const sql =
+            `SELECT chj.chat_id AS chat_id, ${cols} FROM handle ` +
+            `JOIN chat_handle_join chj ON chj.handle_id = handle.ROWID ` +
+            `WHERE chj.chat_id IN (${placeholders}) ORDER BY handle.ROWID ASC`;
+        const rows = this.#db.prepare(sql).all(...chatRowIds) as Record<string, unknown>[];
+        for (const row of rows) {
+            const chatId = Number(row["chat_id"]);
+            delete row["chat_id"]; // keep the handle row clean for serializeHandle
+            const list = out.get(chatId);
+            if (list) list.push(row);
+            else out.set(chatId, [row]);
+        }
+        return out;
+    }
+
+    /**
+     * Batched newest-message lookup for the `with: ["lastMessage"]` hydration. For each
+     * chat we want exactly the most recent message (max `date`). A correlated subquery
+     * selects the per-chat max-date message_id, so the join yields one row per chat in a
+     * single query (no N+1). The injected `chat_id` keys the result; the message row is
+     * returned raw for {@link serializeMessage}.
+     */
+    getLastMessages(chatRowIds: number[]): Map<number, Record<string, unknown>> {
+        const out = new Map<number, Record<string, unknown>>();
+        if (chatRowIds.length === 0 || this.#messageCols.length === 0) return out;
+        const placeholders = chatRowIds.map(() => "?").join(",");
+        const cols = this.#messageCols.map(c => `message.${c}`).join(", ");
+        const sql =
+            `SELECT cmj.chat_id AS chat_id, ${cols} FROM message ` +
+            `JOIN chat_message_join cmj ON cmj.message_id = message.ROWID ` +
+            `WHERE cmj.chat_id IN (${placeholders}) ` +
+            `AND message.date = (` +
+            `SELECT MAX(m2.date) FROM message m2 ` +
+            `JOIN chat_message_join cmj2 ON cmj2.message_id = m2.ROWID ` +
+            `WHERE cmj2.chat_id = cmj.chat_id` +
+            `) ORDER BY message.ROWID DESC`;
+        const rows = this.#db.prepare(sql).all(...chatRowIds) as Record<string, unknown>[];
+        for (const row of rows) {
+            const chatId = Number(row["chat_id"]);
+            delete row["chat_id"]; // keep the message row clean for serializeMessage
+            // Ties on date (rare): the ROWID-DESC order means the first row seen is the
+            // newest by ROWID; keep it and ignore later duplicates for the same chat.
+            if (!out.has(chatId)) out.set(chatId, row);
+        }
+        return out;
     }
 }

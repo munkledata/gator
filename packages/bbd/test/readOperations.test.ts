@@ -20,6 +20,7 @@ function seed(): Database.Database {
         CREATE TABLE message(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, text TEXT, date INTEGER,
             is_from_me INTEGER DEFAULT 0, associated_message_type INTEGER DEFAULT 0);
         CREATE TABLE chat_message_join(chat_id INTEGER, message_id INTEGER);
+        CREATE TABLE chat_handle_join(chat_id INTEGER, handle_id INTEGER);
         CREATE TABLE handle(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT, country TEXT, service TEXT, uncanonicalized_id TEXT);
         CREATE TABLE attachment(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, mime_type TEXT, transfer_name TEXT, total_bytes INTEGER, is_sticker INTEGER DEFAULT 0, hide_attachment INTEGER DEFAULT 0);
         CREATE TABLE message_attachment_join(message_id INTEGER, attachment_id INTEGER);
@@ -36,11 +37,50 @@ function seed(): Database.Database {
     m.run("m1", "hi", 1000);
     m.run("m2", "there", 2000);
     db.prepare("INSERT INTO chat_message_join(chat_id, message_id) VALUES (1,1),(1,2)").run();
+    // chat 1 (Alice, ROWID 1) has handle 1 as a participant.
+    db.prepare("INSERT INTO chat_handle_join(chat_id, handle_id) VALUES (1,1)").run();
+    return db;
+}
+
+/**
+ * A 2-chat fixture with disjoint participants and messages, to prove the batched
+ * with-hydration keys each chat by its own ROWID (no cross-contamination).
+ */
+function seedTwoChats(): Database.Database {
+    const db = new Database(":memory:");
+    db.exec(`
+        CREATE TABLE chat(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, chat_identifier TEXT,
+            display_name TEXT, style INTEGER, is_archived INTEGER DEFAULT 0, group_id TEXT);
+        CREATE TABLE message(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, text TEXT, date INTEGER,
+            is_from_me INTEGER DEFAULT 0, associated_message_type INTEGER DEFAULT 0);
+        CREATE TABLE chat_message_join(chat_id INTEGER, message_id INTEGER);
+        CREATE TABLE chat_handle_join(chat_id INTEGER, handle_id INTEGER);
+        CREATE TABLE handle(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT, country TEXT, service TEXT, uncanonicalized_id TEXT);
+        CREATE TABLE attachment(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, mime_type TEXT, transfer_name TEXT, total_bytes INTEGER, is_sticker INTEGER DEFAULT 0, hide_attachment INTEGER DEFAULT 0);
+        CREATE TABLE message_attachment_join(message_id INTEGER, attachment_id INTEGER);
+    `);
+    const h = db.prepare("INSERT INTO handle(id, country, service) VALUES (?,?,?)");
+    h.run("+1111", "us", "iMessage"); // handle 1
+    h.run("+2222", "us", "iMessage"); // handle 2
+    const c = db.prepare("INSERT INTO chat(guid, chat_identifier, display_name, style) VALUES (?,?,?,?)");
+    c.run("iMessage;-;+1111", "+1111", "ChatA", 45); // chat 1
+    c.run("iMessage;-;+2222", "+2222", "ChatB", 45); // chat 2
+    const m = db.prepare("INSERT INTO message(guid, text, date) VALUES (?,?,?)");
+    m.run("a-old", "a old", 1000); // msg 1 → chat 1
+    m.run("a-new", "a new", 3000); // msg 2 → chat 1 (newest for A)
+    m.run("b-old", "b old", 2000); // msg 3 → chat 2
+    m.run("b-new", "b new", 4000); // msg 4 → chat 2 (newest for B)
+    db.prepare("INSERT INTO chat_message_join(chat_id, message_id) VALUES (1,1),(1,2),(2,3),(2,4)").run();
+    db.prepare("INSERT INTO chat_handle_join(chat_id, handle_id) VALUES (1,1),(2,2)").run();
     return db;
 }
 
 function ops(db: Database.Database) {
-    const chatReader = new ChatReader(db, { chat: introspectTable(db, "chat"), message: introspectTable(db, "message") });
+    const chatReader = new ChatReader(db, {
+        chat: introspectTable(db, "chat"),
+        message: introspectTable(db, "message"),
+        handle: introspectTable(db, "handle")
+    });
     const handleReader = new HandleReader(db, introspectTable(db, "handle"));
     const attachmentReader = new AttachmentReader(db, introspectTable(db, "attachment"));
     const list = buildReadOperations({ chatReader, handleReader, attachmentReader });
@@ -56,6 +96,91 @@ test("get-chats returns serialized chats (wire-compatible shape)", async () => {
     assert.equal(chats[0]!.guid, "iMessage;+;chat99"); // ROWID DESC
     assert.equal(chats[0]!.style, 43);
     assert.equal(chats[0]!.isArchived, false);
+});
+
+test("get-chats WITHOUT `with` omits participants/lastMessage (byte-identical to before)", async () => {
+    const by = ops(seed());
+    const r = await executeOperation(by("get-chats"), { input: {}, credential: "pw" }, ctx, auth);
+    assert.equal(r.status, 200);
+    const chats = (r.data as { chats: Record<string, unknown>[] }).chats;
+    assert.equal(chats.length, 2);
+    for (const c of chats) {
+        assert.equal("participants" in c, false);
+        assert.equal("lastMessage" in c, false);
+        // no internal ROWID leaks onto the wire
+        assert.equal("ROWID" in c, false);
+    }
+    // an empty `with` array behaves exactly like absent
+    const r2 = await executeOperation(by("get-chats"), { input: { with: [] }, credential: "pw" }, ctx, auth);
+    const chats2 = (r2.data as { chats: Record<string, unknown>[] }).chats;
+    for (const c of chats2) assert.equal("participants" in c, false);
+});
+
+test("get-chats WITH [participants] hydrates each chat's participant handles", async () => {
+    const by = ops(seed());
+    const r = await executeOperation(
+        by("get-chats"),
+        { input: { with: ["participants"] }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    type Row = { guid: string; participants: { address: string }[]; lastMessage?: unknown };
+    const chats = (r.data as { chats: Row[] }).chats;
+    const alice = chats.find(c => c.guid === "iMessage;-;+15551234567")!;
+    const group = chats.find(c => c.guid === "iMessage;+;chat99")!;
+    assert.deepEqual(
+        alice.participants.map(p => p.address),
+        ["+15551234567"]
+    );
+    // chat with no participants gets an empty array (still no lastMessage key)
+    assert.deepEqual(group.participants, []);
+    assert.equal("lastMessage" in group, false);
+});
+
+test("get-chats WITH [lastMessage] hydrates each chat's newest message", async () => {
+    const by = ops(seed());
+    const r = await executeOperation(
+        by("get-chats"),
+        { input: { with: ["lastMessage"] }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    type Row = { guid: string; lastMessage: { guid: string } | null; participants?: unknown };
+    const chats = (r.data as { chats: Row[] }).chats;
+    const alice = chats.find(c => c.guid === "iMessage;-;+15551234567")!;
+    const group = chats.find(c => c.guid === "iMessage;+;chat99")!;
+    assert.equal(alice.lastMessage!.guid, "m2"); // date 2000 > 1000 → newest
+    assert.equal(group.lastMessage, null); // no messages → explicit null
+    assert.equal("participants" in alice, false);
+});
+
+test("get-chats batching: 2 chats each get their own participants + last message (no cross-contamination)", async () => {
+    const by = ops(seedTwoChats());
+    const r = await executeOperation(
+        by("get-chats"),
+        { input: { with: ["participants", "lastMessage"] }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    type Row = { guid: string; participants: { address: string }[]; lastMessage: { guid: string } | null };
+    const chats = (r.data as { chats: Row[] }).chats;
+    const a = chats.find(c => c.guid === "iMessage;-;+1111")!;
+    const b = chats.find(c => c.guid === "iMessage;-;+2222")!;
+
+    assert.deepEqual(
+        a.participants.map(p => p.address),
+        ["+1111"]
+    );
+    assert.equal(a.lastMessage!.guid, "a-new"); // date 3000, not 4000 (chat B's)
+
+    assert.deepEqual(
+        b.participants.map(p => p.address),
+        ["+2222"]
+    );
+    assert.equal(b.lastMessage!.guid, "b-new"); // date 4000, not 3000 (chat A's)
 });
 
 test("get-chat-messages returns a chat's messages, newest first, bound by guid", async () => {
