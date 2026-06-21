@@ -17,6 +17,7 @@ import { parseServiceAccount } from "../../notifications/fcm/serviceAccount";
 import { assertSecureServerAddress } from "../../config/serverAddress";
 import { sanitizeConfig } from "../../config/sanitize";
 import { getLanIpv4 } from "../../networking/lanAddress";
+import { generateVapidKeys } from "../../notifications/webpush/vapid";
 import type { FirebaseSetupService } from "../../notifications/fcm/FirebaseSetupService";
 import type { Logger } from "../../core/logger";
 
@@ -258,6 +259,43 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
             }
         },
         "get-firebase-setup-status": () => firebaseSetup.getState(),
+
+        // --- Web Push (VAPID) — browser/PWA push, no Google project needed ---
+        "generate-vapid-keys": async d => {
+            const keys = generateVapidKeys();
+            const n = configStore.getConfig().notifications;
+            await configService.update({
+                notifications: {
+                    ...n,
+                    webpush: {
+                        ...n.webpush,
+                        enabled: true,
+                        vapidPublicKey: keys.publicKey,
+                        vapidPrivateKey: keys.privateKey,
+                        vapidSubject: d.subject != null ? String(d.subject) : (n.webpush.vapidSubject ?? "")
+                    }
+                }
+            });
+            emit("config-update", readConfig());
+            // The private key is never returned; the public key is what the browser needs.
+            return { success: true, publicKey: keys.publicKey };
+        },
+        "get-vapid-public-key": () => {
+            const wp = configStore.getConfig().notifications.webpush;
+            return { publicKey: wp.vapidPublicKey ?? null, enabled: wp.enabled, configured: Boolean(wp.vapidPublicKey && wp.vapidPrivateKey) };
+        },
+        "set-webpush-subject": d => {
+            const n = configStore.getConfig().notifications;
+            return configService
+                .update({ notifications: { ...n, webpush: { ...n.webpush, vapidSubject: String(d.subject ?? d.value ?? "") } } })
+                .then(() => ({ success: true }));
+        },
+        "disable-webpush": async () => {
+            const n = configStore.getConfig().notifications;
+            await configService.update({ notifications: { ...n, webpush: { ...n.webpush, enabled: false } } });
+            emit("config-update", readConfig());
+            return { success: true };
+        },
 
         // --- registered push devices (the config store's device table) ---
         "get-devices": () => configStore.listDevices(),

@@ -61,6 +61,7 @@ import { ZrokTunnel } from "./networking/ZrokTunnel";
 import { buildWebhookOperations } from "./api/operations/webhookOperations";
 import { wireMessageFanout } from "./serialize/messageFanout";
 import { buildNotificationRegistry } from "./notifications/buildNotificationRegistry";
+import { createWebPushTransport } from "./notifications/webpush/WebPushSender";
 import { parseServiceAccount } from "./notifications/fcm/serviceAccount";
 import { FirebaseSetupService } from "./notifications/fcm/FirebaseSetupService";
 import { mountFirebaseSetupRoutes } from "./api/firebaseSetupRoutes";
@@ -213,10 +214,24 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         void webhookSubscriber.onEvent(event, data);
     });
 
-    // Push notifications: FCM (HTTP v1) is registered up front; its credentials are read
-    // live from the config store, so uploading the service account post-boot just works.
+    // Push notifications. Both providers read their credentials live from the config
+    // store, so configuring FCM (service account) or Web Push (VAPID keys) after boot
+    // takes effect without a restart.
+    const webPushTransport = createWebPushTransport({
+        logger,
+        vapid: () => {
+            const wp = configStore.getConfig().notifications.webpush;
+            if (!wp.vapidPublicKey || !wp.vapidPrivateKey) return null;
+            return {
+                publicKey: wp.vapidPublicKey,
+                privateKey: wp.vapidPrivateKey,
+                subject: wp.vapidSubject || "mailto:webpush@gator.local"
+            };
+        }
+    });
     const notifications = buildNotificationRegistry(config.notifications, logger, {
-        fcmCredentials: () => parseServiceAccount(configStore.getConfig().notifications.fcm.serviceAccount ?? null)
+        fcmCredentials: () => parseServiceAccount(configStore.getConfig().notifications.fcm.serviceAccount ?? null),
+        webpush: webPushTransport
     });
 
     // Automatic Firebase setup (Google OAuth -> provision project -> service account).
