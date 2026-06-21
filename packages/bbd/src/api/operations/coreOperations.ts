@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
+import type { ServerInfoV1 } from "@bluebubbles/protocol";
 import { defineOperation, type Operation } from "../Operation";
 import type { ConfigStore } from "../../data/config-db/ConfigStore";
 import type { Device } from "../../notifications/types";
@@ -52,7 +53,7 @@ export function buildCoreOperations(deps: CoreOperationDeps): Operation[] {
             auth: true,
             input: NoInput,
             summary: "Server version and metadata",
-            handler: () => {
+            handler: (): ServerInfoV1 => {
                 const cfg = deps.configStore.getConfig();
                 return {
                     version: deps.version,

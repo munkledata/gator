@@ -1,24 +1,14 @@
-import { serializeHandle, type HandleResponse } from "./handleSerializer";
-import { serializeMessage, type MessageResponse } from "./messageSerializer";
+import { serializeHandle } from "./handleSerializer";
+import { serializeMessage } from "./messageSerializer";
+import type { ChatV1 } from "@bluebubbles/protocol";
 
 /**
- * The v1 chat DTO. Field shapes are wire-compatible with the legacy `ChatResponse`
- * (guid, chatIdentifier, displayName, style, isArchived, groupId).
- *
- * `participants` and `lastMessage` are additive: they appear only when the caller
- * passed the matching `with` hydration (and supplied `extra`). A no-`with` query is
- * byte-identical to before — the keys are omitted entirely, not set to undefined.
+ * The canonical wire shape lives in `@bluebubbles/protocol` (the frozen v1 contract).
+ * Re-exported under the legacy name for back-compat; {@link serializeChat} is
+ * annotated to return it, so `tsc` enforces field-for-field conformance. The
+ * additive `participants?` / `lastMessage?` hydration fields are part of `ChatV1`.
  */
-export interface ChatResponse {
-    guid: string;
-    chatIdentifier: string | null;
-    displayName: string | null;
-    style: number | null;
-    isArchived: boolean;
-    groupId: string | null;
-    participants?: HandleResponse[];
-    lastMessage?: MessageResponse | null;
-}
+export type { ChatV1 as ChatResponse } from "@bluebubbles/protocol";
 
 /** Optional hydration the chat-query handler batch-fetches and threads in per chat. */
 export interface ChatExtra {
@@ -30,8 +20,8 @@ const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 const numOrNull = (v: unknown): number | null => (typeof v === "number" ? v : null);
 const bool = (v: unknown): boolean => v === 1 || v === true;
 
-export function serializeChat(row: Record<string, unknown>, extra?: ChatExtra): ChatResponse {
-    const out: ChatResponse = {
+export function serializeChat(row: Record<string, unknown>, extra?: ChatExtra): ChatV1 {
+    const out: ChatV1 = {
         guid: str(row["guid"]) ?? "",
         chatIdentifier: str(row["chat_identifier"]),
         displayName: str(row["display_name"]),

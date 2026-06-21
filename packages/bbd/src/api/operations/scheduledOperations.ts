@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ScheduledMessageV1 } from "@bluebubbles/protocol";
 import { defineOperation, type Operation } from "../Operation";
 import type { ScheduledMessageStore } from "../../scheduled/ScheduledMessage";
 
@@ -22,7 +23,7 @@ export function buildScheduledOperations(deps: ScheduledOperationDeps): Operatio
             auth: true,
             input: CreateInput,
             summary: "Schedule a message for a future time",
-            handler: (_ctx, input) => deps.store.create(input)
+            handler: (_ctx, input): Promise<ScheduledMessageV1> => deps.store.create(input)
         }),
         defineOperation({
             name: "list-scheduled-messages",
@@ -31,7 +32,9 @@ export function buildScheduledOperations(deps: ScheduledOperationDeps): Operatio
             auth: true,
             input: z.object({}).passthrough(),
             summary: "List scheduled messages",
-            handler: async () => ({ scheduledMessages: await deps.store.list() })
+            handler: async (): Promise<{ scheduledMessages: ScheduledMessageV1[] }> => ({
+                scheduledMessages: await deps.store.list()
+            })
         }),
         defineOperation({
             name: "delete-scheduled-message",

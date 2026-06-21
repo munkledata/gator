@@ -1,19 +1,17 @@
-/** v1 attachment DTO (metadata) — wire-compatible subset of the legacy AttachmentResponse. */
-export interface AttachmentResponse {
-    guid: string;
-    uti: string | null;
-    mimeType: string | null;
-    transferName: string | null;
-    totalBytes: number | null;
-    isSticker: boolean;
-    hideAttachment: boolean;
-}
+import type { AttachmentV1 } from "@bluebubbles/protocol";
+
+/**
+ * The canonical wire shape lives in `@bluebubbles/protocol` (the frozen v1 contract).
+ * Re-exported under the legacy name for back-compat; {@link serializeAttachment} is
+ * annotated to return it, so `tsc` enforces field-for-field conformance.
+ */
+export type { AttachmentV1 as AttachmentResponse } from "@bluebubbles/protocol";
 
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 const numOrNull = (v: unknown): number | null => (typeof v === "number" ? v : null);
 const bool = (v: unknown): boolean => v === 1 || v === true;
 
-export function serializeAttachment(row: Record<string, unknown>): AttachmentResponse {
+export function serializeAttachment(row: Record<string, unknown>): AttachmentV1 {
     return {
         guid: str(row["guid"]) ?? "",
         uti: str(row["uti"]),

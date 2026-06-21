@@ -1,4 +1,12 @@
 import { appleDateToUnixMs } from "../data/imessage/appleConstants";
+import type { MessageV1 } from "@bluebubbles/protocol";
+
+/**
+ * The canonical wire shape lives in `@bluebubbles/protocol` (the frozen v1 contract).
+ * Re-exported under the legacy name for back-compat; {@link serializeMessage} is
+ * annotated to return it, so `tsc` enforces field-for-field conformance.
+ */
+export type { MessageV1 as MessageResponse } from "@bluebubbles/protocol";
 
 /**
  * Reaction/associated-message code → wire string, byte-compatible with the legacy
@@ -29,40 +37,6 @@ function associatedMessageTypeToString(code: number | null): string | null {
     return String(code);
 }
 
-/**
- * The v1 message DTO clients receive. Field shapes are wire-compatible with the
- * legacy `MessageResponse` (this is a representative subset; more fields are added
- * as the message read operations are migrated).
- */
-export interface MessageResponse {
-    guid: string;
-    text: string | null;
-    subject: string | null;
-    dateCreated: number | null;
-    dateRead: number | null;
-    dateDelivered: number | null;
-    dateEdited: number | null;
-    isFromMe: boolean;
-    isDelivered: boolean;
-    isRead: boolean;
-    isSent: boolean;
-    /** Apple delivered-tier flags: message delivered without a recipient notification. */
-    wasDeliveredQuietly: boolean;
-    /** Apple delivered-tier flags: recipient was notified of delivery. */
-    didNotifyRecipient: boolean;
-    isAudioMessage: boolean;
-    itemType: number | null;
-    groupTitle: string | null;
-    groupActionType: number | null;
-    associatedMessageGuid: string | null;
-    /** Reaction name (e.g. "love", "-like"), or the stringified code, or null. */
-    associatedMessageType: string | null;
-    balloonBundleId: string | null;
-    expressiveSendStyleId: string | null;
-    threadOriginatorGuid: string | null;
-    partCount: number | null;
-}
-
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 const numOrNull = (v: unknown): number | null => (typeof v === "number" ? v : null);
 const bool = (v: unknown): boolean => v === 1 || v === true;
@@ -72,7 +46,7 @@ const bool = (v: unknown): boolean => v === 1 || v === true;
  * Dates go through the centralized Cocoa-epoch conversion; reaction codes through
  * the centralized map. Missing columns (older macOS) serialize to null, never throw.
  */
-export function serializeMessage(row: Record<string, unknown>): MessageResponse {
+export function serializeMessage(row: Record<string, unknown>): MessageV1 {
     return {
         guid: str(row["guid"]) ?? "",
         text: str(row["text"]),
