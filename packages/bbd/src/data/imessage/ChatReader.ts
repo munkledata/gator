@@ -139,4 +139,35 @@ export class ChatReader {
         }
         return out;
     }
+
+    /**
+     * Batched chat-per-message lookup for the `with: ["chats"]` incremental-sync
+     * hydration. One query joins chat_message_join (message_id) → chat for all given
+     * message ROWIDs, avoiding the N+1 a per-message query would incur. The selected
+     * `cmj.message_id AS __mrowid` (a helper key that can't clash with chat columns)
+     * groups the rows back onto their message; it's deleted before grouping so each raw
+     * chat row stays clean for {@link serializeChat}. Keyed by message ROWID (the page
+     * carries each message's ROWID). Version-safe: empty input or a degraded DB (no chat
+     * columns) returns an empty Map. A message can belong to multiple chats, so the value
+     * is a list (the app routes on `chats[0].guid`).
+     */
+    getChatsForMessages(messageRowIds: number[]): Map<number, Record<string, unknown>[]> {
+        const out = new Map<number, Record<string, unknown>[]>();
+        if (messageRowIds.length === 0 || this.#chatCols.length === 0) return out;
+        const placeholders = messageRowIds.map(() => "?").join(",");
+        const cols = this.#chatCols.map(c => `chat.${c}`).join(", ");
+        const sql =
+            `SELECT cmj.message_id AS __mrowid, ${cols} FROM chat ` +
+            `JOIN chat_message_join cmj ON cmj.chat_id = chat.ROWID ` +
+            `WHERE cmj.message_id IN (${placeholders}) ORDER BY chat.ROWID ASC`;
+        const rows = this.#db.prepare(sql).all(...messageRowIds) as Record<string, unknown>[];
+        for (const row of rows) {
+            const mRowId = Number(row["__mrowid"]);
+            delete row["__mrowid"]; // keep the chat row clean for serializeChat
+            const list = out.get(mRowId);
+            if (list) list.push(row);
+            else out.set(mRowId, [row]);
+        }
+        return out;
+    }
 }

@@ -3,6 +3,7 @@ import { defineOperation, type Operation } from "../Operation";
 import type { ChatReader } from "../../data/imessage/ChatReader";
 import type { HandleReader } from "../../data/imessage/HandleReader";
 import type { AttachmentReader } from "../../data/imessage/AttachmentReader";
+import type { MessageReader } from "../../data/imessage/MessageReader";
 import { serializeChat, type ChatExtra } from "../../serialize/chatSerializer";
 import { serializeMessage, type MessageExtra } from "../../serialize/messageSerializer";
 import { serializeHandle } from "../../serialize/handleSerializer";
@@ -29,10 +30,28 @@ const GetChatMessagesInput = z.object({
 const GetHandlesInput = z.object({ ...Pagination });
 const GetAttachmentsInput = z.object({ guid: z.string().min(1) });
 
+// Global incremental message query (app wake/reconnect sync). The app pages every
+// message after a global cursor, oldest-first, to update its DB. `limit` is clamped to a
+// sane max so a hostile/huge value can't pull the whole table in one shot. `afterRowId`
+// is the preferred cursor; `after`/`afterTimestamp` are the Unix-ms fallback (the app
+// sends `after`, alias `afterTimestamp` is also accepted). `with` mirrors the chat-
+// messages param (comma-string or array → Set via wantSet); `sort` is accepted and
+// ignored (the query is always oldest-first, which is what the app requests with 'ASC').
+const QUERY_MESSAGES_MAX_LIMIT = 1000;
+const QueryMessagesInput = z.object({
+    limit: z.coerce.number().int().min(1).optional(),
+    afterRowId: z.coerce.number().int().min(0).optional(),
+    after: z.coerce.number().int().min(0).optional(),
+    afterTimestamp: z.coerce.number().int().min(0).optional(),
+    with: z.union([z.string(), z.array(z.string())]).optional(),
+    sort: z.string().optional()
+});
+
 export interface ReadOperationDeps {
     chatReader: ChatReader;
     handleReader: HandleReader;
     attachmentReader: AttachmentReader;
+    messageReader: MessageReader;
 }
 
 /**
@@ -115,6 +134,64 @@ export function buildReadOperations(deps: ReadOperationDeps): Operation[] {
                 return {
                     messages: messages.map(row => {
                         const extra: MessageExtra = { attachments: byGuid.get(String(row["guid"])) ?? [] };
+                        return serializeMessage(row, extra);
+                    })
+                };
+            }
+        }),
+        defineOperation({
+            name: "query-messages",
+            method: "POST",
+            path: "/api/v1/message/query",
+            auth: true,
+            input: QueryMessagesInput,
+            summary: "Global incremental message query (oldest-first, after a cursor)",
+            handler: (_ctx, input) => {
+                const limit = Math.min(input.limit ?? QUERY_MESSAGES_MAX_LIMIT, QUERY_MESSAGES_MAX_LIMIT);
+                // ROWID cursor preferred; fall back to the app's Unix-ms cursor (either key).
+                const afterTimestamp = input.after ?? input.afterTimestamp;
+                const messages = deps.messageReader.queryAfter({
+                    afterRowId: input.afterRowId,
+                    afterTimestamp,
+                    limit
+                });
+
+                const want = wantSet(input.with);
+                const wantChats = want.has("chats");
+                const wantHandle = want.has("handle");
+                const wantAttachments = want.has("attachments") || want.has("attachment");
+
+                // No hydration requested → byte-identical bare serializeMessage per row.
+                if (!wantChats && !wantHandle && !wantAttachments) {
+                    return { messages: messages.map(row => serializeMessage(row)) };
+                }
+
+                // Batch-fetch only what's asked for, for this page, keyed for re-attachment.
+                const rowIds = messages.map(row => Number(row["ROWID"]));
+                const chatsByMsg = wantChats ? deps.chatReader.getChatsForMessages(rowIds) : undefined;
+
+                let handlesByRowId: Map<number, Record<string, unknown>> | undefined;
+                if (wantHandle) {
+                    const handleIds = [
+                        ...new Set(
+                            messages
+                                .map(row => Number(row["handle_id"]))
+                                .filter(id => Number.isFinite(id) && id > 0)
+                        )
+                    ];
+                    handlesByRowId = deps.handleReader.getHandlesByRowIds(handleIds);
+                }
+
+                const attsByGuid = wantAttachments
+                    ? deps.attachmentReader.getMessageAttachmentsBatch(messages.map(row => String(row["guid"])))
+                    : undefined;
+
+                return {
+                    messages: messages.map(row => {
+                        const extra: MessageExtra = {};
+                        if (chatsByMsg) extra.chats = chatsByMsg.get(Number(row["ROWID"])) ?? [];
+                        if (handlesByRowId) extra.handle = handlesByRowId.get(Number(row["handle_id"])) ?? null;
+                        if (attsByGuid) extra.attachments = attsByGuid.get(String(row["guid"])) ?? [];
                         return serializeMessage(row, extra);
                     })
                 };

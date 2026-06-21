@@ -154,6 +154,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const chatReader = new ChatReader(chatDb, schema);
     const handleReader = new HandleReader(chatDb, schema.handle);
     const attachmentReader = new AttachmentReader(chatDb, schema.attachment);
+    const messageReader = new MessageReader(chatDb, schema.message);
     const attachmentStreamer = new AttachmentStreamer(chatDb);
 
     // Write path (Phase 5): the hardened private-API transport + the send service.
@@ -179,7 +180,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const registry = new OperationRegistry()
         .registerAll(buildCoreOperations({ configStore, version: BBD_VERSION }))
         .registerAll(buildAdminOperations({ configService, version: BBD_VERSION, startedAt: Date.now() }))
-        .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader }))
+        .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader, messageReader }))
         .registerAll(buildActionOperations({ sender }))
         .registerAll(buildContactsOperations({ contacts }))
         .registerAll(buildFaceTimeOperations({ facetime: new FaceTimeService(transport, logger) }))
@@ -383,7 +384,6 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         })
     );
 
-    const messageReader = new MessageReader(chatDb, schema.message);
     const cursorStore = new FileCursorStore(path.join(userDataPath, "cursor.json"));
     const listener = new IMessageListener(messageReader, cursorStore, domainBus, logger);
     const watcher = new ChatDbWatcher(messagesDir, () => void listener.poll());

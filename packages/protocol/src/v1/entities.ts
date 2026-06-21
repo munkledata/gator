@@ -20,6 +20,12 @@
  */
 export interface MessageV1 {
     guid: string;
+    /**
+     * The chat.db ROWID under the legacy BlueBubbles field name. Always emitted (null only
+     * when the source row didn't carry ROWID, e.g. a hydrated lastMessage). The app's
+     * incremental sync pages by MAX(originalROWID) → `afterRowId` (monotonic, tie-free).
+     */
+    originalROWID: number | null;
     text: string | null;
     subject: string | null;
     dateCreated: number | null;
@@ -51,6 +57,18 @@ export interface MessageV1 {
      * entirely, not set to undefined or `[]`.
      */
     attachments?: AttachmentV1[];
+    /**
+     * Additive: the chats this message belongs to. Appears only when the caller passed
+     * the `chats` `with` hydration (incremental sync, which routes each message to a chat
+     * via `chats[0].guid`). Omitted entirely otherwise — byte-identical to before.
+     */
+    chats?: ChatV1[];
+    /**
+     * Additive: the message's sender handle. Appears only when the caller passed the
+     * `handle` `with` hydration; `null` when no sender resolves. Omitted entirely
+     * otherwise — byte-identical to before.
+     */
+    handle?: HandleV1 | null;
 }
 
 /**

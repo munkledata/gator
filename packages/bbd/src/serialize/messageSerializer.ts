@@ -1,10 +1,16 @@
 import { appleDateToUnixMs } from "../data/imessage/appleConstants";
 import { serializeAttachment } from "./attachmentSerializer";
+import { serializeChat } from "./chatSerializer";
+import { serializeHandle } from "./handleSerializer";
 import type { MessageV1 } from "@bluebubbles/protocol";
 
 /** Optional hydration the chat-messages handler batch-fetches and threads in per message. */
 export interface MessageExtra {
     attachments?: Record<string, unknown>[];
+    /** Chats this message belongs to (incremental sync routes on `chats[0].guid`). */
+    chats?: Record<string, unknown>[];
+    /** The message's sender handle; `null` when not resolvable (e.g. is-from-me). */
+    handle?: Record<string, unknown> | null;
 }
 
 /**
@@ -55,6 +61,11 @@ const bool = (v: unknown): boolean => v === 1 || v === true;
 export function serializeMessage(row: Record<string, unknown>, extra?: MessageExtra): MessageV1 {
     const out: MessageV1 = {
         guid: str(row["guid"]) ?? "",
+        // The chat.db ROWID, exposed under the legacy BlueBubbles field name. The app's
+        // incremental sync advances its global cursor by MAX(originalROWID) per page and
+        // sends it back as `afterRowId` — the monotonic, tie-free cursor (see queryAfter).
+        // Null when the source row didn't project ROWID (e.g. a hydrated lastMessage).
+        originalROWID: numOrNull(row["ROWID"]),
         text: str(row["text"]),
         subject: str(row["subject"]),
         dateCreated: appleDateToUnixMs(numOrNull(row["date"])),
@@ -78,9 +89,11 @@ export function serializeMessage(row: Record<string, unknown>, extra?: MessageEx
         threadOriginatorGuid: str(row["thread_originator_guid"]),
         partCount: numOrNull(row["part_count"])
     };
-    // Presence (the property existing on `extra`), not value, drives the wire field: an
-    // absent property means attachments weren't requested (key omitted — byte-identical to
-    // before); a present one always emits, even when empty (`[]`).
+    // Presence (the property existing on `extra`), not value, drives each wire field: an
+    // absent property means that hydration wasn't requested (key omitted — byte-identical
+    // to before); a present one always emits, even when empty (`[]` / `null`).
     if (extra && "attachments" in extra) out.attachments = (extra.attachments ?? []).map(serializeAttachment);
+    if (extra && "chats" in extra) out.chats = (extra.chats ?? []).map(row => serializeChat(row));
+    if (extra && "handle" in extra) out.handle = extra.handle ? serializeHandle(extra.handle) : null;
     return out;
 }

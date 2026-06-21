@@ -1,6 +1,7 @@
 import type DatabaseType from "better-sqlite3";
 import type { ColumnSet } from "./schema";
 import { type Cursor, buildDeltaQuery, advanceCursor } from "./cursor";
+import { unixMsToAppleNanos } from "./appleConstants";
 
 /**
  * The full set of message columns we'd like. {@link ColumnSet.project} trims it to
@@ -97,6 +98,45 @@ export class MessageReader {
             if (page.length < pageSize) break;
         }
         return { rows, cursor: advanceCursor(cursor, rows) };
+    }
+
+    /**
+     * Global incremental query (all chats) for the app's wake/reconnect sync: every
+     * message AFTER a cursor, oldest-first, capped by `limit`.
+     *
+     * Two cursor modes:
+     *  - **ROWID (preferred):** `WHERE message.ROWID > @afterRowId`. Monotonic, no ties,
+     *    so paging the app's global cursor forward can neither miss nor re-emit a row.
+     *  - **Timestamp fallback** (only when `afterRowId` is absent and `afterTimestamp`
+     *    is given): the app sends a Unix-ms cursor, which we invert to Apple/Cocoa
+     *    nanoseconds with the centralized {@link unixMsToAppleNanos} (never a hand-rolled
+     *    epoch constant) and compare against `message.date`. Degrades to an unfiltered
+     *    oldest-first page if the `date` column is absent on this macOS version.
+     *
+     * Always ordered ascending by the cursor column and `LIMIT`ed, so the app can page
+     * forward until it gets a short/empty page. Projects WANTED_MESSAGE_COLUMNS (which
+     * already includes ROWID) so callers can read each row's ROWID for the next cursor.
+     */
+    queryAfter(opts: { afterRowId?: number; afterTimestamp?: number; limit: number }): Record<string, unknown>[] {
+        if (this.#columns.length === 0) return [];
+        const limit = opts.limit;
+        if (opts.afterRowId !== undefined) {
+            const sql =
+                `SELECT ${this.#select()} FROM message ` +
+                `WHERE message.ROWID > @afterRowId ORDER BY message.ROWID ASC LIMIT @limit`;
+            return this.#db.prepare(sql).all({ afterRowId: opts.afterRowId, limit }) as Record<string, unknown>[];
+        }
+        if (opts.afterTimestamp !== undefined && this.#message.has("date")) {
+            const cocoa = unixMsToAppleNanos(opts.afterTimestamp);
+            const sql =
+                `SELECT ${this.#select()} FROM message ` +
+                `WHERE message.date > @cocoa ORDER BY message.date ASC, message.ROWID ASC LIMIT @limit`;
+            return this.#db.prepare(sql).all({ cocoa, limit }) as Record<string, unknown>[];
+        }
+        // No usable cursor (or no date column for the ms fallback) — page from the start,
+        // oldest-first. Still bounded by LIMIT so the app can drain it incrementally.
+        const sql = `SELECT ${this.#select()} FROM message ORDER BY message.ROWID ASC LIMIT @limit`;
+        return this.#db.prepare(sql).all({ limit }) as Record<string, unknown>[];
     }
 
     /** Hydrate specific messages by GUID — the fast path when the dylib pushes a GUID. */

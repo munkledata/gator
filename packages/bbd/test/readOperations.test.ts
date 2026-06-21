@@ -4,6 +4,7 @@ import Database from "better-sqlite3";
 import { ChatReader } from "../src/data/imessage/ChatReader";
 import { HandleReader } from "../src/data/imessage/HandleReader";
 import { AttachmentReader } from "../src/data/imessage/AttachmentReader";
+import { MessageReader } from "../src/data/imessage/MessageReader";
 import { introspectTable } from "../src/data/imessage/schema";
 import { buildReadOperations } from "../src/api/operations/readOperations";
 import { executeOperation } from "../src/api/execute";
@@ -52,7 +53,7 @@ function seedTwoChats(): Database.Database {
         CREATE TABLE chat(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, chat_identifier TEXT,
             display_name TEXT, style INTEGER, is_archived INTEGER DEFAULT 0, group_id TEXT);
         CREATE TABLE message(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, text TEXT, date INTEGER,
-            is_from_me INTEGER DEFAULT 0, associated_message_type INTEGER DEFAULT 0);
+            handle_id INTEGER DEFAULT 0, is_from_me INTEGER DEFAULT 0, associated_message_type INTEGER DEFAULT 0);
         CREATE TABLE chat_message_join(chat_id INTEGER, message_id INTEGER);
         CREATE TABLE chat_handle_join(chat_id INTEGER, handle_id INTEGER);
         CREATE TABLE handle(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT, country TEXT, service TEXT, uncanonicalized_id TEXT);
@@ -65,11 +66,11 @@ function seedTwoChats(): Database.Database {
     const c = db.prepare("INSERT INTO chat(guid, chat_identifier, display_name, style) VALUES (?,?,?,?)");
     c.run("iMessage;-;+1111", "+1111", "ChatA", 45); // chat 1
     c.run("iMessage;-;+2222", "+2222", "ChatB", 45); // chat 2
-    const m = db.prepare("INSERT INTO message(guid, text, date) VALUES (?,?,?)");
-    m.run("a-old", "a old", 1000); // msg 1 → chat 1
-    m.run("a-new", "a new", 3000); // msg 2 → chat 1 (newest for A)
-    m.run("b-old", "b old", 2000); // msg 3 → chat 2
-    m.run("b-new", "b new", 4000); // msg 4 → chat 2 (newest for B)
+    const m = db.prepare("INSERT INTO message(guid, text, date, handle_id) VALUES (?,?,?,?)");
+    m.run("a-old", "a old", 1000, 1); // msg 1 → chat 1, sender handle 1 (+1111)
+    m.run("a-new", "a new", 3000, 1); // msg 2 → chat 1 (newest for A), sender handle 1
+    m.run("b-old", "b old", 2000, 2); // msg 3 → chat 2, sender handle 2 (+2222)
+    m.run("b-new", "b new", 4000, 2); // msg 4 → chat 2 (newest for B), sender handle 2
     db.prepare("INSERT INTO chat_message_join(chat_id, message_id) VALUES (1,1),(1,2),(2,3),(2,4)").run();
     db.prepare("INSERT INTO chat_handle_join(chat_id, handle_id) VALUES (1,1),(2,2)").run();
     // Disjoint attachments to prove the batched attachment hydration keys each message by
@@ -90,7 +91,8 @@ function ops(db: Database.Database) {
     });
     const handleReader = new HandleReader(db, introspectTable(db, "handle"));
     const attachmentReader = new AttachmentReader(db, introspectTable(db, "attachment"));
-    const list = buildReadOperations({ chatReader, handleReader, attachmentReader });
+    const messageReader = new MessageReader(db, introspectTable(db, "message"));
+    const list = buildReadOperations({ chatReader, handleReader, attachmentReader, messageReader });
     return (name: string) => list.find(o => o.name === name)!;
 }
 
@@ -326,5 +328,199 @@ test("read operations require auth and validate input", async () => {
     assert.equal(
         (await executeOperation(by("get-chat-messages"), { input: {}, credential: "pw" }, ctx, auth)).status,
         400
+    );
+});
+
+test("query-messages with afterRowId returns only higher ROWIDs, oldest-first", async () => {
+    const by = ops(seedTwoChats()); // ROWIDs 1..4: a-old, a-new, b-old, b-new
+    const r = await executeOperation(
+        by("query-messages"),
+        { input: { afterRowId: 2 }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    const msgs = (r.data as { messages: { guid: string }[] }).messages;
+    // Only ROWID 3 (b-old) and 4 (b-new) qualify, in ascending ROWID order.
+    assert.deepEqual(
+        msgs.map(m => m.guid),
+        ["b-old", "b-new"]
+    );
+});
+
+test("query-messages exposes originalROWID and pages disjointly via MAX(originalROWID)", async () => {
+    const by = ops(seedTwoChats()); // ROWIDs 1..4: a-old, a-new, b-old, b-new
+    // Page 1: from the start, limit 2 → oldest two, each carrying its ROWID under originalROWID.
+    const p1 = await executeOperation(by("query-messages"), { input: { limit: 2 }, credential: "pw" }, ctx, auth);
+    const m1 = (p1.data as { messages: { guid: string; originalROWID: number }[] }).messages;
+    assert.deepEqual(
+        m1.map(m => m.guid),
+        ["a-old", "a-new"]
+    );
+    // The ROWID MUST be on the wire — without it the app cannot advance the cursor at all.
+    assert.deepEqual(
+        m1.map(m => m.originalROWID),
+        [1, 2]
+    );
+    // The app advances its global cursor by MAX(originalROWID) of the page.
+    const cursor = Math.max(...m1.map(m => m.originalROWID));
+    assert.equal(cursor, 2);
+    // Page 2: afterRowId = cursor → the next DISJOINT page (no overlap, no gap).
+    const p2 = await executeOperation(
+        by("query-messages"),
+        { input: { afterRowId: cursor, limit: 2 }, credential: "pw" },
+        ctx,
+        auth
+    );
+    const m2 = (p2.data as { messages: { guid: string; originalROWID: number }[] }).messages;
+    assert.deepEqual(
+        m2.map(m => m.guid),
+        ["b-old", "b-new"]
+    );
+    // Concatenating the pages reproduces the whole table exactly — no duplicate, no skip.
+    assert.deepEqual(
+        [...m1, ...m2].map(m => m.guid),
+        ["a-old", "a-new", "b-old", "b-new"]
+    );
+});
+
+test("query-messages from the start (no cursor) returns every message oldest-first", async () => {
+    const by = ops(seedTwoChats());
+    const r = await executeOperation(by("query-messages"), { input: {}, credential: "pw" }, ctx, auth);
+    assert.equal(r.status, 200);
+    const msgs = (r.data as { messages: { guid: string }[] }).messages;
+    assert.deepEqual(
+        msgs.map(m => m.guid),
+        ["a-old", "a-new", "b-old", "b-new"]
+    );
+});
+
+test("query-messages WITH chats/handle/attachment hydrates each message (routing + sender + atts)", async () => {
+    const by = ops(seedTwoChats());
+    // The app passes `with` as the comma-string it sends for incremental sync.
+    const r = await executeOperation(
+        by("query-messages"),
+        {
+            input: {
+                afterRowId: 0,
+                with: "chats,chats.participants,handle,attachment,attributedBody",
+                sort: "ASC"
+            },
+            credential: "pw"
+        },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    type Row = {
+        guid: string;
+        chats: { guid: string }[];
+        handle: { address: string } | null;
+        attachments: { guid: string }[];
+    };
+    const msgs = (r.data as { messages: Row[] }).messages;
+    assert.equal(msgs.length, 4);
+
+    // Every message carries its chat guid (the app routes on chats[0].guid).
+    const aNew = msgs.find(m => m.guid === "a-new")!;
+    const bNew = msgs.find(m => m.guid === "b-new")!;
+    assert.equal(aNew.chats[0]!.guid, "iMessage;-;+1111");
+    assert.equal(bNew.chats[0]!.guid, "iMessage;-;+2222");
+
+    // Sender handle resolves per message.
+    assert.equal(aNew.handle!.address, "+1111");
+    assert.equal(bNew.handle!.address, "+2222");
+
+    // Attachments key per message: b-new has att-b, a-new has none (att-a is for... a-new
+    // actually — msg ROWID 2 maps to attachment 1; ROWID 4 to attachment 2).
+    assert.deepEqual(
+        aNew.attachments.map(a => a.guid),
+        ["att-a"]
+    );
+    assert.deepEqual(
+        bNew.attachments.map(a => a.guid),
+        ["att-b"]
+    );
+    // a-old has no attachment → requested but empty array.
+    const aOld = msgs.find(m => m.guid === "a-old")!;
+    assert.deepEqual(aOld.attachments, []);
+});
+
+test("query-messages limit caps the page (oldest-first)", async () => {
+    const by = ops(seedTwoChats());
+    const r = await executeOperation(
+        by("query-messages"),
+        { input: { afterRowId: 0, limit: 2 }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    const msgs = (r.data as { messages: { guid: string }[] }).messages;
+    assert.deepEqual(
+        msgs.map(m => m.guid),
+        ["a-old", "a-new"]
+    );
+});
+
+test("query-messages past the last ROWID returns an empty messages array", async () => {
+    const by = ops(seedTwoChats());
+    const r = await executeOperation(
+        by("query-messages"),
+        { input: { afterRowId: 9999 }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    assert.deepEqual((r.data as { messages: unknown[] }).messages, []);
+});
+
+test("query-messages WITHOUT `with` omits chats/handle/attachments (byte-identical bare shape)", async () => {
+    const by = ops(seedTwoChats());
+    const r = await executeOperation(by("query-messages"), { input: {}, credential: "pw" }, ctx, auth);
+    assert.equal(r.status, 200);
+    const msgs = (r.data as { messages: Record<string, unknown>[] }).messages;
+    assert.equal(msgs.length, 4);
+    for (const m of msgs) {
+        assert.equal("chats" in m, false);
+        assert.equal("handle" in m, false);
+        assert.equal("attachments" in m, false);
+        // no internal ROWID leaks onto the wire
+        assert.equal("ROWID" in m, false);
+    }
+});
+
+test("query-messages timestamp cursor (after, Unix-ms) filters via the Cocoa-epoch inverse", async () => {
+    // Seed messages whose `date` is real Apple/Cocoa nanoseconds so the ms→nanos inverse
+    // (unixMsToAppleNanos) round-trips. COCOA_EPOCH_UNIX_MS = 978_307_200_000.
+    const db = new Database(":memory:");
+    db.exec(`
+        CREATE TABLE message(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, text TEXT, date INTEGER,
+            handle_id INTEGER DEFAULT 0, is_from_me INTEGER DEFAULT 0, associated_message_type INTEGER DEFAULT 0);
+        CREATE TABLE chat(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, chat_identifier TEXT,
+            display_name TEXT, style INTEGER, is_archived INTEGER DEFAULT 0, group_id TEXT);
+        CREATE TABLE chat_message_join(chat_id INTEGER, message_id INTEGER);
+        CREATE TABLE chat_handle_join(chat_id INTEGER, handle_id INTEGER);
+        CREATE TABLE handle(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT, country TEXT, service TEXT, uncanonicalized_id TEXT);
+        CREATE TABLE attachment(ROWID INTEGER PRIMARY KEY AUTOINCREMENT, guid TEXT, mime_type TEXT, transfer_name TEXT, total_bytes INTEGER, is_sticker INTEGER DEFAULT 0, hide_attachment INTEGER DEFAULT 0);
+        CREATE TABLE message_attachment_join(message_id INTEGER, attachment_id INTEGER);
+    `);
+    const cocoa = 978_307_200_000; // Unix ms at the Cocoa epoch
+    const ms = (unixMs: number): number => Math.round((unixMs - cocoa) * 1e6); // unixMsToAppleNanos
+    const m = db.prepare("INSERT INTO message(guid, text, date) VALUES (?,?,?)");
+    m.run("t1", "older", ms(cocoa + 1000)); // 1s after epoch
+    m.run("t2", "newer", ms(cocoa + 5000)); // 5s after epoch
+    const by = ops(db);
+    // Cursor at 3s after epoch (Unix ms) → only t2 (5s) qualifies.
+    const r = await executeOperation(
+        by("query-messages"),
+        { input: { after: cocoa + 3000 }, credential: "pw" },
+        ctx,
+        auth
+    );
+    assert.equal(r.status, 200);
+    const msgs = (r.data as { messages: { guid: string }[] }).messages;
+    assert.deepEqual(
+        msgs.map(x => x.guid),
+        ["t2"]
     );
 });
