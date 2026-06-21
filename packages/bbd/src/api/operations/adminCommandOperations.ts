@@ -282,7 +282,12 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         },
         "get-vapid-public-key": () => {
             const wp = configStore.getConfig().notifications.webpush;
-            return { publicKey: wp.vapidPublicKey ?? null, enabled: wp.enabled, configured: Boolean(wp.vapidPublicKey && wp.vapidPrivateKey) };
+            return {
+                publicKey: wp.vapidPublicKey ?? null,
+                enabled: wp.enabled,
+                configured: Boolean(wp.vapidPublicKey && wp.vapidPrivateKey),
+                subject: wp.vapidSubject ?? ""
+            };
         },
         "set-webpush-subject": d => {
             const n = configStore.getConfig().notifications;

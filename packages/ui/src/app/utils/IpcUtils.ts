@@ -53,6 +53,34 @@ export const openExternalUrl = async (url: string) => {
     return await invoke('open-external', url);
 };
 
+export interface WebPushStatus {
+    /** base64url VAPID public key (the browser's applicationServerKey). */
+    publicKey: string | null;
+    enabled: boolean;
+    configured: boolean;
+    subject: string;
+}
+
+/** Current Web Push (VAPID) status — public key, whether configured, and contact subject. */
+export const getVapidPublicKey = async (): Promise<WebPushStatus> => {
+    return await invoke('get-vapid-public-key');
+};
+
+/** Generate (or regenerate) the VAPID key pair; returns the public key. */
+export const generateVapidKeys = async (subject?: string): Promise<{ success: boolean; publicKey?: string }> => {
+    return await invoke('generate-vapid-keys', subject ? { subject } : {});
+};
+
+/** Set the VAPID contact subject (mailto: or https:). */
+export const setWebPushSubject = async (subject: string) => {
+    return await invoke('set-webpush-subject', { subject });
+};
+
+/** Turn Web Push off (keys are kept). */
+export const disableWebPush = async () => {
+    return await invoke('disable-webpush');
+};
+
 export const getAlerts = async () => {
     return await invoke('get-alerts');
 };

@@ -6,6 +6,7 @@ import {
     Anchor
 } from '@mantine/core';
 import { FcmServiceAccountField } from '../../components/fields/FcmServiceAccountField';
+import { WebPushField } from '../../components/fields/WebPushField';
 
 export const NotificationsLayout = (): JSX.Element => {
     return (
@@ -20,6 +21,10 @@ export const NotificationsLayout = (): JSX.Element => {
             </Text>
 
             <FcmServiceAccountField />
+
+            <Divider orientation='horizontal' my={28} />
+
+            <WebPushField />
 
             <Text fz='sm' mt={20}>
                 <Anchor href='https://docs.bluebubbles.app' target='_blank'>Learn more in the documentation &rarr;</Anchor>
