@@ -173,6 +173,43 @@ test("Socket.IO connection with the local token is trusted (audit S1)", () => {
     assert.equal(t.joined, "authed");
 });
 
+test("server-info returns version aliases and feature/proxy flags", async () => {
+    const { registry } = setup();
+    const app = fastifyApp(registry);
+    const res = await app.inject({
+        method: "GET",
+        url: "/api/v1/server/info",
+        headers: { authorization: `Bearer ${PASSWORD}` },
+        remoteAddress: "203.0.113.5"
+    });
+    assert.equal(res.statusCode, 200);
+    const data = res.json().data;
+    assert.equal(data.version, "9.9.9");
+    assert.equal(data.server_version, "9.9.9", "app reads server_version");
+    assert.equal(data.private_api, false);
+    assert.equal(data.proxy_service, null, "tunnelProvider 'none' maps to null");
+    assert.equal(data.supports_header_auth, true);
+    await app.close();
+});
+
+test("server-info surfaces an active proxy + enabled private API", async () => {
+    const store = new InMemoryConfigStore({ enablePrivateApi: true, tunnelProvider: "zrok" });
+    const ops = buildCoreOperations({ configStore: store, version: "9.9.9", now: () => 1000 });
+    const registry = new OperationRegistry().registerAll(ops);
+    const app = fastifyApp(registry);
+    const res = await app.inject({
+        method: "GET",
+        url: "/api/v1/server/info",
+        headers: { authorization: `Bearer ${PASSWORD}` },
+        remoteAddress: "203.0.113.5"
+    });
+    assert.equal(res.statusCode, 200);
+    const data = res.json().data;
+    assert.equal(data.private_api, true);
+    assert.equal(data.proxy_service, "zrok");
+    await app.close();
+});
+
 test("generateOpenApi derives paths, params, and security from the registry", () => {
     const { registry } = setup();
     const doc = generateOpenApi(registry, { title: "Gator", version: "2.0" }) as Record<string, any>;

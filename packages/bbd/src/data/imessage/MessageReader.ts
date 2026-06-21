@@ -39,6 +39,7 @@ export const WANTED_MESSAGE_COLUMNS: readonly string[] = [
     "thread_originator_part",
     "reply_to_guid",
     "did_notify_recipient",
+    "was_delivered_quietly",
     "part_count"
 ];
 

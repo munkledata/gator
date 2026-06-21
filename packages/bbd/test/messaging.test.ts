@@ -141,4 +141,13 @@ test("serializeMessage maps missing columns to null without throwing", () => {
     assert.equal(dto.text, null);
     assert.equal(dto.dateCreated, null);
     assert.equal(dto.isFromMe, false);
+    // delivered-tier flags default to false when the columns are absent (older macOS)
+    assert.equal(dto.wasDeliveredQuietly, false);
+    assert.equal(dto.didNotifyRecipient, false);
+});
+
+test("serializeMessage emits the Apple delivered-tier flags", () => {
+    const dto = serializeMessage({ guid: "g", was_delivered_quietly: 1, did_notify_recipient: 0 });
+    assert.equal(dto.wasDeliveredQuietly, true);
+    assert.equal(dto.didNotifyRecipient, false);
 });

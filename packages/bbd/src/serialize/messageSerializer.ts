@@ -46,6 +46,10 @@ export interface MessageResponse {
     isDelivered: boolean;
     isRead: boolean;
     isSent: boolean;
+    /** Apple delivered-tier flags: message delivered without a recipient notification. */
+    wasDeliveredQuietly: boolean;
+    /** Apple delivered-tier flags: recipient was notified of delivery. */
+    didNotifyRecipient: boolean;
     isAudioMessage: boolean;
     itemType: number | null;
     groupTitle: string | null;
@@ -81,6 +85,8 @@ export function serializeMessage(row: Record<string, unknown>): MessageResponse 
         isDelivered: bool(row["is_delivered"]),
         isRead: bool(row["is_read"]),
         isSent: bool(row["is_sent"]),
+        wasDeliveredQuietly: bool(row["was_delivered_quietly"]),
+        didNotifyRecipient: bool(row["did_notify_recipient"]),
         isAudioMessage: bool(row["is_audio_message"]),
         itemType: numOrNull(row["item_type"]),
         groupTitle: str(row["group_title"]),

@@ -52,7 +52,16 @@ export function buildCoreOperations(deps: CoreOperationDeps): Operation[] {
             auth: true,
             input: NoInput,
             summary: "Server version and metadata",
-            handler: () => ({ version: deps.version })
+            handler: () => {
+                const cfg = deps.configStore.getConfig();
+                return {
+                    version: deps.version,
+                    server_version: deps.version, // the field name upstream/the app reads
+                    private_api: cfg.enablePrivateApi,
+                    proxy_service: cfg.tunnelProvider === "none" ? null : cfg.tunnelProvider,
+                    supports_header_auth: true // Gator's REST+socket adapters accept Authorization: Bearer
+                };
+            }
         }),
         defineOperation({
             name: "get-config",
