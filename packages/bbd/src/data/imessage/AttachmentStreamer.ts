@@ -26,7 +26,17 @@ export class AttachmentStreamer {
         attachmentRoot: string = path.join(os.homedir(), "Library", "Messages", "Attachments")
     ) {
         this.#db = db;
-        this.#root = path.resolve(attachmentRoot);
+        // Canonicalize the root through realpath so the post-symlink containment check
+        // below compares like-for-like (e.g. on macOS the temp/Messages dir may itself be a
+        // symlink — /var -> /private/var — and a resolved file path would otherwise never
+        // appear "under" a lexically-resolved root). Fall back to the lexical resolve if the
+        // root doesn't exist yet (fresh machine before any attachment lands).
+        const resolved = path.resolve(attachmentRoot);
+        try {
+            this.#root = fs.realpathSync(resolved);
+        } catch {
+            this.#root = resolved;
+        }
     }
 
     resolve(guid: string): AttachmentLocation | null {
@@ -39,19 +49,30 @@ export class AttachmentStreamer {
         if (filePath.startsWith("~")) filePath = path.join(os.homedir(), filePath.slice(1));
         filePath = path.resolve(filePath);
 
-        // Path-traversal guard: must be inside the attachments root.
-        if (filePath !== this.#root && !filePath.startsWith(this.#root + path.sep)) return null;
+        // Path-traversal guard. A lexical `startsWith(root)` check is NOT enough: it constrains
+        // only the path as written, but `statSync`/`createReadStream` follow symlinks, so a
+        // symlink that lives inside the root yet points its target outside it would slip past a
+        // lexical-only guard. Resolve the path through realpath (which collapses `..` AND follows
+        // symlinks) and assert the REAL path is contained in the (also-canonical) root. realpathSync
+        // throws on a missing file or a dangling symlink — treat that as not found.
+        let real: string;
+        try {
+            real = fs.realpathSync(filePath);
+        } catch {
+            return null;
+        }
+        if (real !== this.#root && !real.startsWith(this.#root + path.sep)) return null;
 
         let stat: fs.Stats;
         try {
-            stat = fs.statSync(filePath);
+            stat = fs.statSync(real);
         } catch {
             return null;
         }
         if (!stat.isFile()) return null;
 
         return {
-            path: filePath,
+            path: real,
             mimeType: typeof row.mime_type === "string" ? row.mime_type : null,
             transferName: typeof row.transfer_name === "string" ? row.transfer_name : null
         };

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { defineOperation, type Operation } from "../Operation";
 import type { ConfigService } from "../../config/ConfigService";
 import type { Config } from "../../config/configSchema";
+import { sanitizeConfig } from "../../config/sanitize";
 
 const NoInput = z.object({}).passthrough();
 const UpdateConfigInput = z.object({}).passthrough();
@@ -31,9 +32,11 @@ export function buildAdminOperations(deps: AdminOperationDeps): Operation[] {
             summary: "Update server configuration (runs the reconcile loop)",
             handler: async (_ctx, input) => {
                 const updated = await deps.configService.update(input as Partial<Config>);
-                const { password, ...safe } = updated;
-                void password;
-                return safe;
+                // Strip EVERY plaintext credential, not just the password (audit F9): the prior
+                // `{ password, ...safe }` still returned the cloudflare/zrok tokens, the FCM
+                // service-account private key, the OAuth client secret, and the VAPID private
+                // key. sanitizeConfig is the one canonical strip the read path uses.
+                return sanitizeConfig(updated);
             }
         }),
         defineOperation({

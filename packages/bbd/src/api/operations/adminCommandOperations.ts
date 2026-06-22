@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { defineOperation, type Operation } from "../Operation";
+import { AdminOnlyError } from "../execute";
 import type { ConfigService } from "../../config/ConfigService";
 import type { ConfigStore } from "../../data/config-db/ConfigStore";
 import type { Config } from "../../config/configSchema";
@@ -46,6 +47,45 @@ export interface AdminCommandDeps {
 type Handler = (data: Record<string, unknown>) => Promise<unknown> | unknown;
 
 const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === "object" ? (v as Record<string, unknown>) : {});
+
+/**
+ * Channels restricted to the trusted LOCAL admin UI (audit F15). These are the genuinely
+ * destructive local-admin operations — config writes (which also carry the password,
+ * cloudflare/zrok tokens, server address, TLS toggles), FCM/Web-Push/OAuth secret setters,
+ * TLS issuance, tunnel control, and device purge. A remote password-authenticated client is
+ * denied (403) even with the correct password; only the per-boot `x-bbd-local-auth` token
+ * passes. READ/STATUS channels are deliberately NOT listed (get-config, get-*-status,
+ * get-devices, get-* stats, check-permissions, …) so the normal password path still serves
+ * them. The mobile app calls NONE of these channels (it uses the password-authed REST API),
+ * so this gate can't lock the app out.
+ */
+const ADMIN_ONLY_CHANNELS: ReadonlySet<string> = new Set<string>([
+    // Config writes (the broad lever: persists password, tokens, server address, TLS mode).
+    "set-config",
+    "toggle-tutorial",
+    "save-lan-url",
+    // FCM / push credential + provider setters.
+    "set-fcm-server",
+    "clear-fcm",
+    "set-fcm-oauth-client",
+    "start-firebase-setup",
+    "generate-vapid-keys",
+    "set-webpush-subject",
+    "disable-webpush",
+    // zrok tunnel control + token (re-exposes the server / consumes the secret token).
+    "set-zrok-token",
+    "register-zrok-email",
+    "start-zrok",
+    "disable-zrok",
+    // Cloudflare DDNS action (acts on the stored API token).
+    "cloudflare-ddns-sync-now",
+    // TLS / Let's Encrypt issuance + listener toggles.
+    "enable-tls",
+    "disable-tls",
+    "issue-letsencrypt",
+    // Destructive data op.
+    "purge-devices"
+]);
 
 /**
  * The single dispatch endpoint that replaces the legacy renderer's 67 `ipcMain`
@@ -96,7 +136,11 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
             throw new Error("Password must be at least 8 characters");
         }
         const updated = await configService.update(mapKeys(patch, toCamel) as Partial<Config>);
-        const snake = mapKeys(updated as Record<string, unknown>, toSnake);
+        // Strip every plaintext credential BEFORE snake-casing so the write path can't leak
+        // what the read path hides (audit F9): the returned value AND the broadcast
+        // `config-update` event otherwise carry password, cloudflare/zrok tokens, the FCM
+        // service-account private key, the OAuth client secret, and the VAPID private key.
+        const snake = mapKeys(sanitizeConfig(updated as Config), toSnake);
         emit("config-update", snake);
         return snake;
     };
@@ -394,7 +438,18 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
             auth: true,
             input: Input,
             summary: "Dispatch a former-IPC admin command by channel",
-            handler: async (_ctx, input) => {
+            handler: async (ctx, input) => {
+                // Per-channel admin gating (audit F15): the outer op validates only {channel,data},
+                // so we enforce the privilege tier HERE — a genuinely destructive channel (config
+                // writes, secret/credential setters, TLS issuance, tunnel control, device purge)
+                // requires the trusted LOCAL channel (x-bbd-local-auth), never the shared password.
+                // Read/status channels stay on the normal auth path. The mobile app never calls any
+                // admin-command channel (it uses the password-authed REST API), so this can't lock
+                // it out. A denied channel returns a 403 envelope (AdminOnlyError), not a 500.
+                if (ADMIN_ONLY_CHANNELS.has(input.channel) && !ctx.trusted) {
+                    logger.debug(`admin-command: rejecting admin-only channel "${input.channel}" without local trust`);
+                    throw new AdminOnlyError(`admin channel "${input.channel}" requires local access`);
+                }
                 const handler = handlers[input.channel];
                 if (!handler) {
                     // Return [] (not an object/null) — the safest universal empty: consumers

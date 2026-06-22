@@ -70,6 +70,13 @@ test("composition root boots; ping/health open, password + local-token trusted, 
         // Local-trust token -> 200 without a password.
         const withTok = await fetch(`${base}/api/v1/config`, { headers: { "x-bbd-local-auth": "smoke-local-token" } });
         assert.equal(withTok.status, 200);
+
+        // The loopback (withUi:true) listener still mounts the OAuth callback for the local
+        // Firebase setup flow — a missing code yields the "something went wrong" page, NOT a 404
+        // (which would mean the route is absent). This proves withUi:true still serves it while
+        // the tunnel/TLS (withUi:false) listeners do not (audit F17).
+        const callback = await fetch(`${base}/oauth/callback`);
+        assert.equal(callback.status, 200, "OAuth callback is mounted on the local UI listener");
     } finally {
         await running.stop();
         fs.rmSync(dir, { recursive: true, force: true });

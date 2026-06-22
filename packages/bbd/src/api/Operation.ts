@@ -12,6 +12,13 @@ export interface OperationContext {
     logger: Logger;
     /** The credential the caller presented; auth has already been enforced. */
     credential?: string;
+    /**
+     * The caller is the trusted local admin UI (it presented the per-boot local token, not
+     * merely the shared password). A dispatcher that multiplexes many sub-commands behind one
+     * Operation (the admin-command channel router) uses this to gate genuinely destructive
+     * sub-commands to the local channel — see `adminOnly` and audit F15.
+     */
+    trusted?: boolean;
 }
 
 /**
@@ -30,6 +37,13 @@ export interface Operation<I = unknown, O = unknown> {
     readonly socketEvent?: string;
     /** Whether the password/token is required. */
     readonly auth: boolean;
+    /**
+     * Restrict this operation to the trusted LOCAL admin UI (the per-boot `x-bbd-local-auth`
+     * token), rejecting the shared-password path even when the password is correct (audit F15).
+     * Use ONLY for genuinely destructive local-admin operations — the mobile app authenticates
+     * with the password, so gating an op it needs would lock it out. Defaults to false.
+     */
+    readonly adminOnly?: boolean;
     /** Input validation. Use a permissive object schema for "no input". */
     readonly input: ZodType<I>;
     /** The single implementation, shared by both transports. */

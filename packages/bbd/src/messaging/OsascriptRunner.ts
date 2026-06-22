@@ -14,7 +14,15 @@ export class OsascriptRunner implements AppleScriptRunner {
                 if (err) reject(new Error(stderr?.trim() || err.message));
                 else resolve(stdout);
             });
-            child.stdin?.end(script);
+            // Writing the script to stdin can throw EPIPE if the child died before reading it
+            // (e.g. osascript not found / killed). Without a listener that error is unhandled
+            // and crashes the process; route it to reject() so the caller sees a normal failure.
+            child.stdin?.on("error", reject);
+            try {
+                child.stdin?.end(script);
+            } catch (e) {
+                reject(e instanceof Error ? e : new Error(String(e)));
+            }
         });
     }
 }

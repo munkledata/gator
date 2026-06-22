@@ -61,6 +61,44 @@ test("a send failure marks the message failed (and is not retried as pending)", 
     assert.equal(msg.error, "boom");
 });
 
+test("overlapping ticks claim each due row exactly once (no double-send) (audit F11)", async () => {
+    const store = new InMemoryScheduledMessageStore();
+    await store.create({ chatGuid: "c", text: "one", scheduledFor: 0 });
+    const transport = new FakeTransport();
+    const scheduler = new Scheduler(store, senderWith(transport), silent, { now: () => 1000 });
+
+    // Two ticks racing the same due set: the claim must let exactly one of them send.
+    const [a, b] = await Promise.all([scheduler.tick(), scheduler.tick()]);
+    assert.equal(a + b, 1, "exactly one tick sent the row");
+    assert.equal(transport.requests.length, 1, "the message was sent exactly once");
+    assert.equal((await store.list())[0]!.status, "sent");
+});
+
+test("claim is a one-shot pending->sending transition", async () => {
+    const store = new InMemoryScheduledMessageStore();
+    const m = await store.create({ chatGuid: "c", text: "x", scheduledFor: 0 });
+    assert.equal(await store.claim(m.id), true, "first claim wins");
+    assert.equal(await store.claim(m.id), false, "second claim loses (already sending)");
+    assert.equal((await store.get(m.id))!.status, "sending");
+});
+
+test("resetStuck recovers crash-orphaned 'sending' rows to 'pending' (audit F11)", async () => {
+    const store = new InMemoryScheduledMessageStore();
+    const m = await store.create({ chatGuid: "c", text: "x", scheduledFor: 0 });
+    await store.claim(m.id); // simulate a crash mid-send: row left in 'sending'
+    assert.equal((await store.get(m.id))!.status, "sending");
+
+    const transport = new FakeTransport();
+    const scheduler = new Scheduler(store, senderWith(transport), silent, { now: () => 1000 });
+    await scheduler.start(); // start() runs resetStuck()
+    scheduler.stop();
+    assert.equal((await store.get(m.id))!.status, "pending", "the orphaned row is sendable again");
+
+    // And it now actually sends on the next tick.
+    assert.equal(await scheduler.tick(), 1);
+    assert.equal((await store.get(m.id))!.status, "sent");
+});
+
 test("create/list/delete operations", async () => {
     const store = new InMemoryScheduledMessageStore();
     const ops = buildScheduledOperations({ store });

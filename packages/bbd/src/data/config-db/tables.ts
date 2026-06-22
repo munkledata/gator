@@ -46,7 +46,8 @@ export const scheduledMessagesTable = sqliteTable("scheduled_messages", {
     chatGuid: text("chat_guid").notNull(),
     text: text("text").notNull(),
     scheduledFor: integer("scheduled_for").notNull(),
-    status: text("status", { enum: ["pending", "sent", "failed"] }).notNull(),
+    // `sending` is the in-flight claim used to prevent overlapping-tick double-sends (audit F11).
+    status: text("status", { enum: ["pending", "sending", "sent", "failed"] }).notNull(),
     createdAt: integer("created_at").notNull(),
     error: text("error")
 });

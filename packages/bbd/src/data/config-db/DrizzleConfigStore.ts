@@ -27,6 +27,19 @@ export class DrizzleConfigStore implements ConfigStore {
         // The config blob holds the server password and every credential in plaintext, so
         // restrict the DB (and its WAL sidecars, created by the pragma above) to the owner
         // — otherwise it lands world/group-readable under the process umask (audit S8).
+        //
+        // TODO (audit F18 — DEFERRED, out of scope here): file permissions are NOT
+        // at-rest encryption. The config row stores long-lived cloud credentials in plaintext
+        // (the server password, the FCM service-account private_key, the Cloudflare DDNS API
+        // token, the zrok token, the OAuth client secret, and the VAPID private key). These
+        // should be moved into the macOS Keychain (Security framework) so they're encrypted at
+        // rest and gated by the login keychain, leaving only non-secret config in this DB. That
+        // is a sizable native feature and is intentionally NOT attempted here. Until then:
+        //   - the 0600 chmod below is the only protection (owner-read only);
+        //   - the userData directory containing this DB MUST be excluded from Time Machine and
+        //     iCloud/cloud backups (a backup would otherwise carry these plaintext secrets
+        //     off-machine) — set the com.apple.metadata:com_apple_backup_excludeItem xattr / use
+        //     NSURLIsExcludedFromBackupKey on the directory at the shell level.
         for (const f of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
             try {
                 fs.chmodSync(f, 0o600);

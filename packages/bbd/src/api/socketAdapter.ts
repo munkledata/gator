@@ -1,7 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import type { OperationRegistry } from "./registry";
 import { executeOperation, type AuthConfig } from "./execute";
-import { isTrustedLocal, safeEqual } from "./auth";
+import { isTrustedLocal, checkPasswordAuth } from "./auth";
 import type { Logger } from "../core/logger";
 
 export interface SocketAdapterDeps {
@@ -57,14 +57,27 @@ export function mountSocket(io: Server, registry: OperationRegistry, deps: Socke
         const localToken = extractLocalToken(socket);
         const credential = extractCredential(socket, undefined);
         const trusted = isTrustedLocal(localToken, deps.auth.localToken);
-        const passwordOk =
-            !trusted && deps.auth.password.length > 0 && credential != null && safeEqual(credential, deps.auth.password);
 
-        if (!trusted && !passwordOk) {
-            deps.logger.debug(`rejecting unauthenticated socket ${socket.id} from ${socket.handshake.address}`);
-            socket.emit("unauthorized", { message: "authentication required" });
-            socket.disconnect(true);
-            return;
+        // The handshake is a password surface, so it must enforce the SAME brute-force lockout
+        // as the REST/operation path (audit F8) — otherwise an attacker can hammer passwords by
+        // opening sockets. Route through the shared helper keyed on the handshake address: a
+        // locked key is rejected, a mismatch records a failure, a success resets the counter.
+        if (!trusted) {
+            const result = checkPasswordAuth(
+                credential,
+                deps.auth.password,
+                socket.handshake.address,
+                deps.auth.rateLimiter
+            );
+            if (result !== "ok") {
+                const reason = result === "locked" ? "too many failed attempts" : "authentication required";
+                deps.logger.debug(
+                    `rejecting socket ${socket.id} from ${socket.handshake.address} (${result})`
+                );
+                socket.emit("unauthorized", { message: reason });
+                socket.disconnect(true);
+                return;
+            }
         }
         void socket.join(AUTHED_ROOM);
 

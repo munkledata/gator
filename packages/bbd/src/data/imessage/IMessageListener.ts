@@ -48,7 +48,17 @@ export class IMessageListener {
     /** Read the delta since the cursor, emit events, advance + persist the cursor. */
     async poll(): Promise<number> {
         const previous = this.#cursor;
-        const { rows, cursor } = this.#reader.readSince(previous);
+        // A transient chat.db read failure (SQLITE_BUSY/IOERR while Messages is writing) must
+        // degrade to "no changes this tick" + a log, never throw out of poll (audit F19). The
+        // cursor is untouched, so the next watcher tick re-reads the same delta — no loss.
+        let result: { rows: Record<string, unknown>[]; cursor: Cursor };
+        try {
+            result = this.#reader.readSince(previous);
+        } catch (e) {
+            this.#logger.error("readSince failed; skipping this poll (cursor unchanged)", e);
+            return 0;
+        }
+        const { rows, cursor } = result;
 
         for (const row of rows) {
             const isNew = asNumber(row["ROWID"]) > previous.lastRowId;

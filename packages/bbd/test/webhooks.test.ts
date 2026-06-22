@@ -69,6 +69,57 @@ test("message fanout serializes once and delivers to both sinks", () => {
     assert.deepEqual(emitted[0]!.dto, hooked[0]!.dto, "same serialized DTO to both sinks");
 });
 
+test("live fanout carries hydrated chats[]/handle + top-level chatGuid (audit F1)", async () => {
+    const bus = new EventBus<DomainEvents>();
+    const emitted: Array<{ type: string; dto: Record<string, unknown> }> = [];
+    const hooked: Array<{ type: string; dto: Record<string, unknown> }> = [];
+    const pushed: Array<{ type: string; dto: Record<string, unknown> }> = [];
+
+    wireMessageFanout(bus, {
+        emit: (type, dto) => emitted.push({ type, dto: dto as Record<string, unknown> }),
+        webhook: (type, dto) => void hooked.push({ type, dto: dto as Record<string, unknown> }),
+        notify: (type, dto) => void pushed.push({ type, dto: dto as Record<string, unknown> }),
+        // Stand-in for backend's chatReader/handleReader batch lookup.
+        hydrate: row => {
+            assert.equal(Number(row.ROWID), 42);
+            return {
+                chats: [{ guid: "iMessage;-;+15551234567", chat_identifier: "+15551234567", display_name: "Alice" }],
+                handle: { id: "+15551234567", service: "iMessage" }
+            };
+        }
+    });
+
+    bus.emit("new-message", { ROWID: 42, guid: "g-live", text: "hi", handle_id: 7, is_from_me: 0 });
+    // let the .catch-wrapped sinks settle
+    await Promise.resolve();
+
+    const dto = emitted[0]!.dto;
+    assert.equal(dto.guid, "g-live");
+    assert.equal(dto.chatGuid, "iMessage;-;+15551234567", "top-level chatGuid (belt-and-suspenders)");
+    assert.deepEqual((dto.chats as Array<{ guid: string }>)[0]!.guid, "iMessage;-;+15551234567", "hydrated chats[]");
+    assert.ok(dto.handle, "hydrated sender handle");
+    // The SAME enriched dto reaches the socket, webhook, AND push sinks.
+    assert.deepEqual(emitted[0]!.dto, hooked[0]!.dto);
+    assert.deepEqual(emitted[0]!.dto, pushed[0]!.dto);
+});
+
+test("live fanout still emits (without chats[]) when hydration throws (audit F1/F19)", () => {
+    const bus = new EventBus<DomainEvents>();
+    const emitted: Array<Record<string, unknown>> = [];
+    wireMessageFanout(bus, {
+        emit: (_t, dto) => emitted.push(dto as Record<string, unknown>),
+        webhook: () => {},
+        logger: silent,
+        hydrate: () => {
+            throw new Error("chat.db read blew up");
+        }
+    });
+    bus.emit("new-message", { ROWID: 1, guid: "g-degraded" });
+    assert.equal(emitted[0]!.guid, "g-degraded", "event is not dropped");
+    assert.equal(emitted[0]!.chatGuid, undefined, "no chatGuid when hydration failed");
+    assert.equal("chats" in emitted[0]!, false, "no chats[] when hydration failed");
+});
+
 test("FileCursorStore round-trips the cursor and resets on a missing file", async () => {
     const file = path.join(os.tmpdir(), `bbd-cursor-${process.pid}-${Date.now()}.json`);
     const store = new FileCursorStore(file);

@@ -2,8 +2,8 @@ import fs from "node:fs";
 import type { FastifyInstance } from "fastify";
 import { failure, ResponseMessage } from "@bluebubbles/protocol";
 import type { AttachmentStreamer } from "../data/imessage/AttachmentStreamer";
-import { safeEqual } from "./auth";
-import { extractCredential } from "./fastifyAdapter";
+import { checkPasswordAuth, isTrustedLocal } from "./auth";
+import { extractCredential, extractLocalToken } from "./fastifyAdapter";
 import type { AuthConfig } from "./execute";
 
 export interface AttachmentRoutesDeps {
@@ -13,17 +13,33 @@ export interface AttachmentRoutesDeps {
 
 /**
  * Binary attachment streaming — outside the JSON-envelope operation layer because
- * the body is raw bytes. Auth uses the same constant-time check as the operations;
- * the file is streamed (not buffered), and the streamer enforces the path-traversal
- * guard before we ever open it.
+ * the body is raw bytes. Auth routes through the SAME shared password+lockout helper
+ * the operations use (audit F8), so this route is brute-force-throttled too; the file
+ * is streamed (not buffered), and the streamer enforces the path-traversal guard
+ * before we ever open it.
  */
 export function mountAttachmentRoutes(app: FastifyInstance, deps: AttachmentRoutesDeps): void {
     app.get("/api/v1/attachment/:guid/download", async (request, reply) => {
-        const credential = extractCredential(request);
-        const authed =
-            credential != null && deps.auth.password.length > 0 && safeEqual(credential, deps.auth.password);
-        if (!authed) {
-            return reply.status(401).send(failure(401, ResponseMessage.UNAUTHORIZED));
+        // The trusted local UI (x-bbd-local-auth) skips the password, like the operations.
+        const trusted = isTrustedLocal(extractLocalToken(request), deps.auth.localToken);
+        if (!trusted) {
+            const result = checkPasswordAuth(
+                extractCredential(request),
+                deps.auth.password,
+                request.ip,
+                deps.auth.rateLimiter
+            );
+            if (result === "locked") {
+                return reply
+                    .status(403)
+                    .send(failure(403, ResponseMessage.FORBIDDEN, { type: "rate_limit", message: "too many failed attempts" }));
+            }
+            // Collapse the unauthorized case into 404 (same as a missing attachment) so this
+            // route is NOT a password oracle: an attacker can't distinguish "wrong password"
+            // (401) from "no such attachment" (404) and probe for valid guids (audit F8).
+            if (result === "unauthorized") {
+                return reply.status(404).send(failure(404, ResponseMessage.NOT_FOUND));
+            }
         }
 
         const guid = (request.params as { guid: string }).guid;

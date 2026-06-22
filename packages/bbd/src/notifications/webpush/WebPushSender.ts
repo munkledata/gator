@@ -21,6 +21,14 @@ export interface WebPushSenderDeps {
     fetch?: WebPushFetch;
     /** Push TTL in seconds (how long the push service retains an undelivered message). */
     ttlSeconds?: number;
+    /**
+     * SSRF guard (audit F16): return false to refuse a subscription endpoint before it's
+     * fetched. Defaults to allow-all (registration-time validation already restricts new
+     * endpoints), but the daemon injects `isPublicHttpUrl` so an endpoint that slipped in
+     * before the guard — or via another path — can never make the server fetch a private/
+     * loopback/metadata host.
+     */
+    allow?: (url: string) => boolean;
 }
 
 /**
@@ -32,12 +40,20 @@ export interface WebPushSenderDeps {
 export function createWebPushTransport(deps: WebPushSenderDeps): WebPushTransport {
     const fetch = deps.fetch ?? (globalThis.fetch as unknown as WebPushFetch);
     const ttl = String(deps.ttlSeconds ?? 2_419_200); // 4 weeks
+    const allow = deps.allow ?? (() => true);
     const log = deps.logger.child({ component: "WebPushSender" });
 
     return async (subscription, body, opts) => {
         const vapid = deps.vapid();
         if (!vapid?.publicKey || !vapid?.privateKey) {
             throw new Error("Web Push is not configured (no VAPID keys) — generate them first");
+        }
+
+        // SSRF guard (audit F16): never fetch a non-public endpoint, even if a subscription
+        // with one slipped past registration-time validation.
+        if (!allow(subscription.endpoint)) {
+            log.warn("refusing web push to a non-public endpoint");
+            throw new Error("Web Push endpoint is not a public http(s) host");
         }
 
         const encrypted = encryptAes128gcm(Buffer.from(body, "utf8"), subscription.keys.p256dh, subscription.keys.auth);

@@ -1,6 +1,19 @@
 import { type ResponseFormat, success, failure, ResponseMessage } from "@bluebubbles/protocol";
 import type { Operation, OperationContext } from "./Operation";
-import { safeEqual, RateLimiter } from "./auth";
+import { checkPasswordAuth, RateLimiter } from "./auth";
+
+/**
+ * Thrown by a channel-multiplexing dispatcher (admin-command) when a destructive sub-command
+ * is invoked without the trusted LOCAL channel (audit F15). {@link executeOperation} maps it to
+ * a 403 envelope — not the generic 500 a normal handler throw produces — so per-channel
+ * admin gating behaves exactly like the op-level `adminOnly` flag.
+ */
+export class AdminOnlyError extends Error {
+    constructor(message = "admin operation requires local access") {
+        super(message);
+        this.name = "AdminOnlyError";
+    }
+}
 
 export interface AuthConfig {
     /** The configured shared password (the frozen v1 model). */
@@ -43,17 +56,24 @@ export async function executeOperation<I, O>(
     auth: AuthConfig
 ): Promise<ResponseFormat<O>> {
     // 1. Auth (frozen v1 shared-password model, now constant-time + rate-limited).
+    // Routes through the SAME shared password+lockout helper every password surface uses
+    // (audit F8), so behavior is identical across REST/socket/attachment paths.
     if (op.auth && !req.trusted) {
         const key = req.rateLimitKey ?? "global";
-        if (auth.rateLimiter?.isLocked(key)) {
+        const result = checkPasswordAuth(req.credential, auth.password, key, auth.rateLimiter);
+        if (result === "locked") {
             return failure(403, ResponseMessage.FORBIDDEN, { type: "rate_limit", message: "too many failed attempts" });
         }
-        const authed = req.credential != null && auth.password.length > 0 && safeEqual(req.credential, auth.password);
-        if (!authed) {
-            auth.rateLimiter?.recordFailure(key);
+        if (result === "unauthorized") {
             return failure(401, ResponseMessage.UNAUTHORIZED);
         }
-        auth.rateLimiter?.reset(key);
+    }
+
+    // 1b. Admin-only ops require the trusted LOCAL channel (the per-boot local token), never
+    // the shared password — even a correct password is rejected (audit F15). Destructive
+    // local-admin surfaces are off-limits to remote password-authenticated clients.
+    if (op.adminOnly && !req.trusted) {
+        return failure(403, ResponseMessage.FORBIDDEN, { type: "admin_only", message: "admin operation requires local access" });
     }
 
     // 2. Validate.
@@ -62,11 +82,16 @@ export async function executeOperation<I, O>(
         return failure(400, ResponseMessage.BAD_REQUEST, { type: "validation", message: parsed.error.message });
     }
 
-    // 3. Handle.
+    // 3. Handle. Forward `trusted` so a channel-multiplexing dispatcher (admin-command) can
+    // gate destructive sub-commands to the local channel per-channel (audit F15).
     try {
-        const data = await op.handler({ ...ctx, credential: req.credential }, parsed.data);
+        const data = await op.handler({ ...ctx, credential: req.credential, trusted: req.trusted }, parsed.data);
         return success(data);
     } catch (e) {
+        // A per-channel admin denial maps to 403 (not 500), matching the op-level adminOnly flag.
+        if (e instanceof AdminOnlyError) {
+            return failure(403, ResponseMessage.FORBIDDEN, { type: "admin_only", message: e.message });
+        }
         ctx.logger.error(`operation "${op.name}" failed`, e);
         return failure(500, ResponseMessage.SERVER_ERROR, { message: e instanceof Error ? e.message : String(e) });
     }

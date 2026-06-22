@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { executeOperation } from "../src/api/execute";
+import { executeOperation, AdminOnlyError } from "../src/api/execute";
 import { defineOperation } from "../src/api/Operation";
 import { RateLimiter } from "../src/api/auth";
 import { createConsoleLogger } from "../src/core/logger";
@@ -73,4 +73,41 @@ test("rate limiter locks after repeated failures -> 403 even with a good credent
     await executeOperation(echo, { input: { msg: "x" }, credential: "bad", rateLimitKey: "ip" }, ctx, auth);
     const locked = await executeOperation(echo, { input: { msg: "x" }, credential: "pw", rateLimitKey: "ip" }, ctx, auth);
     assert.equal(locked.status, 403);
+});
+
+test("adminOnly op rejects the shared-password path but accepts the trusted local channel (audit F15)", async () => {
+    const adminOp = defineOperation({
+        name: "destroy",
+        method: "POST",
+        path: "/destroy",
+        auth: true,
+        adminOnly: true,
+        input: z.object({}).passthrough(),
+        handler: () => ({ destroyed: true })
+    });
+    // Correct password but NOT the trusted local channel -> 403 (admin_only), never runs.
+    const denied = await executeOperation(adminOp, { input: {}, credential: "pw" }, ctx, { password: "pw" });
+    assert.equal(denied.status, 403);
+    assert.equal(denied.error?.type, "admin_only");
+    // Trusted local channel -> allowed.
+    const ok = await executeOperation(adminOp, { input: {}, trusted: true }, ctx, { password: "pw" });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.data, { destroyed: true });
+});
+
+test("a handler throwing AdminOnlyError maps to a 403 (not 500) (audit F15)", async () => {
+    const op = defineOperation({
+        name: "dispatch",
+        method: "POST",
+        path: "/dispatch",
+        auth: true,
+        input: z.object({}).passthrough(),
+        handler: (c: { trusted?: boolean }) => {
+            if (!c.trusted) throw new AdminOnlyError('channel "x" requires local access');
+            return { ok: true };
+        }
+    });
+    const denied = await executeOperation(op, { input: {}, credential: "pw" }, ctx, { password: "pw" });
+    assert.equal(denied.status, 403);
+    assert.equal(denied.error?.type, "admin_only");
 });

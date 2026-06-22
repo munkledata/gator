@@ -17,6 +17,20 @@ interface ParentPort {
 }
 const parentPort = (process as unknown as { parentPort?: ParentPort }).parentPort;
 
+// Hot-path resilience (audit F19): a transient rejection/throw on the per-message ingestion
+// path (a flaky chat.db read, a webhook fetch, a push send) must NOT take the whole daemon
+// down — that turns one bad message into a service outage and a watchdog respawn loop. LOG
+// and keep running. We deliberately do NOT exit here: only a genuine fatal startup error
+// (the `.catch` on startBbdBackend below, which calls process.exit) should stop the process
+// so the parent/launchd watchdog respawns it. A truly corrupt state is still observable via
+// the logs; staying up keeps every other channel (socket, REST, scheduler) alive.
+process.on("unhandledRejection", reason => {
+    logger.error("unhandledRejection on the bbd hot path (continuing)", reason);
+});
+process.on("uncaughtException", err => {
+    logger.error("uncaughtException on the bbd hot path (continuing)", err);
+});
+
 startBbdBackend({
     userDataPath: process.env.BBD_USER_DATA,
     messagesDir: process.env.BBD_MESSAGES_DIR,

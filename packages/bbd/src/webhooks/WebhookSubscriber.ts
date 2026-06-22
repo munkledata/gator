@@ -19,7 +19,15 @@ export class WebhookSubscriber {
     }
 
     async onEvent(type: string, data: unknown): Promise<void> {
-        const webhooks = await this.#store.list();
+        // A transient store-read failure (SQLITE_BUSY/IOERR) on this per-message path must
+        // degrade to "no webhooks this time" + a log, not throw and abort the fanout (audit F19).
+        let webhooks;
+        try {
+            webhooks = await this.#store.list();
+        } catch (e) {
+            this.#logger.error("webhook store list failed; skipping webhook fanout for this event", e);
+            return;
+        }
         const matching = webhooks.filter(w => w.events.includes("*") || w.events.includes(type));
         if (matching.length === 0) return;
         await Promise.all(

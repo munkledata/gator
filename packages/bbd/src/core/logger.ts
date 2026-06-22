@@ -74,11 +74,35 @@ export function createConsoleLogger(name: string, opts: ConsoleLoggerOptions = {
     };
 }
 
+/**
+ * Keys whose VALUES are redacted before a logged object is serialized (audit F26): a
+ * defense-in-depth net so a logger arg that happens to carry a credential (a config blob, an
+ * FCM service account, an Authorization header) doesn't write the secret to the log sink. This
+ * is a best-effort scrub on the structured-arg path, NOT a substitute for never logging
+ * secrets — string interpolation (`logger.info(\`token=\${t}\`)`) is already-flattened text and
+ * cannot be scrubbed here.
+ */
+const SECRET_KEY_RE = /password|token|secret|private_key|privatekey|authorization|api[-_]?key|credential/i;
+const REDACTED = "[redacted]";
+
+/** Recursively copy a value, replacing secret-keyed leaves with a placeholder. Cycle-safe. */
+const redact = (v: unknown, seen: WeakSet<object>): unknown => {
+    if (v === null || typeof v !== "object") return v;
+    if (seen.has(v as object)) return "[circular]";
+    seen.add(v as object);
+    if (Array.isArray(v)) return v.map(item => redact(item, seen));
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+        out[k] = SECRET_KEY_RE.test(k) ? REDACTED : redact(val, seen);
+    }
+    return out;
+};
+
 const stringify = (v: unknown): string => {
     if (v instanceof Error) return v.stack ?? `${v.name}: ${v.message}`;
     if (typeof v === "object" && v !== null) {
         try {
-            return JSON.stringify(v);
+            return JSON.stringify(redact(v, new WeakSet<object>()));
         } catch {
             return String(v);
         }

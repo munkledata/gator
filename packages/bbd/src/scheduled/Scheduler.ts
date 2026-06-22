@@ -31,7 +31,15 @@ export class Scheduler {
         this.#now = opts.now ?? (() => Date.now());
     }
 
-    start(): void {
+    async start(): Promise<void> {
+        // Recover any rows orphaned mid-send by a previous crash (sending -> pending) BEFORE
+        // the first tick, so they're eligible to be re-claimed (audit F11).
+        try {
+            const recovered = await this.#store.resetStuck();
+            if (recovered > 0) this.#logger.info(`reset ${recovered} crash-orphaned scheduled message(s) to pending`);
+        } catch (e) {
+            this.#logger.error("failed to reset stuck scheduled messages on startup", e);
+        }
         this.#timer = setInterval(() => void this.tick(), this.#intervalMs);
         this.#timer.unref?.();
     }
@@ -46,6 +54,12 @@ export class Scheduler {
         const due = await this.#store.due(this.#now());
         let sent = 0;
         for (const msg of due) {
+            // Atomically claim the row (pending -> sending) before sending. If a concurrent
+            // tick already claimed it (claim() === false), skip — this is the lock that
+            // prevents the double-send the bare `due()` loop allowed (audit F11). The row is
+            // not `pending` for the await window, so an overlapping tick's `due()` won't even
+            // return it; claim() closes the residual race between due() and claim().
+            if (!(await this.#store.claim(msg.id))) continue;
             try {
                 await this.#sender.sendText({ chatGuid: msg.chatGuid, text: msg.text });
                 await this.#store.markSent(msg.id);

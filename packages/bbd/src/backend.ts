@@ -170,11 +170,16 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     // dispatcher can emit() to clients once they exist.
     let plainIo: SocketServer | null = null;
     let tlsIo: SocketServer | null = null;
+    // The tunnel's dedicated API-only Socket.IO (audit F17); a ref box so emitToAuthed (defined
+    // here) can reach the instance the tunnel service creates later, and broadcast to
+    // tunnel-connected clients too.
+    const tunnelIoRef: { current: SocketServer | null } = { current: null };
     // Server-push only ever reaches authenticated sockets (audit S6): they join
     // AUTHED_ROOM at handshake, so an unauthenticated connection sees nothing.
     const emitToAuthed = (event: string, data: unknown): void => {
         plainIo?.to(AUTHED_ROOM).emit(event, data);
         tlsIo?.to(AUTHED_ROOM).emit(event, data);
+        tunnelIoRef.current?.to(AUTHED_ROOM).emit(event, data);
     };
 
     const registry = new OperationRegistry()
@@ -212,7 +217,8 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     // the chat.db watcher below; these are the everything-else live events.
     transport.onEvent((event, data) => {
         emitToAuthed(event, data);
-        void webhookSubscriber.onEvent(event, data);
+        // A webhook dispatch failure must not become an unhandled rejection (audit F19).
+        webhookSubscriber.onEvent(event, data).catch(e => logger.error(`webhook onEvent(${event}) failed`, e));
     });
 
     // Push notifications. Both providers read their credentials live from the config
@@ -220,6 +226,9 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     // takes effect without a restart.
     const webPushTransport = createWebPushTransport({
         logger,
+        // SSRF guard (audit F16): the subscription endpoint is fetched server-side, so refuse
+        // any non-public host — same predicate the webhook dispatcher uses above.
+        allow: isPublicHttpUrl,
         vapid: () => {
             const wp = configStore.getConfig().notifications.webpush;
             if (!wp.vapidPublicKey || !wp.vapidPrivateKey) return null;
@@ -272,7 +281,11 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
                 enabled: c.tunnelProvider === "zrok" || Boolean(c.enable_zrok),
                 token: String(c.zrok_token ?? ""),
                 reservedName: c.zrok_reserved_name ? String(c.zrok_reserved_name) : undefined,
-                backendTarget: `127.0.0.1:${boundPort}`
+                // Target the dedicated API-only listener (withUi:false), NOT the loopback admin
+                // listener, so the tunnel never re-exposes the admin SPA or the /oauth/callback
+                // route (audit F17). Falls back to the main port only if the tunnel listener
+                // somehow failed to bind (degraded — still better than no tunnel).
+                backendTarget: `127.0.0.1:${tunnelPort || boundPort}`
             };
         },
         onUrl: async url => {
@@ -285,6 +298,14 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const certsDir = path.join(userDataPath, "certs");
     const certService = new CertificateService(certsDir, logger);
     let tlsApp: FastifyInstance | null = null;
+
+    // Dedicated API-only listener for the zrok tunnel (audit F17). The tunnel must NOT proxy
+    // the loopback `app` (which is mounted withUi:true → serves the admin SPA + the
+    // unauthenticated /oauth/callback whose isLoopback guard is defeated by same-host tunnel
+    // traffic). This instance is mounted withUi:false — JSON API only, no SPA, no callback —
+    // and bound to loopback on an OS-assigned port; zrok targets THIS port instead.
+    let tunnelApp: FastifyInstance | null = null;
+    let tunnelPort = 0;
 
     // Let's Encrypt (dns-01 via Cloudflare). Reuses the Cloudflare DDNS token + zone; the
     // cert domain defaults to the configured serverAddress host. onCert hot-reloads the
@@ -386,13 +407,32 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
 
     const cursorStore = new FileCursorStore(path.join(userDataPath, "cursor.json"));
     const listener = new IMessageListener(messageReader, cursorStore, domainBus, logger);
-    const watcher = new ChatDbWatcher(messagesDir, () => void listener.poll());
+    // A poll failure (transient SQLITE_BUSY/IOERR on chat.db) must not become an unhandled
+    // rejection that crashes the daemon (audit F19) — log and let the next watcher tick retry.
+    const watcher = new ChatDbWatcher(messagesDir, () => {
+        listener.poll().catch(e => logger.error("chat.db poll failed (will retry on next change)", e));
+    });
 
     const app = Fastify();
 
     wireMessageFanout(domainBus, {
         emit: (type, dto) => emitToAuthed(type, dto),
         webhook: (type, dto) => webhookSubscriber.onEvent(type, dto),
+        logger,
+        // Resolve the live message's chat association + sender handle from the raw row so the
+        // emitted DTO carries chats[]/handle like the sync (query-messages) path does (audit
+        // F1). The raw readSince row only has message-table columns, so batch-hydrate by ROWID
+        // (chats) and handle_id (sender). One message per event → single-element batches.
+        hydrate: row => {
+            const rowId = Number(row["ROWID"]);
+            const chats = Number.isFinite(rowId) ? chatReader.getChatsForMessages([rowId]).get(rowId) ?? [] : [];
+            const handleId = Number(row["handle_id"]);
+            const handle =
+                Number.isFinite(handleId) && handleId > 0
+                    ? handleReader.getHandlesByRowIds([handleId]).get(handleId) ?? null
+                    : null;
+            return { chats, handle };
+        },
         // Only fresh inserts get a push; updates (edits/reactions hitting existing rows)
         // ride the socket/webhook sinks but shouldn't re-alert the device.
         notify: async (type, dto) => {
@@ -410,7 +450,13 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const mountApiRoutes = (target: FastifyInstance, withUi: boolean): void => {
         mountFastify(target, registry, { logger, auth });
         mountAttachmentRoutes(target, { streamer: attachmentStreamer, auth });
-        mountFirebaseSetupRoutes(target, firebaseSetup);
+        // The OAuth callback + the static admin SPA are LOCAL-UI-ONLY surfaces (audit F17):
+        // Google only ever redirects to the loopback 127.0.0.1 callback, and the admin SPA must
+        // never be reachable through a public tunnel/TLS endpoint. Gating both on `withUi`
+        // means the tunnel/TLS API instances (mounted withUi:false) expose ONLY the
+        // password/local-token-guarded JSON API — not the unauthenticated callback (whose
+        // isLoopback(request.ip) guard is meaningless for same-host tunnel traffic) nor the SPA.
+        if (withUi) mountFirebaseSetupRoutes(target, firebaseSetup);
         // Unauthenticated liveness/readiness probe for the shell/launchd watchdog.
         // Leaks only liveness + whether the chat.db read path is degraded — no secrets.
         target.get("/api/v1/health", async () => ({
@@ -491,6 +537,31 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         }
     };
 
+    // Dedicated API-only listener the zrok tunnel proxies to (audit F17). Loopback-bound on an
+    // OS-assigned port, mounted withUi:false — no admin SPA, no /oauth/callback — so a public
+    // tunnel can never reach those local-only surfaces. Started before zrok so its port is set
+    // when zrok reads its settings. Cheap (one extra loopback listener); kept always-on so
+    // enabling the tunnel at runtime needs no restart.
+    const tunnelService: Service = {
+        name: "tunnel-api",
+        async start() {
+            tunnelApp = Fastify();
+            mountApiRoutes(tunnelApp, false);
+            await tunnelApp.listen({ port: 0, host: "127.0.0.1" });
+            const addr = tunnelApp.server.address();
+            if (addr && typeof addr === "object") tunnelPort = addr.port;
+            const io = new SocketServer(tunnelApp.server, { allowEIO3: true });
+            mountSocket(io, registry, { logger, auth });
+            tunnelIoRef.current = io;
+            logger.info(`tunnel API (no UI) listening on 127.0.0.1:${tunnelPort}`);
+        },
+        async stop() {
+            tunnelIoRef.current?.close();
+            tunnelIoRef.current = null;
+            await tunnelApp?.close();
+        }
+    };
+
     const transportService: Service = {
         name: "private-api",
         start: () => transport.start(),
@@ -529,7 +600,18 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     };
 
     const daemon = new Daemon({
-        services: [transportService, httpService, tlsService, schedulerService, readPathService, ddnsService, zrokService],
+        // tunnelService is ordered BEFORE zrokService so its loopback port is bound when zrok
+        // reads `backendTarget` from settings (audit F17).
+        services: [
+            transportService,
+            httpService,
+            tlsService,
+            tunnelService,
+            schedulerService,
+            readPathService,
+            ddnsService,
+            zrokService
+        ],
         hostPlatform: host,
         logger
     });

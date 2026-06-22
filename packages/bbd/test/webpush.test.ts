@@ -4,6 +4,7 @@ import crypto, { createECDH, createHmac, createDecipheriv, createPublicKey, rand
 import { encryptAes128gcm } from "../src/notifications/webpush/encrypt";
 import { generateVapidKeys, vapidAuthorization } from "../src/notifications/webpush/vapid";
 import { createWebPushTransport } from "../src/notifications/webpush/WebPushSender";
+import { isPublicHttpUrl } from "../src/networking/webhook";
 import { createConsoleLogger } from "../src/core/logger";
 
 const silent = createConsoleLogger("t", { level: "fatal" });
@@ -149,4 +150,21 @@ test("transport throws when VAPID is unconfigured and on a non-OK push response"
 
     const gone = createWebPushTransport({ logger: silent, fetch: async () => ({ ok: false, status: 410, text: async () => "gone" }), vapid: () => ({ publicKey, privateKey, subject: "mailto:me@example.com" }) });
     await assert.rejects(() => gone(sub, "{}", { urgency: "normal" }), /HTTP 410/);
+});
+
+test("transport refuses a non-public endpoint without fetching it (audit F16 SSRF)", async () => {
+    let fetched = 0;
+    const { publicKey, privateKey } = generateVapidKeys();
+    const transport = createWebPushTransport({
+        logger: silent,
+        allow: isPublicHttpUrl,
+        fetch: async () => {
+            fetched++;
+            return { ok: true, status: 201, text: async () => "" };
+        },
+        vapid: () => ({ publicKey, privateKey, subject: "mailto:me@example.com" })
+    });
+    const localSub = { endpoint: "http://127.0.0.1:1234/api/v1/admin/command", keys: { p256dh: "x", auth: "y" } };
+    await assert.rejects(() => transport(localSub, "{}", { urgency: "normal" }), /not a public http/);
+    assert.equal(fetched, 0, "a non-public endpoint is never fetched");
 });

@@ -5,6 +5,7 @@ import { defineOperation, type Operation } from "../Operation";
 import type { ConfigStore } from "../../data/config-db/ConfigStore";
 import type { Device } from "../../notifications/types";
 import { sanitizeConfig } from "../../config/sanitize";
+import { isPublicHttpUrl } from "../../networking/webhook";
 
 /** Permissive "no meaningful input" schema. */
 const NoInput = z.object({}).passthrough();
@@ -17,7 +18,13 @@ const RegisterDeviceInput = z.discriminatedUnion("provider", [
         name: z.string().min(1),
         provider: z.literal("webpush"),
         subscription: z.object({
-            endpoint: z.string().url(),
+            // The endpoint is fetched server-side on every push, so it's an SSRF sink: a
+            // device could register an endpoint pointed at the daemon's own admin API or a
+            // cloud metadata IP (169.254.169.254). Require a public http(s) host (audit F16).
+            endpoint: z
+                .string()
+                .url()
+                .refine(isPublicHttpUrl, { message: "endpoint must be a public http(s) host" }),
             keys: z.object({ p256dh: z.string(), auth: z.string() })
         })
     })

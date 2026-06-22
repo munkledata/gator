@@ -60,6 +60,30 @@ export class DrizzleScheduledMessageStore implements ScheduledMessageStore {
             .map(rowToMessage);
     }
 
+    async claim(id: string): Promise<boolean> {
+        // Atomic compare-and-set: UPDATE ... SET status='sending' WHERE id=? AND status='pending'.
+        // SQLite serializes the statement, so exactly one of two overlapping ticks gets
+        // changes===1; the loser sees 0 and skips, which is the real lock against double-send
+        // (audit F11). A component-level guard alone can't prevent two ticks racing the same row.
+        const res = this.#db
+            .update(scheduledMessagesTable)
+            .set({ status: "sending" })
+            .where(and(eq(scheduledMessagesTable.id, id), eq(scheduledMessagesTable.status, "pending")))
+            .run();
+        return res.changes === 1;
+    }
+
+    async resetStuck(): Promise<number> {
+        // Recover rows orphaned in `sending` by a crash mid-send: put them back to `pending`
+        // so the next tick re-claims them. Run once at startup.
+        const res = this.#db
+            .update(scheduledMessagesTable)
+            .set({ status: "pending" })
+            .where(eq(scheduledMessagesTable.status, "sending"))
+            .run();
+        return res.changes;
+    }
+
     async markSent(id: string): Promise<void> {
         this.#db.update(scheduledMessagesTable).set({ status: "sent" }).where(eq(scheduledMessagesTable.id, id)).run();
     }
