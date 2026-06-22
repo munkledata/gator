@@ -152,7 +152,13 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         rateLimiter: new RateLimiter()
     };
     // Plain HTTP binds to loopback unless explicitly opted into all-interfaces (audit S4).
-    const bindHost = options.bindAll ? "0.0.0.0" : "127.0.0.1";
+    // The "LAN URL" connection mode is exactly that opt-in: the user has chosen direct,
+    // password-authed LAN access (no tunnel/TLS), so we MUST bind 0.0.0.0 or the advertised
+    // LAN address is unreachable. Driven by `proxy_service === 'lan-url'` (what the UI persists
+    // when LAN URL is selected), in addition to the BBD_BIND_ALL env opt-in.
+    const lanMode = String((config as Record<string, unknown>).proxy_service ?? "").toLowerCase() === "lan-url";
+    const bindHost = options.bindAll || lanMode ? "0.0.0.0" : "127.0.0.1";
+    if (lanMode && !options.bindAll) logger.info("LAN URL mode: binding plain HTTP to 0.0.0.0 for direct LAN access");
 
     // Read-only chat.db readers (Phase 3) feeding the migrated read operations.
     const { db: chatDb, degraded: readPathDegraded } = openChatDbOrEmpty(chatDbPath);
