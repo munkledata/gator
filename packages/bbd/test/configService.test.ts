@@ -37,3 +37,24 @@ test("changing a nested notifications field is detected", async () => {
     await svc.update({ notifications: { ...current.notifications, defaultProvider: "webpush" } });
     assert.deepEqual(seen, [["notifications"]]);
 });
+
+test("config-changed never carries a secret value in the payload (audit F18 review)", async () => {
+    const bus = new EventBus<ConfigEvents>();
+    let payload: { key: string; previous: unknown; next: unknown }[] = [];
+    bus.on("config-changed", changes => (payload = changes));
+
+    const svc = new ConfigService(new InMemoryConfigStore(), bus, silent);
+    // Set a top-level secret AND a nested notification secret.
+    const current = svc.get();
+    await svc.update({
+        cloudflareDdnsApiToken: "SECRET-CF-TOKEN",
+        notifications: { ...current.notifications, fcm: { ...current.notifications.fcm, oauthClientSecret: "SECRET-OAUTH" } }
+    });
+
+    const blob = JSON.stringify(payload);
+    assert.ok(!blob.includes("SECRET-CF-TOKEN"), "top-level secret value not broadcast");
+    assert.ok(!blob.includes("SECRET-OAUTH"), "nested secret value not broadcast");
+    // The key names are still reported so subscribers know what changed.
+    assert.deepEqual(payload.map(c => c.key).sort(), ["cloudflareDdnsApiToken", "notifications"]);
+    for (const c of payload) assert.equal(c.next, "[redacted]");
+});

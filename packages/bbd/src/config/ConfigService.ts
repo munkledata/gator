@@ -1,7 +1,13 @@
 import type { Config } from "./configSchema";
+import { SECRET_TOP_LEVEL_KEYS } from "./sanitize";
 import type { ConfigStore } from "../data/config-db/ConfigStore";
 import type { EventBus } from "../core/bus";
 import type { Logger } from "../core/logger";
+
+// Keys whose value must NOT ride along in a config-changed payload (the bus is in-process and
+// currently has no subscribers, but a future socket/log forwarder would otherwise leak the
+// hydrated secret). `notifications` is included because it nests the FCM/VAPID secrets.
+const REDACTED_CHANGE_KEYS = new Set<string>([...SECRET_TOP_LEVEL_KEYS, "notifications"]);
 
 export interface ConfigChange {
     key: string;
@@ -59,7 +65,12 @@ function diffConfig(before: Config, after: Config): ConfigChange[] {
         const previous = before[key];
         const next = after[key];
         if (JSON.stringify(previous) !== JSON.stringify(next)) {
-            changes.push({ key: String(key), previous, next });
+            const redact = REDACTED_CHANGE_KEYS.has(String(key));
+            changes.push({
+                key: String(key),
+                previous: redact ? "[redacted]" : previous,
+                next: redact ? "[redacted]" : next
+            });
         }
     }
     return changes;

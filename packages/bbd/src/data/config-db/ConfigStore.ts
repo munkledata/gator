@@ -11,6 +11,12 @@ export interface ConfigStore {
     getConfig(): Config;
     /** Shallow-merge a patch over the top-level config, re-validate, persist, return it. */
     setConfig(patch: Partial<Config>): Promise<Config>;
+    /**
+     * Optional: physically reclaim/rewrite the backing store (checkpoint WAL + VACUUM) so bytes
+     * from a just-overwritten value don't linger in freelist pages. Called once after a
+     * credential-redacting migration (audit F18) to purge the old plaintext secret from disk.
+     */
+    compact?(): Promise<void>;
     listDevices(): Promise<Device[]>;
     upsertDevice(device: Device): Promise<void>;
     removeDevice(id: string): Promise<void>;

@@ -18,28 +18,28 @@ const CONFIG_KEY = "config";
  */
 export class DrizzleConfigStore implements ConfigStore {
     readonly #db: BetterSQLite3Database;
+    readonly #sqlite: Database.Database;
+    readonly #dbPath: string;
     #config: Config;
 
     constructor(dbPath: string) {
+        this.#dbPath = dbPath;
         const sqlite = new Database(dbPath);
+        this.#sqlite = sqlite;
         sqlite.pragma("journal_mode = WAL");
 
-        // The config blob holds the server password and every credential in plaintext, so
-        // restrict the DB (and its WAL sidecars, created by the pragma above) to the owner
-        // — otherwise it lands world/group-readable under the process umask (audit S8).
+        // Restrict the DB (and its WAL sidecars, created by the pragma above) to the owner —
+        // otherwise it lands world/group-readable under the process umask (audit S8).
         //
-        // TODO (audit F18 — DEFERRED, out of scope here): file permissions are NOT
-        // at-rest encryption. The config row stores long-lived cloud credentials in plaintext
-        // (the server password, the FCM service-account private_key, the Cloudflare DDNS API
-        // token, the zrok token, the OAuth client secret, and the VAPID private key). These
-        // should be moved into the macOS Keychain (Security framework) so they're encrypted at
-        // rest and gated by the login keychain, leaving only non-secret config in this DB. That
-        // is a sizable native feature and is intentionally NOT attempted here. Until then:
-        //   - the 0600 chmod below is the only protection (owner-read only);
-        //   - the userData directory containing this DB MUST be excluded from Time Machine and
-        //     iCloud/cloud backups (a backup would otherwise carry these plaintext secrets
-        //     off-machine) — set the com.apple.metadata:com_apple_backup_excludeItem xattr / use
-        //     NSURLIsExcludedFromBackupKey on the directory at the shell level.
+        // Audit F18: the long-lived CLOUD credentials (FCM service-account private_key, OAuth
+        // client secret, Cloudflare DDNS token, zrok token, VAPID private key) are now moved out
+        // of this plaintext blob into the macOS Keychain by VaultedConfigStore (which wraps this
+        // store) — encrypted at rest and gated by the login keychain. This 0600 chmod remains as
+        // defense-in-depth for the residual that stays here (the server `password`, plus any
+        // secret that failed to vault, e.g. on a non-macOS host where VaultedConfigStore degrades
+        // to plaintext). NOTE: file permissions are NOT at-rest encryption — the userData
+        // directory SHOULD still be excluded from Time Machine / iCloud backups (a backup would
+        // carry the `password` and any non-vaulted residual off-machine).
         for (const f of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
             try {
                 fs.chmodSync(f, 0o600);
@@ -105,6 +105,23 @@ export class DrizzleConfigStore implements ConfigStore {
             .run();
         this.#config = merged;
         return merged;
+    }
+
+    /**
+     * Checkpoint the WAL and VACUUM so any plaintext bytes overwritten by a redacting write
+     * (audit F18 migration) are physically purged from the DB file/freelist rather than
+     * lingering until a future incidental vacuum. Re-applies the 0600 mode afterwards.
+     */
+    async compact(): Promise<void> {
+        this.#sqlite.pragma("wal_checkpoint(TRUNCATE)");
+        this.#sqlite.exec("VACUUM");
+        for (const f of [this.#dbPath, `${this.#dbPath}-wal`, `${this.#dbPath}-shm`]) {
+            try {
+                fs.chmodSync(f, 0o600);
+            } catch {
+                /* sidecar may not exist */
+            }
+        }
     }
 
     async listDevices(): Promise<Device[]> {

@@ -5,15 +5,39 @@ The full cross-repo audit lives in the app repo at
 merged to `master` (verification at merge: `tsc --noEmit` clean, 249 tests pass). These are the
 items deliberately left open.
 
-## Deferred — needs a decision / larger effort
+## DONE — F18: cloud credentials moved to the macOS Keychain (2026-06-22)
 
-- **F18 — Config secrets at rest.** `config.db` stores every credential in plaintext
-  (server password, FCM service-account private key, Cloudflare DDNS token, zrok token, OAuth
-  client secret, VAPID private key), protected only by `chmod 0600` (now confirmed applied to
-  `config.db` + `-wal` + `-shm`; see the TODO in `packages/bbd/src/data/config-db/DrizzleConfigStore.ts`).
-  Follow-up: move the long-lived **cloud** credentials into the macOS Keychain (Security framework
-  / keytar), keeping only opaque references in `config.db`; and document that the userData dir must
-  be excluded from Time Machine / iCloud backups (file permissions don't protect a copied DB).
+The 5 long-lived **cloud** credentials (FCM service-account, OAuth client secret, VAPID private
+key, Cloudflare DDNS token, zrok token) are now stored in the macOS login Keychain, not the
+plaintext `config.db`:
+- `data/config-db/SecretStore.ts` — `MacKeychainSecretStore` via the `security(1)` CLI (secret on
+  STDIN, never argv; 5s spawn timeout so a locked keychain degrades instead of hanging boot;
+  `available()` proves real read access with a sentinel round-trip).
+- `data/config-db/VaultedConfigStore.ts` — decorator that migrates existing plaintext → Keychain
+  (verify-before-redact, so a keychain failure can never lose a credential), redacts them from disk,
+  VACUUMs to purge old plaintext bytes, re-hydrates in memory so consumers are unchanged, serializes
+  writes (mutex), and tombstones cleared secrets so they can't be resurrected. Degrades to the
+  plaintext `DrizzleConfigStore` on a host with no usable keychain.
+- The server `password` intentionally STAYS in `config.db` (with `chmod 0600`) — it's a bearer
+  secret the app also holds, out of scope for "cloud credentials".
+- Verified: 265 tests (incl. a real-Keychain round-trip), an adversarial review, and an end-to-end
+  proof against a copy of the live `config.db` (zero secret bytes left in the file).
+
+Remaining for F18:
+- **On-device validation (packaged build):** confirm that a codesigned/notarized app launched by
+  launchd (no interactive login) does NOT get an interactive Keychain ACL prompt on the first
+  `security` access, and that the daemon boots cleanly. The 5s timeout guarantees no hang
+  (degrades to a loud "credentials unavailable" warning), but the prompt behavior itself can only be
+  verified on a real packaged build. If it prompts, set an explicit non-prompting ACL on write.
+- Still **exclude the userData dir from Time Machine / iCloud backups** — the `password` and any
+  non-vaulted residual remain on disk (file permissions don't protect a copied DB).
+
+## Also fixed (2026-06-22): LAN-URL interface selection
+
+`networking/lanAddress.ts` `getLanIpv4()` returned the first non-internal IPv4, which on a host with
+a virtual interface (e.g. `feth*` from a VM/virtualization tool) reported an unreachable address
+(observed: `10.144.47.51` instead of the real Wi-Fi `192.168.1.205`). It now skips virtual/tunnel/VM
+interfaces (`feth`/`bridge`/`utun`/`awdl`/…) and prefers the physical private-LAN interface.
 
 ## Needs live-host validation (fixed in code; static review can't confirm)
 

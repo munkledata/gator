@@ -9,6 +9,8 @@ import { Daemon } from "./bootstrap/daemon";
 import { HeadlessHostPlatform } from "./host-platform/electron-adapter";
 import { createConsoleLogger, type Logger } from "./core/logger";
 import { DrizzleConfigStore } from "./data/config-db/DrizzleConfigStore";
+import { VaultedConfigStore } from "./data/config-db/VaultedConfigStore";
+import { MacKeychainSecretStore } from "./data/config-db/SecretStore";
 import { ConfigService } from "./config/ConfigService";
 import { EventBus } from "./core/bus";
 import { OperationRegistry } from "./api/registry";
@@ -127,7 +129,16 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const chatDbPath = options.chatDbPath ?? path.join(messagesDir, "chat.db");
 
     const dbPath = path.join(userDataPath, "config.db");
-    const configStore = new DrizzleConfigStore(dbPath);
+    // Keep long-lived cloud credentials (FCM service-account key, OAuth secret, Cloudflare/zrok
+    // tokens, VAPID key) in the macOS Keychain instead of the plaintext config.db (audit F18).
+    // VaultedConfigStore migrates any existing plaintext secrets on first run, redacts them from
+    // disk, and re-hydrates them in memory so every consumer reads them as before. On a host with
+    // no usable keychain it degrades to the plaintext DrizzleConfigStore behavior.
+    const configStore = await VaultedConfigStore.create(
+        new DrizzleConfigStore(dbPath),
+        new MacKeychainSecretStore(),
+        logger
+    );
     const configService = new ConfigService(configStore, new EventBus(), logger);
     const config = configStore.getConfig();
     const port = options.port ?? config.socketPort;
