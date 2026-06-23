@@ -174,6 +174,20 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const messageReader = new MessageReader(chatDb, schema.message);
     const attachmentStreamer = new AttachmentStreamer(chatDb);
 
+    // Populate the server-info display fields the fork never set (so the UI showed blank):
+    // the Mac's registered iMessage email (from chat.db) and a computer identifier (its
+    // hostname). Best-effort + fire-and-forget so a detection failure never blocks boot.
+    void (async () => {
+        try {
+            const detected_imessage = chatReader.detectOwnEmail() ?? "";
+            const computer_id = os.hostname();
+            await configService.update({ detected_imessage, computer_id } as Partial<typeof config>);
+            logger.info(`server-info populated: computer_id=${computer_id}, iMessage email ${detected_imessage ? "detected" : "not found"}`);
+        } catch (e) {
+            logger.error("failed to populate server-info (iMessage email / computer id)", e);
+        }
+    })();
+
     // Write path (Phase 5): the hardened private-API transport + the send service.
     const transport = new FramedUdsTransport({
         socketPath: path.join(userDataPath, "private-api.sock"),

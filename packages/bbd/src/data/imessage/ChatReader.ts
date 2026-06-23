@@ -53,6 +53,27 @@ export class ChatReader {
         this.#handleCols = this.#handle ? this.#handle.project(WANTED_HANDLE_COLUMNS) : [];
     }
 
+    /**
+     * The Mac's own registered iMessage email (the Apple ID it sends as), for the server-info
+     * display ("iMessage Email"). chat.db stores it as the `E:`-prefixed `account_login`; we
+     * strip the prefix. Returns null when no email account is registered (SMS/phone-only).
+     * Static (the closed query string is a compile-time literal; no user input).
+     */
+    detectOwnEmail(): string | null {
+        try {
+            const row = this.#db
+                .prepare(
+                    "SELECT account_login FROM chat WHERE account_login LIKE 'E:%@%' AND account_login != 'E:' ORDER BY ROWID DESC LIMIT 1"
+                )
+                .get() as { account_login?: string } | undefined;
+            const v = row?.account_login;
+            if (!v) return null;
+            return v.startsWith("E:") ? v.slice(2) : v;
+        } catch {
+            return null;
+        }
+    }
+
     getChats(params: GetChatsParams = {}): Record<string, unknown>[] {
         // No chat columns => the chat table isn't present (degraded/empty DB) — return [].
         if (this.#chatCols.length === 0) return [];
