@@ -1,4 +1,5 @@
 import { appleDateToUnixMs } from "../data/imessage/appleConstants";
+import { attributedBodyText } from "../data/imessage/attributedBody";
 import { serializeAttachment } from "./attachmentSerializer";
 import { serializeChat } from "./chatSerializer";
 import { serializeHandle } from "./handleSerializer";
@@ -53,6 +54,13 @@ const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 const numOrNull = (v: unknown): number | null => (typeof v === "number" ? v : null);
 const bool = (v: unknown): boolean => v === 1 || v === true;
 
+/** The `text` column, or — when it's empty (edited messages) — the decoded attributedBody. */
+function textOf(row: Record<string, unknown>): string | null {
+    const col = str(row["text"]);
+    if (col && col.length > 0) return col;
+    return attributedBodyText(row["attributedBody"]);
+}
+
 /**
  * Project a raw chat.db message row (from the Phase 3 reader) into the v1 DTO.
  * Dates go through the centralized Cocoa-epoch conversion; reaction codes through
@@ -66,7 +74,9 @@ export function serializeMessage(row: Record<string, unknown>, extra?: MessageEx
         // sends it back as `afterRowId` — the monotonic, tie-free cursor (see queryAfter).
         // Null when the source row didn't project ROWID (e.g. a hydrated lastMessage).
         originalROWID: numOrNull(row["ROWID"]),
-        text: str(row["text"]),
+        // An EDITED message empties the `text` column and keeps its latest text in the
+        // attributedBody typedstream — recover it so the edit doesn't serialize blank.
+        text: textOf(row),
         subject: str(row["subject"]),
         dateCreated: appleDateToUnixMs(numOrNull(row["date"])),
         dateRead: appleDateToUnixMs(numOrNull(row["date_read"])),
