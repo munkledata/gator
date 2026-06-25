@@ -19,6 +19,8 @@ import { assertSecureServerAddress } from "../../config/serverAddress";
 import { sanitizeConfig } from "../../config/sanitize";
 import { getLanIpv4 } from "../../networking/lanAddress";
 import { generateVapidKeys } from "../../notifications/webpush/vapid";
+import { FindMyKeyManager } from "../../findmy/FindMyKeyManager";
+import { isMinSonoma14_4 } from "../../findmy/macosVersion";
 import type { FirebaseSetupService } from "../../notifications/fcm/FirebaseSetupService";
 import type { Logger } from "../../core/logger";
 
@@ -84,7 +86,9 @@ const ADMIN_ONLY_CHANNELS: ReadonlySet<string> = new Set<string>([
     "disable-tls",
     "issue-letsencrypt",
     // Destructive data op.
-    "purge-devices"
+    "purge-devices",
+    // Writes the Find My decryption keys into the config dir (trusted local admin only).
+    "import-findmy-keys"
 ]);
 
 /**
@@ -151,6 +155,11 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         "set-config": d => setConfig(d),
         "toggle-tutorial": d => setConfig({ tutorial_is_done: Boolean(d.toggle ?? d.value ?? true) }),
 
+        // --- Find My decryption keys (macOS 14.4+) ---
+        // STATUS is a read (password path serves it); IMPORT is admin-only (writes key files).
+        "get-findmy-keys-status": () => FindMyKeyManager.getStatus(),
+        "import-findmy-keys": d => FindMyKeyManager.importFromDir(String(d.sourceDir ?? "")),
+
         // --- chats (read path) ---
         "get-chats": d => chatReader.getChats(d),
 
@@ -206,7 +215,13 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         ],
 
         // --- environment / status ---
-        "get-env": () => ({ version: deps.version, platform: process.platform, node: process.versions.node }),
+        "get-env": () => ({
+            version: deps.version,
+            platform: process.platform,
+            node: process.versions.node,
+            // macOS 14.4+ encrypts the Find My caches → the UI shows the key-import card.
+            findmyNeedsKeys: isMinSonoma14_4()
+        }),
 
         // --- home-screen stats (read path; degrade to 0 without a real chat.db) ---
         "get-message-count": () => stats.messageCount(),

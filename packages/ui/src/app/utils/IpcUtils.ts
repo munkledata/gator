@@ -10,6 +10,35 @@ export const getEnv = async () => {
     return await invoke('get-env');
 };
 
+// --- Find My decryption keys (macOS 14.4+) ---
+export type FindMyKeyStatus = { present: boolean; valid: boolean };
+export type FindMyKeysStatus = {
+    LocalStorage: FindMyKeyStatus;
+    FMIP: FindMyKeyStatus;
+    FMF: FindMyKeyStatus;
+};
+
+export const getFindMyKeysStatus = async (): Promise<FindMyKeysStatus> => {
+    return (await invoke('get-findmy-keys-status')) as FindMyKeysStatus;
+};
+
+/**
+ * Pick the findmy-key-extractor output folder (native dialog via the Electron shell), then hand the
+ * path to the daemon to validate + import the three keys into the config dir.
+ */
+export const importFindMyKeys = async (): Promise<{
+    canceled: boolean;
+    result: Record<string, 'imported' | 'invalid' | 'missing'> | null;
+}> => {
+    const picked = (await invoke('pick-folder')) as { path: string | null };
+    if (!picked?.path) return { canceled: true, result: null };
+    const result = (await invoke('import-findmy-keys', { sourceDir: picked.path })) as Record<
+        string,
+        'imported' | 'invalid' | 'missing'
+    >;
+    return { canceled: false, result };
+};
+
 export const getDevices = async () => {
     return await invoke('get-devices');
 };

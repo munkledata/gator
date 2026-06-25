@@ -37,7 +37,8 @@ export const SHELL_CHANNELS = new Set<string>([
     'reset-app',
     'get-binary-path',
     'reinstall-helper-bundle',
-    'open-external'
+    'open-external',
+    'pick-folder'
 ]);
 
 interface BbShell {

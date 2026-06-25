@@ -265,6 +265,11 @@ function registerShellHandlers(): void {
         },
         "open-fulldisk-preferences": () => sysPref("Privacy_AllFiles"),
         "open-accessibility-preferences": () => sysPref("Privacy_Accessibility"),
+        // Native folder picker (used by the Find My key-import card). Returns the chosen path or null.
+        "pick-folder": () => {
+            const picked = dialog.showOpenDialogSync({ properties: ["openDirectory"] });
+            return { path: picked && picked.length > 0 ? picked[0] : null };
+        },
         "get-binary-path": () => app.getPath("exe"),
         "restart-via-terminal": relaunch,
         "hot-restart": relaunch,
