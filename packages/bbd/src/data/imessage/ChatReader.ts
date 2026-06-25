@@ -141,15 +141,25 @@ export class ChatReader {
         if (chatRowIds.length === 0 || this.#messageCols.length === 0) return out;
         const placeholders = chatRowIds.map(() => "?").join(",");
         const cols = this.#messageCols.map(c => `message.${c}`).join(", ");
+        // Per-chat max date is computed ONCE via a grouped CTE, then joined back — NOT a
+        // correlated subquery. The previous `message.date = (SELECT MAX(date) … WHERE
+        // cmj2.chat_id = cmj.chat_id)` re-evaluated the whole-chat max for EVERY candidate row,
+        // i.e. O(N²) per chat. On a large store (a 21k-message chat) that pegged the
+        // single-threaded daemon at 100% CPU and ran for 90s+, timing the request out and
+        // wedging every other caller — the `with: ["lastMessage"]` inbox hydration the app sends
+        // on every chat list refresh. The CTE is one grouped index scan + an indexed join
+        // (≈1000× faster: 90s → 0.08s on a 60k-message DB). Result is identical: the newest
+        // message per chat, date ties broken by ROWID DESC + the first-wins dedup below.
         const sql =
+            `WITH mx AS (` +
+            `SELECT cmj2.chat_id AS cid, MAX(m2.date) AS d FROM message m2 ` +
+            `JOIN chat_message_join cmj2 ON cmj2.message_id = m2.ROWID ` +
+            `WHERE cmj2.chat_id IN (${placeholders}) GROUP BY cmj2.chat_id` +
+            `) ` +
             `SELECT cmj.chat_id AS chat_id, ${cols} FROM message ` +
             `JOIN chat_message_join cmj ON cmj.message_id = message.ROWID ` +
-            `WHERE cmj.chat_id IN (${placeholders}) ` +
-            `AND message.date = (` +
-            `SELECT MAX(m2.date) FROM message m2 ` +
-            `JOIN chat_message_join cmj2 ON cmj2.message_id = m2.ROWID ` +
-            `WHERE cmj2.chat_id = cmj.chat_id` +
-            `) ORDER BY message.ROWID DESC`;
+            `JOIN mx ON mx.cid = cmj.chat_id AND message.date = mx.d ` +
+            `ORDER BY message.ROWID DESC`;
         const rows = this.#db.prepare(sql).all(...chatRowIds) as Record<string, unknown>[];
         for (const row of rows) {
             const chatId = Number(row["chat_id"]);
