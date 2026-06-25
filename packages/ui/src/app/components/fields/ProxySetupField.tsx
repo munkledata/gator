@@ -53,6 +53,12 @@ export const ProxySetupField = ({ helpText, showAddress = true }: ProxySetupFiel
                             shouldSave = false;
                             setZrokModalOpen.open();
                         } else if (e.target.value === 'lan-url') {
+                            // LAN-only (no tunnel). Set proxy_service DIRECTLY like the zrok/DNS
+                            // dialogs do — the guarded onSelectChange path silently no-ops when
+                            // proxy_service isn't yet a key in a fresh server's config, which left
+                            // the walkthrough's "Next" disabled (its gate needs proxy_service set).
+                            shouldSave = false;
+                            dispatch(setConfig({ name: 'proxy_service', value: 'lan-url' }));
                             saveLanUrl();
                         }
 
