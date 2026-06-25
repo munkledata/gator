@@ -6,6 +6,7 @@ import path from "node:path";
 import { FaceTimeService } from "../src/facetime/FaceTimeService";
 import { FindMyService } from "../src/findmy/FindMyService";
 import { FindMyDevicesReader } from "../src/findmy/FindMyDevicesReader";
+import { FindMyItemsReader } from "../src/findmy/FindMyItemsReader";
 import { buildFaceTimeOperations } from "../src/api/operations/facetimeOperations";
 import { buildFindMyOperations } from "../src/api/operations/findmyOperations";
 import { executeOperation } from "../src/api/execute";
@@ -59,8 +60,9 @@ test("FindMy refresh caches friends; get returns the cache", async () => {
     t.response = { data: { locations: [{ handle: "alice", coordinates: [1, 2] }] } };
     // `false` = Private API path (the host may be macOS 14.4+, where the default gate decrypts).
     const svc = new FindMyService(t, silent, false);
-    const devices = new FindMyDevicesReader("/nonexistent/Items.data");
-    const fm = buildFindMyOperations({ findmy: svc, devices });
+    const devices = new FindMyDevicesReader("/nonexistent/Devices.data", false);
+    const items = new FindMyItemsReader("/nonexistent/Items.data", false);
+    const fm = buildFindMyOperations({ findmy: svc, devices, items });
     const by = (n: string) => fm.find(o => o.name === n)!;
 
     assert.deepEqual((await executeOperation(by("get-findmy-friends"), { input: {}, credential: "pw" }, ctx, auth)).data, {
@@ -88,4 +90,18 @@ test("FindMy devices reader parses the plaintext cache file and degrades to [] o
         fs.rmSync(file, { force: true });
     }
     assert.deepEqual(await new FindMyDevicesReader("/definitely/missing.json", false).read(), []);
+});
+
+test("FindMy items reader parses Items.data (AirTags) incl. address passthrough", async () => {
+    const file = path.join(os.tmpdir(), `bbd-findmy-items-${process.pid}-${Date.now()}.json`);
+    fs.writeFileSync(file, JSON.stringify([{ name: "Keys", location: { latitude: 3, longitude: 4 }, address: { label: "Home" } }]));
+    try {
+        const items = await new FindMyItemsReader(file, false).read();
+        assert.equal(items.length, 1);
+        assert.equal(items[0]!.name, "Keys");
+        assert.deepEqual(items[0]!.coordinates, [3, 4]);
+        assert.deepEqual(items[0]!.address, { label: "Home" });
+    } finally {
+        fs.rmSync(file, { force: true });
+    }
 });

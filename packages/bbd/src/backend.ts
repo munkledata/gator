@@ -42,6 +42,7 @@ import { buildContactsOperations } from "./api/operations/contactsOperations";
 import { FaceTimeService } from "./facetime/FaceTimeService";
 import { FindMyService } from "./findmy/FindMyService";
 import { FindMyDevicesReader } from "./findmy/FindMyDevicesReader";
+import { FindMyItemsReader } from "./findmy/FindMyItemsReader";
 import { buildFaceTimeOperations } from "./api/operations/facetimeOperations";
 import { buildFindMyOperations } from "./api/operations/findmyOperations";
 import { DrizzleScheduledMessageStore } from "./scheduled/DrizzleScheduledMessageStore";
@@ -221,7 +222,11 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         .registerAll(buildContactsOperations({ contacts }))
         .registerAll(buildFaceTimeOperations({ facetime: new FaceTimeService(transport, logger) }))
         .registerAll(
-            buildFindMyOperations({ findmy: new FindMyService(transport, logger), devices: new FindMyDevicesReader() })
+            buildFindMyOperations({
+                findmy: new FindMyService(transport, logger),
+                devices: new FindMyDevicesReader(),
+                items: new FindMyItemsReader()
+            })
         );
 
     // Scheduled messages (persisted in the config DB) + the scheduler service.
