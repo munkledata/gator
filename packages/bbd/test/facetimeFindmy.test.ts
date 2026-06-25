@@ -57,7 +57,8 @@ test("FaceTime errors cleanly when the helper isn't connected", async () => {
 test("FindMy refresh caches friends; get returns the cache", async () => {
     const t = new FakeTransport();
     t.response = { data: { locations: [{ handle: "alice", coordinates: [1, 2] }] } };
-    const svc = new FindMyService(t, silent);
+    // `false` = Private API path (the host may be macOS 14.4+, where the default gate decrypts).
+    const svc = new FindMyService(t, silent, false);
     const devices = new FindMyDevicesReader("/nonexistent/Items.data");
     const fm = buildFindMyOperations({ findmy: svc, devices });
     const by = (n: string) => fm.find(o => o.name === n)!;
@@ -71,19 +72,20 @@ test("FindMy refresh caches friends; get returns the cache", async () => {
     assert.equal((cached.data as { friends: unknown[] }).friends.length, 1);
 });
 
-test("FindMy devices reader parses the cache file and degrades to [] on absence", () => {
+test("FindMy devices reader parses the plaintext cache file and degrades to [] on absence", async () => {
     const file = path.join(os.tmpdir(), `bbd-findmy-${process.pid}-${Date.now()}.json`);
     fs.writeFileSync(
         file,
         JSON.stringify([{ name: "iPhone", deviceModel: "iPhone15,2", batteryLevel: 0.8, location: { latitude: 1, longitude: 2 } }])
     );
     try {
-        const devices = new FindMyDevicesReader(file).read();
+        // `false` = plaintext path (the host may be macOS 14.4+, where the default gate would decrypt).
+        const devices = await new FindMyDevicesReader(file, false).read();
         assert.equal(devices.length, 1);
         assert.equal(devices[0]!.name, "iPhone");
         assert.deepEqual(devices[0]!.coordinates, [1, 2]);
     } finally {
         fs.rmSync(file, { force: true });
     }
-    assert.deepEqual(new FindMyDevicesReader("/definitely/missing.json").read(), []);
+    assert.deepEqual(await new FindMyDevicesReader("/definitely/missing.json", false).read(), []);
 });

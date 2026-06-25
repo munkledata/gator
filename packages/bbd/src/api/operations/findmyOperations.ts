@@ -36,8 +36,8 @@ export function buildFindMyOperations(deps: FindMyOperationDeps): Operation[] {
             path: "/api/v1/findmy/devices",
             auth: true,
             input: NoInput,
-            summary: "FindMy devices from the local cache",
-            handler: () => ({ devices: deps.devices.read() })
+            summary: "FindMy devices from the local cache (decrypted on macOS 14.4+)",
+            handler: async () => ({ devices: await deps.devices.read() })
         })
     ];
 }
