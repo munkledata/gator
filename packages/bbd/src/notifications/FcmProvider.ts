@@ -46,6 +46,13 @@ export interface FcmProviderDeps {
     fetch: FcmFetch;
     sign: JwtSigner;
     now?: () => number;
+    /**
+     * Optional live payload encryptor (honors the `encryptComs` setting). When it returns a
+     * value, the `data` body is shipped encrypted with `encrypted:'true'` + `encryptionType`;
+     * returning null (encryptComs off / no password) sends plaintext. `type` is never
+     * encrypted so the client can route the event before decrypting.
+     */
+    encryptData?: (plaintextJson: string) => { data: string; encryptionType: string } | null;
 }
 
 interface CachedToken {
@@ -72,6 +79,14 @@ export class FcmProvider implements NotificationProvider<FcmDevice> {
             if (!creds) return err(new Error("FCM is not configured (no service account)"));
 
             const accessToken = await this.#accessToken(creds);
+            // Data-only message (legacy wire shape); all values must be strings. `type` stays
+            // plaintext for client-side routing; the `data` body is encrypted when encryptComs
+            // is on (the encryptor returns null otherwise → plaintext).
+            const bodyJson = JSON.stringify(payload.data);
+            const enc = this.#deps.encryptData?.(bodyJson) ?? null;
+            const data: Record<string, string> = enc
+                ? { type: payload.type, data: enc.data, encrypted: "true", encryptionType: enc.encryptionType }
+                : { type: payload.type, data: bodyJson };
             const res = await this.#deps.fetch(sendUrl(creds.projectId), {
                 method: "POST",
                 headers: {
@@ -81,8 +96,7 @@ export class FcmProvider implements NotificationProvider<FcmDevice> {
                 body: JSON.stringify({
                     message: {
                         token: device.token,
-                        // Data-only message (legacy wire shape); all values must be strings.
-                        data: { type: payload.type, data: JSON.stringify(payload.data) },
+                        data,
                         android: { priority: payload.priority === "high" ? "high" : "normal" }
                     }
                 })

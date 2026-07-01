@@ -18,6 +18,12 @@ export interface NotificationTransports {
      * fall back to reading the static config snapshot.
      */
     fcmCredentials?: () => FcmServiceAccount | null;
+    /**
+     * Live FCM data-payload encryptor (honors the `encryptComs` setting). The backend wires
+     * this to read the live password + encryptComs; returns null → plaintext. Absent → the
+     * provider always sends plaintext (back-compat default).
+     */
+    encryptData?: (plaintextJson: string) => { data: string; encryptionType: string } | null;
     webpush?: WebPushTransport;
 }
 
@@ -45,7 +51,8 @@ export function buildNotificationRegistry(
             new FcmProvider({
                 credentials: transports.fcmCredentials ?? (() => parseServiceAccount(config.fcm.serviceAccount ?? null)),
                 fetch: transports.fcmFetch ?? (globalThis.fetch as unknown as FcmFetch),
-                sign: transports.fcmSign ?? nodeRs256Signer
+                sign: transports.fcmSign ?? nodeRs256Signer,
+                encryptData: transports.encryptData
             })
         );
     }

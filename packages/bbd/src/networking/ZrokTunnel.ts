@@ -38,6 +38,8 @@ export interface ZrokTunnelDeps {
     spawn?: SpawnLike;
     /** Injectable for tests; defaults to running `zrok enable <token>`. */
     enableEnv?: EnableLike;
+    /** Restart backoff (ms) for attempt N; injectable for tests. Default: capped exponential. */
+    restartDelayMs?: (attempt: number) => number;
 }
 
 const PUBLIC_URL = /https:\/\/[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+/;
@@ -50,11 +52,17 @@ const PUBLIC_URL = /https:\/\/[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+/;
  * is the tunnel — it is killed on stop.
  */
 export class ZrokTunnel {
+    static readonly #MAX_RESTARTS = 6;
     readonly #deps: ZrokTunnelDeps;
     readonly #spawn: SpawnLike;
     readonly #enableEnv: EnableLike;
     #child: ChildHandle | null = null;
     #url: string | null = null;
+    // Auto-restart bookkeeping: a share can drop (network blip / frontend restart); we relaunch
+    // with capped exponential backoff, but NOT after an intentional stop().
+    #stopped = false;
+    #restarts = 0;
+    #restartTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(deps: ZrokTunnelDeps) {
         this.#deps = deps;
@@ -62,7 +70,8 @@ export class ZrokTunnel {
         this.#enableEnv =
             deps.enableEnv ??
             (async (binPath, token) => {
-                await execFileAsync(binPath, ["enable", token]);
+                // --headless: no TUI/controlling-tty in the utilityProcess.
+                await execFileAsync(binPath, ["enable", token, "--headless"]);
             });
     }
 
@@ -95,6 +104,7 @@ export class ZrokTunnel {
             this.#deps.logger.debug(`zrok enable returned an error (often already-enabled): ${(e as Error)?.message ?? e}`);
         }
 
+        this.#stopped = false;
         const args = s.reservedName
             ? ["share", "reserved", s.reservedName, "--headless"]
             : ["share", "public", s.backendTarget, "--headless"];
@@ -106,6 +116,7 @@ export class ZrokTunnel {
             const m = String(chunk).match(PUBLIC_URL);
             if (m && m[0] !== this.#url) {
                 this.#url = m[0];
+                this.#restarts = 0; // a live URL means the tunnel is healthy — reset backoff
                 this.#deps.logger.info(`zrok public URL: ${this.#url}`);
                 void this.#deps.onUrl(this.#url);
             }
@@ -117,10 +128,36 @@ export class ZrokTunnel {
             this.#deps.logger.warn(`zrok tunnel exited (code ${String(code)})`);
             this.#child = null;
             this.#url = null;
+            if (!this.#stopped) this.#scheduleRestart();
         });
     }
 
+    /** Relaunch a dropped tunnel with capped exponential backoff (no-op after stop()). */
+    #scheduleRestart(): void {
+        if (this.#stopped || this.#restartTimer) return;
+        if (this.#restarts >= ZrokTunnel.#MAX_RESTARTS) {
+            this.#deps.logger.warn(`zrok tunnel gave up after ${this.#restarts} restart attempts`);
+            return;
+        }
+        const delay = (this.#deps.restartDelayMs ?? (n => Math.min(30_000, 1000 * 2 ** n)))(this.#restarts);
+        this.#restarts += 1;
+        this.#deps.logger.info(`restarting zrok tunnel in ${delay}ms (attempt ${this.#restarts})`);
+        this.#restartTimer = setTimeout(() => {
+            this.#restartTimer = null;
+            if (this.#stopped) return;
+            void this.start().catch(e =>
+                this.#deps.logger.warn(`zrok restart failed: ${(e as Error)?.message ?? e}`)
+            );
+        }, delay);
+        this.#restartTimer.unref?.();
+    }
+
     async stop(): Promise<void> {
+        this.#stopped = true;
+        if (this.#restartTimer) {
+            clearTimeout(this.#restartTimer);
+            this.#restartTimer = null;
+        }
         this.#child?.kill("SIGTERM");
         this.#child = null;
         this.#url = null;

@@ -33,6 +33,7 @@ import { HandleReader } from "./data/imessage/HandleReader";
 import { AttachmentReader } from "./data/imessage/AttachmentReader";
 import { AttachmentStreamer } from "./data/imessage/AttachmentStreamer";
 import { mountAttachmentRoutes } from "./api/attachmentRoutes";
+import { mountContactAvatarRoutes } from "./api/contactAvatarRoutes";
 import { FramedUdsTransport } from "./private-api/PrivateApiTransport";
 import { AppleScriptFallback } from "./messaging/appleScriptFallback";
 import { OsascriptRunner } from "./messaging/OsascriptRunner";
@@ -68,6 +69,7 @@ import { wireMessageFanout } from "./serialize/messageFanout";
 import { buildNotificationRegistry } from "./notifications/buildNotificationRegistry";
 import { createWebPushTransport } from "./notifications/webpush/WebPushSender";
 import { parseServiceAccount } from "./notifications/fcm/serviceAccount";
+import { encryptFcmPayload, FCM_ENCRYPTION_TYPE } from "./notifications/fcm/fcmPayloadCrypto";
 import { FirebaseSetupService } from "./notifications/fcm/FirebaseSetupService";
 import { mountFirebaseSetupRoutes } from "./api/firebaseSetupRoutes";
 import type { OAuthFetch } from "./notifications/fcm/googleOAuth";
@@ -270,6 +272,9 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
 
     const sender = new MessageSender(transport, new AppleScriptFallback(new OsascriptRunner(), logger), logger);
     const contacts = new ContactsService(new MacContactsSource(), logger);
+    // Hoisted so a lifecycle Service can warm + periodically refresh the friends cache
+    // (otherwise GET /findmy/friends is empty until a client POSTs /friends/refresh).
+    const findmy = new FindMyService(transport, logger);
     // Two Socket.IO servers may be live: one on the loopback plain-HTTP listener (local
     // UI) and one on the public TLS listener. Declared early so the admin-command
     // dispatcher can emit() to clients once they exist.
@@ -296,7 +301,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         .registerAll(buildFaceTimeOperations({ facetime: new FaceTimeService(transportFt, logger) }))
         .registerAll(
             buildFindMyOperations({
-                findmy: new FindMyService(transport, logger),
+                findmy,
                 devices: new FindMyDevicesReader(),
                 items: new FindMyItemsReader()
             })
@@ -357,6 +362,13 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     });
     const notifications = buildNotificationRegistry(config.notifications, logger, {
         fcmCredentials: () => parseServiceAccount(configStore.getConfig().notifications.fcm.serviceAccount ?? null),
+        // Encrypt FCM data bodies when encryptComs is on AND a password is set (reads live
+        // config so toggling it takes effect without a restart). null → plaintext.
+        encryptData: json => {
+            const c = configStore.getConfig();
+            if (!c.encryptComs || !c.password) return null;
+            return { data: encryptFcmPayload(json, c.password), encryptionType: FCM_ENCRYPTION_TYPE };
+        },
         webpush: webPushTransport
     });
 
@@ -568,6 +580,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const mountApiRoutes = (target: FastifyInstance, withUi: boolean): void => {
         mountFastify(target, registry, { logger, auth });
         mountAttachmentRoutes(target, { streamer: attachmentStreamer, auth });
+        mountContactAvatarRoutes(target, { contacts, auth });
         // The OAuth callback + the static admin SPA are LOCAL-UI-ONLY surfaces (audit F17):
         // Google only ever redirects to the loopback 127.0.0.1 callback, and the admin SPA must
         // never be reachable through a public tunnel/TLS endpoint. Gating both on `withUi`
@@ -712,6 +725,14 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         stop: () => cloudflareDdns.stop()
     };
 
+    // Warm + periodically refresh the FindMy friends cache. start() is void + best-effort
+    // (swallows a missing key / disconnected helper) so it never rolls back Supervisor.start().
+    const findMyService: Service = {
+        name: "findmy",
+        start: () => findmy.start(),
+        stop: () => findmy.stop()
+    };
+
     const zrokService: Service = {
         name: "zrok",
         start: () => zrok.start(),
@@ -744,6 +765,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             schedulerService,
             readPathService,
             ddnsService,
+            findMyService,
             zrokService
         ],
         hostPlatform: host,

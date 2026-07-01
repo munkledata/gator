@@ -53,13 +53,52 @@ export class FindMyService {
     readonly #transport: PrivateApiTransport;
     readonly #logger: Logger;
     readonly #encrypted: boolean;
+    readonly #intervalMs: number;
     #cache: FindMyFriend[] = [];
+    #timer: ReturnType<typeof setTimeout> | null = null;
+    #stopped = true;
 
-    constructor(transport: PrivateApiTransport, logger: Logger, encrypted: boolean = isMinSonoma14_4()) {
+    constructor(
+        transport: PrivateApiTransport,
+        logger: Logger,
+        encrypted: boolean = isMinSonoma14_4(),
+        intervalMs: number = 5 * 60_000
+    ) {
         this.#transport = transport;
         this.#logger = logger.child({ component: "FindMyService" });
         // macOS 14.4+ → decrypt the cache; below → Private API. Injectable for tests.
         this.#encrypted = encrypted;
+        this.#intervalMs = intervalMs;
+    }
+
+    /**
+     * Warm the friends cache at boot, then re-refresh on an interval, so GET /findmy/friends is
+     * populated without a client first POSTing /friends/refresh. Best-effort + non-throwing: a
+     * missing LocalStorage key (macOS 14.4+) or a disconnected helper must NOT fail the daemon's
+     * Supervisor.start(). Self-re-arms via setTimeout (like CloudflareDdns) so a slow refresh
+     * can't overlap itself. Idempotent — a second start() while running is a no-op.
+     */
+    start(): void {
+        if (!this.#stopped) return;
+        this.#stopped = false;
+        const tick = async (): Promise<void> => {
+            if (this.#stopped) return;
+            try {
+                await this.refreshFriends();
+            } catch (ex) {
+                this.#logger.debug(`FindMy friends refresh failed: ${String(ex)}`);
+            }
+            if (this.#stopped) return;
+            this.#timer = setTimeout(() => void tick(), this.#intervalMs);
+            this.#timer.unref?.();
+        };
+        void tick();
+    }
+
+    stop(): void {
+        this.#stopped = true;
+        if (this.#timer) clearTimeout(this.#timer);
+        this.#timer = null;
     }
 
     async refreshFriends(): Promise<FindMyFriend[]> {

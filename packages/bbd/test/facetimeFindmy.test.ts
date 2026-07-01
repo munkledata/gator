@@ -74,6 +74,28 @@ test("FindMy refresh caches friends; get returns the cache", async () => {
     assert.equal((cached.data as { friends: unknown[] }).friends.length, 1);
 });
 
+test("FindMy start() warms the cache before any GET, then stop() halts refreshes", async () => {
+    const t = new FakeTransport();
+    t.response = { data: { locations: [{ handle: "bob", coordinates: [5, 6] }] } };
+    // `false` = Private API path; tiny interval so the re-arm is observable.
+    const svc = new FindMyService(t, silent, false, 10_000);
+    assert.deepEqual(svc.getFriends(), []); // cold — nothing fetched yet
+
+    svc.start();
+    // start() kicks an immediate refresh (a microtask); let it settle.
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(svc.getFriends().length, 1); // warmed WITHOUT any client POST
+    const afterWarm = t.requests.length;
+
+    svc.stop();
+    // A refresh after stop() must be ignored (no further private-api calls queued).
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(t.requests.length, afterWarm);
+
+    svc.start(); // idempotent-ish: restart works
+    svc.stop();
+});
+
 test("FindMy devices reader parses the plaintext cache file and degrades to [] on absence", async () => {
     const file = path.join(os.tmpdir(), `bbd-findmy-${process.pid}-${Date.now()}.json`);
     fs.writeFileSync(

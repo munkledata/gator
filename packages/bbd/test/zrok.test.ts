@@ -89,3 +89,49 @@ test("stop kills the child and clears state; exit clears running state", async (
     assert.equal(t.tunnel.isRunning(), false);
     assert.equal(t.tunnel.currentUrl(), null);
 });
+
+test("an unexpected exit auto-restarts the tunnel (with backoff)", async () => {
+    let spawns = 0;
+    const fc = fakeChild();
+    const tunnel = new ZrokTunnel({
+        binPath: "zrok",
+        settings: () => ({ enabled: true, token: "tok", backendTarget: "127.0.0.1:1234" }),
+        onUrl: () => undefined,
+        logger: silent,
+        spawn: (_cmd, args) => {
+            spawns += 1;
+            fc.state.args = args;
+            return fc.child;
+        },
+        enableEnv: async () => undefined,
+        restartDelayMs: () => 0 // fire the restart on the next macrotask
+    });
+    await tunnel.start();
+    assert.equal(spawns, 1);
+    fc.emitExit(1); // unexpected drop → should schedule a restart
+    await new Promise(r => setTimeout(r, 5));
+    assert.equal(spawns, 2, "tunnel respawned after an unexpected exit");
+    await tunnel.stop();
+});
+
+test("stop() prevents an auto-restart", async () => {
+    let spawns = 0;
+    const fc = fakeChild();
+    const tunnel = new ZrokTunnel({
+        binPath: "zrok",
+        settings: () => ({ enabled: true, token: "tok", backendTarget: "127.0.0.1:1234" }),
+        onUrl: () => undefined,
+        logger: silent,
+        spawn: () => {
+            spawns += 1;
+            return fc.child;
+        },
+        enableEnv: async () => undefined,
+        restartDelayMs: () => 0
+    });
+    await tunnel.start();
+    await tunnel.stop();
+    fc.emitExit(0); // exit AFTER stop → must NOT restart
+    await new Promise(r => setTimeout(r, 5));
+    assert.equal(spawns, 1);
+});

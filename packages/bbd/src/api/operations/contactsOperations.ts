@@ -8,7 +8,7 @@ export interface ContactsOperationDeps {
     contacts: ContactsService;
 }
 
-/** The migrated contacts handler — get-contacts, served on both transports. */
+/** The migrated contacts handler — get-contacts + address-keyed query, served on both transports. */
 export function buildContactsOperations(deps: ContactsOperationDeps): Operation[] {
     return [
         defineOperation({
@@ -19,6 +19,15 @@ export function buildContactsOperations(deps: ContactsOperationDeps): Operation[
             input: NoInput,
             summary: "All address-book contacts",
             handler: async () => ({ contacts: await deps.contacts.list() })
+        }),
+        defineOperation({
+            name: "query-contacts",
+            method: "POST",
+            path: "/api/v1/contact/query",
+            auth: true,
+            input: z.object({ addresses: z.array(z.string().min(1)).min(1) }),
+            summary: "Contacts matching the given phone numbers / emails",
+            handler: async (_ctx, input) => ({ contacts: await deps.contacts.queryByAddresses(input.addresses) })
         })
     ];
 }
