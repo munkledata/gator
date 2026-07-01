@@ -37,9 +37,30 @@ export function buildFaceTimeOperations(deps: FaceTimeOperationDeps): Operation[
             method: "POST",
             path: "/api/v1/facetime/link",
             auth: true,
-            input: z.object({}).passthrough(),
-            summary: "Create a FaceTime link (Private API)",
-            handler: () => deps.facetime.createLink()
+            input: z.object({ addresses: z.array(z.string().min(1)).optional() }).passthrough(),
+            summary: "Create a FaceTime link, optionally inviting recipients (Private API)",
+            handler: (_ctx, input) => deps.facetime.createLink(input.addresses)
+        }),
+        defineOperation({
+            name: "start-facetime",
+            method: "POST",
+            path: "/api/v1/facetime/call",
+            auth: true,
+            input: z.object({
+                addresses: z.array(z.string().min(1)).min(1),
+                video: z.boolean(),
+                from: z.string().min(1).optional()
+            }),
+            summary: "Place an outgoing FaceTime call (Private API native dial)",
+            handler: async (_ctx, input) => {
+                const { callUuid, link } = await deps.facetime.startCall(
+                    input.addresses,
+                    input.video,
+                    input.from
+                );
+                // snake_case on the wire to match the existing FaceTime client contract.
+                return { call_uuid: callUuid, link };
+            }
         })
     ];
 }

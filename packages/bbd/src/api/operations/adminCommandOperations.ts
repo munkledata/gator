@@ -9,6 +9,7 @@ import type { ContactsService } from "../../contacts/ContactsService";
 import type { ScheduledMessageStore } from "../../scheduled/ScheduledMessage";
 import type { WebhookStore } from "../../webhooks/Webhook";
 import type { PrivateApiTransport } from "../../private-api/PrivateApiTransport";
+import type { HelperInjector } from "../../host-platform/HelperInjector";
 import type { StatsReader } from "../../data/imessage/StatsReader";
 import type { MacPermissions } from "../../host-platform/MacPermissions";
 import type { CloudflareDdns } from "../../networking/CloudflareDdns";
@@ -21,6 +22,7 @@ import { getLanIpv4 } from "../../networking/lanAddress";
 import { generateVapidKeys } from "../../notifications/webpush/vapid";
 import { FindMyKeyManager } from "../../findmy/FindMyKeyManager";
 import { isMinSonoma14_4 } from "../../findmy/macosVersion";
+import { detectMacOSVersion } from "../../host-platform/capabilities";
 import type { FirebaseSetupService } from "../../notifications/fcm/FirebaseSetupService";
 import type { Logger } from "../../core/logger";
 
@@ -32,6 +34,10 @@ export interface AdminCommandDeps {
     scheduledStore: ScheduledMessageStore;
     webhookStore: WebhookStore;
     transport: PrivateApiTransport;
+    /** The FaceTime helper's separate single-client transport. */
+    transportFt: PrivateApiTransport;
+    /** Loads the helper dylibs into Messages/FaceTime; backs the reinject command. */
+    helperInjector: HelperInjector;
     stats: StatsReader;
     permissions: MacPermissions;
     cloudflareDdns: CloudflareDdns;
@@ -88,7 +94,9 @@ const ADMIN_ONLY_CHANNELS: ReadonlySet<string> = new Set<string>([
     // Destructive data op.
     "purge-devices",
     // Writes the Find My decryption keys into the config dir (trusted local admin only).
-    "import-findmy-keys"
+    "import-findmy-keys",
+    // Relaunches Messages/FaceTime to (re)load the helper dylib — disruptive, local only.
+    "reinject-helper"
 ]);
 
 /**
@@ -208,7 +216,18 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
         },
 
         // --- private API / helper ---
-        "get-private-api-status": () => ({ connected: transport.isConnected() }),
+        "get-private-api-status": () => ({
+            connected: transport.isConnected(),
+            enabled: configStore.getConfig().enablePrivateApi,
+            ft_connected: deps.transportFt.isConnected(),
+            ft_enabled: configStore.getConfig().enableFtPrivateApi
+        }),
+        // Relaunch Messages/FaceTime to (re)load the helper dylib. Returns which apps were
+        // (re)injected vs skipped (because their toggle is off).
+        "reinject-helper": async () => {
+            const result = await deps.helperInjector.reinject();
+            return { success: true, ...result };
+        },
         "get-private-api-requirements": () => [
             { name: "Helper bundle", pass: transport.isConnected() },
             { name: "macOS Messages running", pass: true }
@@ -220,7 +239,9 @@ export function buildAdminCommandOperations(deps: AdminCommandDeps): Operation[]
             platform: process.platform,
             node: process.versions.node,
             // macOS 14.4+ encrypts the Find My caches → the UI shows the key-import card.
-            findmyNeedsKeys: isMinSonoma14_4()
+            findmyNeedsKeys: isMinSonoma14_4(),
+            // Monterey+ gates the FaceTime Calling (incoming-call detection) UI toggle.
+            isMinMonterey: detectMacOSVersion().major >= 12
         }),
 
         // --- home-screen stats (read path; degrade to 0 without a real chat.db) ---

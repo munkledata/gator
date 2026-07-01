@@ -40,6 +40,7 @@ export const PrivateApiStatus = (): JSX.Element => {
     }, []);
 
     const connected = status?.connected === null ? '...' : (status?.connected ?? false) ? 'Yes' : 'No';
+    const ftConnected = status?.ft_connected === null ? '...' : (status?.ft_connected ?? false) ? 'Yes' : 'No';
     return (
         <Box p={12} w='325px' style={{ border: '1px solid var(--mantine-color-dark-4)', borderRadius: 'var(--mantine-radius-lg)' }}>
             <Group align='center'>
@@ -53,13 +54,13 @@ export const PrivateApiStatus = (): JSX.Element => {
             </Group>
             <List mt={8} ml={32}>
                 <List.Item>
-                    <Text fz='md'><strong>Connected</strong>:&nbsp;
+                    <Text fz='md'><strong>Messages</strong>:&nbsp;
                         <Box>{connected}</Box>
                     </Text>
                 </List.Item>
                 <List.Item>
-                    <Text fz='md'><strong>Port</strong>:&nbsp;
-                        <Box>{status?.port ?? '...'}</Box>
+                    <Text fz='md'><strong>FaceTime</strong>:&nbsp;
+                        <Box>{ftConnected}</Box>
                     </Text>
                 </List.Item>
             </List>

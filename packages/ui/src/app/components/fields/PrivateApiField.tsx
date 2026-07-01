@@ -11,7 +11,8 @@ import {
 import { useAppSelector } from '../../hooks';
 import { onCheckboxToggle } from '../../actions/ConfigActions';
 import { PrivateApiRequirements } from '../PrivateApiRequirements';
-import { getEnv } from '../../utils/IpcUtils';
+import { getEnv, reinjectHelper } from '../../utils/IpcUtils';
+import { showSuccessToast, showErrorToast } from '../../utils/ToastUtils';
 import { PrivateApiStatus } from '../PrivateApiStatus';
 import { FaceTimeCallingField } from './FaceTimeCallingField';
 
@@ -31,6 +32,19 @@ export const PrivateApiField = ({ helpTextMessages, helpTextFaceTime }: PrivateA
         });
     }, []);
 
+    const onReinject = () => {
+        reinjectHelper()
+            .then((r: any) => {
+                const injected: string[] = Array.isArray(r?.injected) ? r.injected : [];
+                showSuccessToast({
+                    description: injected.length
+                        ? `Re-injecting helper into: ${injected.join(', ')}`
+                        : 'Nothing to inject — enable Messages or FaceTime Private API first.'
+                });
+            })
+            .catch((e: any) => showErrorToast({ description: e?.message ?? 'Failed to re-inject helper' }));
+    };
+
     return (
         <Box mt={4}>
             <Group>
@@ -39,11 +53,16 @@ export const PrivateApiField = ({ helpTextMessages, helpTextFaceTime }: PrivateA
             </Group>
             <Box mt={20}>
                 <Stack>
-                    <Button size='xs' w="150px" mb={8}>
-                        <Anchor target="_blank" href="https://docs.bluebubbles.app/private-api/">
-                            Private API Setup Docs
-                        </Anchor>
-                    </Button>
+                    <Group>
+                        <Button size='xs' w="150px" mb={8}>
+                            <Anchor target="_blank" href="https://docs.bluebubbles.app/private-api/">
+                                Private API Setup Docs
+                            </Anchor>
+                        </Button>
+                        <Button size='xs' w="150px" mb={8} variant='light' onClick={onReinject}>
+                            Re-inject Helper
+                        </Button>
+                    </Group>
                     <Checkbox
                         id='enable_private_api'
                         checked={privateApi}

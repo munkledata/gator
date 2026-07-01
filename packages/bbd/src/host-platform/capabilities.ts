@@ -66,6 +66,14 @@ export function detectMacOSVersion(darwinRelease: string = os.release()): MacOSV
     return { major, minor: major === 10 ? resolvedMinor : minor, patch, name };
 }
 
+/**
+ * Which bundled-dylib directory matches this macOS major: the helper ships a `macos11`
+ * build (Big Sur+) and a legacy `macos10` build. macOS 11+ → "macos11".
+ */
+export function helperDylibDir(major: number = detectMacOSVersion().major): "macos11" | "macos10" {
+    return major >= 11 ? "macos11" : "macos10";
+}
+
 export interface Capabilities {
     version: MacOSVersion;
     /** Whether the private-API dylib can be injected (SIP/runtime fact, supplied by the adapter). */

@@ -11,7 +11,7 @@ import { createConsoleLogger, type Logger } from "./core/logger";
 import { DrizzleConfigStore } from "./data/config-db/DrizzleConfigStore";
 import { VaultedConfigStore } from "./data/config-db/VaultedConfigStore";
 import { MacKeychainSecretStore } from "./data/config-db/SecretStore";
-import { ConfigService } from "./config/ConfigService";
+import { ConfigService, type ConfigEvents } from "./config/ConfigService";
 import { EventBus } from "./core/bus";
 import { OperationRegistry } from "./api/registry";
 import { buildCoreOperations } from "./api/operations/coreOperations";
@@ -27,6 +27,8 @@ import { introspectSchema } from "./data/imessage/schema";
 import { ChatReader } from "./data/imessage/ChatReader";
 import { StatsReader } from "./data/imessage/StatsReader";
 import { MacPermissions } from "./host-platform/MacPermissions";
+import { HelperInjector, MacHelperProcessRunner, type InjectableTarget } from "./host-platform/HelperInjector";
+import { helperDylibDir } from "./host-platform/capabilities";
 import { HandleReader } from "./data/imessage/HandleReader";
 import { AttachmentReader } from "./data/imessage/AttachmentReader";
 import { AttachmentStreamer } from "./data/imessage/AttachmentStreamer";
@@ -106,6 +108,12 @@ export interface BackendOptions {
     logger?: Logger;
     /** If set, the built UI bundle at this directory is served at `/` (SPA). */
     serveUiFrom?: string;
+    /**
+     * The directory that CONTAINS `appResources/` (the shell passes `process.resourcesPath`).
+     * Used to locate the bundled helper dylibs for injection. Unset in headless/dev runs ⇒
+     * helper injection is skipped.
+     */
+    resourcesDir?: string;
 }
 
 export interface RunningBackend {
@@ -140,7 +148,9 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         new MacKeychainSecretStore(),
         logger
     );
-    const configService = new ConfigService(configStore, new EventBus(), logger);
+    // Hoisted so the helper injector can subscribe to runtime config toggles.
+    const configBus = new EventBus<ConfigEvents>();
+    const configService = new ConfigService(configStore, configBus, logger);
     const config = configStore.getConfig();
     const port = options.port ?? config.socketPort;
     // The actual listening port, resolved after listen() — lets callers pass port 0 for
@@ -157,7 +167,11 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     // password-authed LAN access (no tunnel/TLS), so we MUST bind 0.0.0.0 or the advertised
     // LAN address is unreachable. Driven by `proxy_service === 'lan-url'` (what the UI persists
     // when LAN URL is selected), in addition to the BBD_BIND_ALL env opt-in.
-    const lanMode = String((config as Record<string, unknown>).proxy_service ?? "").toLowerCase() === "lan-url";
+    // NOTE: `set-config` camelCases keys before persisting (mapKeys(patch, toCamel)), so the
+    // stored key is `proxyService` — read that first, with the legacy snake key as a fallback,
+    // or LAN URL mode silently never binds 0.0.0.0 (it always read undefined before).
+    const cfgRec = config as Record<string, unknown>;
+    const lanMode = String(cfgRec.proxyService ?? cfgRec.proxy_service ?? "").toLowerCase() === "lan-url";
     const bindHost = options.bindAll || lanMode ? "0.0.0.0" : "127.0.0.1";
     if (lanMode && !options.bindAll) logger.info("LAN URL mode: binding plain HTTP to 0.0.0.0 for direct LAN access");
 
@@ -190,11 +204,70 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     })();
 
     // Write path (Phase 5): the hardened private-API transport + the send service.
+    //
+    // CRITICAL: Messages.app / FaceTime.app are SANDBOXED — inside them `NSHomeDirectory()`
+    // resolves to the app's CONTAINER (~/Library/Containers/<bundle>/Data), and the sandbox
+    // blocks filesystem access OUTSIDE that container. So the injected helper can only read a
+    // rendezvous file / reach a UDS that lives INSIDE its own container. We therefore bind
+    // each transport's socket + write its rendezvous under the target app's container (the
+    // daemon is not sandboxed, so it can write there). The socket name is kept short because
+    // a UDS path is capped at ~104 bytes (sun_path) and the container prefix is already long.
+    const appContainer = (bundleId: string): string =>
+        path.join(os.homedir(), "Library", "Containers", bundleId, "Data");
+    const helperRendezvous = (containerDir: string, file: string): string =>
+        path.join(containerDir, "Library", "Application Support", "bluebubbles-helper", file);
+    const messagesContainer = appContainer("com.apple.MobileSMS");
+    const facetimeContainer = appContainer("com.apple.FaceTime");
+
     const transport = new FramedUdsTransport({
-        socketPath: path.join(userDataPath, "private-api.sock"),
+        socketPath: path.join(messagesContainer, "bb-pa.sock"),
         secret: options.privateApiSecret ?? randomBytes(24).toString("hex"),
+        // Rendezvous file the injected dylib reads (via NSHomeDirectory → its container) to
+        // discover the socket path + secret; it can't inherit our env.
+        handshakeFilePath: helperRendezvous(messagesContainer, "handshake.json"),
         logger
     });
+    // FaceTime helper gets its OWN socket + rendezvous file (in the FaceTime container).
+    // FramedUdsTransport is single-client (a new connection evicts the prior), so Messages
+    // and FaceTime helpers must not share a socket.
+    const transportFt = new FramedUdsTransport({
+        socketPath: path.join(facetimeContainer, "bb-pa-ft.sock"),
+        secret: randomBytes(24).toString("hex"),
+        handshakeFilePath: helperRendezvous(facetimeContainer, "handshake-ft.json"),
+        logger
+    });
+
+    // Loads the helper dylibs INTO Messages.app / FaceTime.app — the injection step the
+    // legacy server did and the new daemon was missing (so the transport socket had no
+    // client). Needs the shell's bundled-resources dir; headless/dev runs skip injection.
+    const helperDir = options.resourcesDir
+        ? path.join(options.resourcesDir, "appResources", "private-api", helperDylibDir())
+        : null;
+    const helperTargets: InjectableTarget[] = [];
+    if (helperDir) {
+        helperTargets.push({
+            appName: "Messages",
+            dylibPath: path.join(helperDir, "BlueBubblesHelper.dylib"),
+            isEnabled: () => configStore.getConfig().enablePrivateApi
+        });
+        // The FaceTime helper dylib only ships for macos11 (Big Sur+); don't register the
+        // target on older macOS, where enabling FT PA would just dead-end on a missing dylib.
+        if (helperDylibDir() === "macos11") {
+            helperTargets.push({
+                appName: "FaceTime",
+                dylibPath: path.join(helperDir, "BlueBubblesFaceTimeHelper.dylib"),
+                isEnabled: () => configStore.getConfig().enableFtPrivateApi
+            });
+        }
+    }
+    const helperInjector = new HelperInjector({ runner: new MacHelperProcessRunner(), logger, targets: helperTargets });
+    // Re-evaluate injection when the relevant toggles flip at runtime.
+    configBus.on("config-changed", changes => {
+        if (changes.some(c => c.key === "enablePrivateApi" || c.key === "enableFtPrivateApi")) {
+            void helperInjector.refresh();
+        }
+    });
+
     const sender = new MessageSender(transport, new AppleScriptFallback(new OsascriptRunner(), logger), logger);
     const contacts = new ContactsService(new MacContactsSource(), logger);
     // Two Socket.IO servers may be live: one on the loopback plain-HTTP listener (local
@@ -220,7 +293,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader, messageReader }))
         .registerAll(buildActionOperations({ sender }))
         .registerAll(buildContactsOperations({ contacts }))
-        .registerAll(buildFaceTimeOperations({ facetime: new FaceTimeService(transport, logger) }))
+        .registerAll(buildFaceTimeOperations({ facetime: new FaceTimeService(transportFt, logger) }))
         .registerAll(
             buildFindMyOperations({
                 findmy: new FindMyService(transport, logger),
@@ -254,6 +327,13 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     transport.onEvent((event, data) => {
         emitToAuthed(event, data);
         // A webhook dispatch failure must not become an unhandled rejection (audit F19).
+        webhookSubscriber.onEvent(event, data).catch(e => logger.error(`webhook onEvent(${event}) failed`, e));
+    });
+    // The FaceTime helper is on its OWN socket (single-client transport), so its pushed
+    // events (incoming-facetime, ft-call-status-changed) arrive on transportFt — subscribe it
+    // too or those call notifications are silently dropped.
+    transportFt.onEvent((event, data) => {
+        emitToAuthed(event, data);
         webhookSubscriber.onEvent(event, data).catch(e => logger.error(`webhook onEvent(${event}) failed`, e));
     });
 
@@ -433,6 +513,8 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
             scheduledStore,
             webhookStore,
             transport,
+            transportFt,
+            helperInjector,
             stats: new StatsReader(chatDb),
             permissions: new MacPermissions(),
             version: BBD_VERSION,
@@ -604,6 +686,20 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         stop: () => transport.stop()
     };
 
+    const transportFtService: Service = {
+        name: "private-api-ft",
+        start: () => transportFt.start(),
+        stop: () => transportFt.stop()
+    };
+
+    // Starts the inject loops (non-blocking). Ordered AFTER both transports so the sockets +
+    // rendezvous files exist before we relaunch Messages/FaceTime (which read them on connect).
+    const injectorService: Service = {
+        name: "helper-injector",
+        start: () => helperInjector.start(),
+        stop: () => helperInjector.stop()
+    };
+
     const schedulerService: Service = {
         name: "scheduler",
         start: () => scheduler.start(),
@@ -640,6 +736,8 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         // reads `backendTarget` from settings (audit F17).
         services: [
             transportService,
+            transportFtService,
+            injectorService,
             httpService,
             tlsService,
             tunnelService,

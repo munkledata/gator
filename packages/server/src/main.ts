@@ -69,6 +69,9 @@ const zrokBinPath = (): string | undefined => {
     return fs.existsSync(p) ? p : undefined;
 };
 
+/** Dir CONTAINING appResources/ — the daemon joins on it to locate the helper dylibs. */
+const resourcesDir = (): string => (app.isPackaged ? process.resourcesPath : path.resolve(__dirname, ".."));
+
 // Crash-respawn policy: a transient backend crash should self-heal, not take the whole
 // app offline (audit "daemon crash kills the app"). We allow a burst of restarts with
 // capped exponential backoff inside a rolling window, then give up and surface a clear
@@ -94,6 +97,7 @@ function forkBackend(): Promise<number> {
                 BBD_UI_DIR: uiDir(),
                 BBD_MESSAGES_DIR: path.join(app.getPath("home"), "Library", "Messages"),
                 BBD_LOCAL_AUTH: localAuthToken,
+                BBD_RESOURCES_DIR: resourcesDir(),
                 ...(zrokBinPath() ? { BBD_ZROK_BIN: zrokBinPath()! } : {})
             }
         });

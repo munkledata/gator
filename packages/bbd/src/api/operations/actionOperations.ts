@@ -35,6 +35,28 @@ export function buildActionOperations(deps: ActionOperationDeps): Operation[] {
             handler: (_ctx, input) => deps.sender.sendText(input)
         }),
         defineOperation({
+            name: "new-chat",
+            method: "POST",
+            path: "/api/v1/chat/new",
+            auth: true,
+            input: z.object({
+                addresses: z.array(z.string().min(1)).min(1),
+                message: z.string().min(1),
+                service: z.string().optional(),
+                method: z.string().optional()
+            }),
+            summary: "Create a chat with addresses + an initial message (Private API)",
+            handler: async (_ctx, input) => {
+                const { guid } = await deps.sender.createChat({
+                    addresses: input.addresses,
+                    service: input.service,
+                    message: input.message
+                });
+                // The RN Chat schema requires only `guid`; the rest hydrates from the chat sync.
+                return { guid };
+            }
+        }),
+        defineOperation({
             name: "send-attachment",
             method: "POST",
             path: "/api/v1/message/attachment",
@@ -73,7 +95,8 @@ export function buildActionOperations(deps: ActionOperationDeps): Operation[] {
             input: z.object({
                 chatGuid: z.string().min(1),
                 messageGuid: z.string().min(1),
-                reactionType: z.string().min(1)
+                reactionType: z.string().min(1),
+                partIndex: z.coerce.number().int().min(0).optional()
             }),
             summary: "Send a tapback (Private API)",
             handler: (_ctx, input) => deps.sender.sendReaction(input)

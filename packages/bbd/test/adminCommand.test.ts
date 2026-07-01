@@ -71,6 +71,64 @@ test("read/status channels stay on the normal password path (audit F15)", async 
     assert.equal((r.data as { version: string }).version, "2.0.0");
 });
 
+test("get-private-api-status reports messages + facetime connection and enabled flags", async () => {
+    const store = new InMemoryConfigStore();
+    const configService = new ConfigService(store, new EventBus(), silent);
+    await configService.update({ enablePrivateApi: true, enableFtPrivateApi: false });
+    const deps = {
+        configService,
+        configStore: store,
+        version: "2.0.0",
+        emit: () => {},
+        logger: silent,
+        transport: { isConnected: () => true },
+        transportFt: { isConnected: () => false },
+        helperInjector: { reinject: async () => ({ injected: [], skipped: [] }) }
+    } as unknown as AdminCommandDeps;
+    const op = buildAdminCommandOperations(deps).find(o => o.name === "admin-command")!;
+    const r = await executeOperation(op, { input: { channel: "get-private-api-status" }, credential: "pw" }, ctx, auth);
+    assert.equal(r.status, 200);
+    const d = r.data as Record<string, unknown>;
+    assert.equal(d.connected, true);
+    assert.equal(d.enabled, true);
+    assert.equal(d.ft_connected, false);
+    assert.equal(d.ft_enabled, false);
+});
+
+test("reinject-helper is local-admin-only and invokes the injector", async () => {
+    const store = new InMemoryConfigStore();
+    let called = 0;
+    const deps = {
+        configService: new ConfigService(store, new EventBus(), silent),
+        configStore: store,
+        version: "2.0.0",
+        emit: () => {},
+        logger: silent,
+        transport: { isConnected: () => false },
+        transportFt: { isConnected: () => false },
+        helperInjector: {
+            reinject: async () => {
+                called += 1;
+                return { injected: ["Messages"], skipped: ["FaceTime"] };
+            }
+        }
+    } as unknown as AdminCommandDeps;
+    const op = buildAdminCommandOperations(deps).find(o => o.name === "admin-command")!;
+    // A remote password caller is denied (the gate fires before the handler).
+    const denied = await executeOperation(op, { input: { channel: "reinject-helper" }, credential: "pw" }, ctx, auth);
+    assert.equal(denied.status, 403);
+    assert.equal(denied.error?.type, "admin_only");
+    assert.equal(called, 0);
+    // The trusted local channel runs it.
+    const ok = await executeOperation(op, { input: { channel: "reinject-helper" }, trusted: true }, ctx, auth);
+    assert.equal(ok.status, 200);
+    assert.equal(called, 1);
+    const d = ok.data as Record<string, unknown>;
+    assert.equal(d.success, true);
+    assert.deepEqual(d.injected, ["Messages"]);
+    assert.deepEqual(d.skipped, ["FaceTime"]);
+});
+
 test("get-config (read) is allowed via password and never leaks secrets (audit F9/F15)", async () => {
     const { op, configService } = setup();
     await configService.update({ password: "super-secret-pw" });

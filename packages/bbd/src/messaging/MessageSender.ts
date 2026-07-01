@@ -41,6 +41,8 @@ export interface SendReactionInput {
     chatGuid: string;
     messageGuid: string;
     reactionType: string;
+    /** Message part to react to (multi-part messages); defaults to 0. */
+    partIndex?: number;
 }
 
 export interface SendResult {
@@ -132,9 +134,39 @@ export class MessageSender {
     async sendReaction(input: SendReactionInput): Promise<SendResult> {
         return this.#privateApi("send-reaction", {
             chatGuid: input.chatGuid,
-            messageGuid: input.messageGuid,
+            // The dylib's reaction handler keys off `selectedMessageGuid` + `partIndex`
+            // (not `messageGuid`) — sending `messageGuid` here silently no-op'd tapbacks.
+            selectedMessageGuid: input.messageGuid,
+            partIndex: input.partIndex ?? 0,
             reactionType: input.reactionType
         });
+    }
+
+    /**
+     * Create a new chat with the given addresses and send an initial message. The helper
+     * builds the IMChat via IMChatRegistry, sends the message, and returns the new chat's
+     * GUID (not just the message ack) so the client can open the thread. Requires the
+     * Private API — there's no AppleScript path for starting a brand-new conversation.
+     */
+    async createChat(input: { addresses: string[]; service?: string; message: string }): Promise<{ guid: string }> {
+        if (!this.#transport.isConnected()) {
+            throw new Error('"new-chat" requires the Private API (helper not connected)');
+        }
+        const res = await this.#transport.send({
+            action: "create-chat",
+            data: compact({
+                addresses: input.addresses,
+                service: input.service ?? "iMessage",
+                // The helper reads the initial message text under `message` (same key send uses).
+                message: input.message
+            })
+        });
+        if (res.error) throw new Error(res.error);
+        const guid = res.data?.["chatGuid"];
+        if (typeof guid !== "string" || guid.length === 0) {
+            throw new Error("create-chat: helper returned no chat guid");
+        }
+        return { guid };
     }
 
     async setTyping(chatGuid: string, isTyping: boolean): Promise<void> {

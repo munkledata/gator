@@ -178,6 +178,10 @@ export const getPrivateApiStatus = async () => {
     return await invoke('get-private-api-status');
 };
 
+export const reinjectHelper = async () => {
+    return await invoke('reinject-helper');
+};
+
 export const getAttachmentCacheInfo = async () => {
     return await invoke('get-attachment-cache-info');
 };

@@ -74,6 +74,10 @@ export const ConfigSchema = z
         autoCaffeinate: z.boolean().default(false),
         autoStart: z.boolean().default(false),
         enablePrivateApi: z.boolean().default(false),
+        // FaceTime Private API — gates injecting the helper into FaceTime.app (separate
+        // socket from Messages). Off by default so we don't launch FaceTime for users who
+        // don't use the call features.
+        enableFtPrivateApi: z.boolean().default(false),
         encryptComs: z.boolean().default(false),
         // Cloudflare tunnel was removed as an option; a legacy stored "cloudflare" is
         // coerced to "none" by parseConfig's preprocess so it can't fail the enum on boot.

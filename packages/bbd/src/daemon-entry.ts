@@ -43,6 +43,8 @@ startBbdBackend({
     privateApiSecret: process.env.BBD_PA_SECRET,
     zrokBinPath: process.env.BBD_ZROK_BIN || undefined,
     serveUiFrom: process.env.BBD_UI_DIR,
+    // Dir containing appResources/ — locates the bundled helper dylibs for injection.
+    resourcesDir: process.env.BBD_RESOURCES_DIR || undefined,
     logger
 })
     .then(running => {

@@ -16,6 +16,12 @@ test("parsing an empty object yields every default", () => {
     assert.equal(c.notifications.defaultProvider, "fcm");
 });
 
+test("FaceTime Private API defaults off and round-trips", () => {
+    assert.equal(DEFAULT_CONFIG.enableFtPrivateApi, false);
+    assert.equal(parseConfig({}).enableFtPrivateApi, false);
+    assert.equal(parseConfig({ enableFtPrivateApi: true }).enableFtPrivateApi, true);
+});
+
 test("invalid values are rejected", () => {
     assert.equal(parseConfigSafe({ socketPort: 70000 }).success, false);
     assert.equal(parseConfigSafe({ notifications: { defaultProvider: "telegram" } }).success, false);

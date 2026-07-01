@@ -51,6 +51,29 @@ test("sendText falls back to AppleScript with positional args (no interpolation)
     assert.deepEqual(runner.calls[0]!.args, ["c", "hi"]);
 });
 
+test("createChat sends create-chat with addresses + message and returns the new chat guid", async () => {
+    const t = new FakeTransport();
+    t.response = { data: { chatGuid: "iMessage;-;+15551234567" } };
+    const sender = new MessageSender(t, new AppleScriptFallback(new FakeRunner(), silent), silent);
+    const res = await sender.createChat({ addresses: ["+15551234567"], message: "hey", service: "iMessage" });
+    assert.equal(res.guid, "iMessage;-;+15551234567");
+    assert.equal(t.lastRequest?.action, "create-chat");
+    assert.deepEqual(t.lastRequest?.data, {
+        addresses: ["+15551234567"],
+        service: "iMessage",
+        message: "hey"
+    });
+});
+
+test("createChat throws when the helper returns no chat guid, and requires the Private API", async () => {
+    const t = new FakeTransport();
+    t.response = { data: {} };
+    const sender = new MessageSender(t, new AppleScriptFallback(new FakeRunner(), silent), silent);
+    await assert.rejects(() => sender.createChat({ addresses: ["x@y.com"], message: "hi" }), /no chat guid/);
+    t.connected = false;
+    await assert.rejects(() => sender.createChat({ addresses: ["x@y.com"], message: "hi" }), /requires the Private API/);
+});
+
 test("sendText forwards fidelity fields (effect, reply, ddScan) and omits undefined", async () => {
     const t = new FakeTransport();
     const sender = new MessageSender(t, new AppleScriptFallback(new FakeRunner(), silent), silent);
