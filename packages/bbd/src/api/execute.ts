@@ -15,6 +15,19 @@ export class AdminOnlyError extends Error {
     }
 }
 
+/**
+ * Thrown by a handler when the requested resource doesn't exist (e.g. `get-chat` for an
+ * unknown guid). {@link executeOperation} maps it to a 404 envelope instead of the generic
+ * 500 a bare throw produces, so clients can cleanly distinguish "not found" from a server
+ * error (and fall back — e.g. the RN client re-queries the chat list).
+ */
+export class NotFoundError extends Error {
+    constructor(message = "not found") {
+        super(message);
+        this.name = "NotFoundError";
+    }
+}
+
 export interface AuthConfig {
     /** The configured shared password (the frozen v1 model). */
     password: string;
@@ -91,6 +104,9 @@ export async function executeOperation<I, O>(
         // A per-channel admin denial maps to 403 (not 500), matching the op-level adminOnly flag.
         if (e instanceof AdminOnlyError) {
             return failure(403, ResponseMessage.FORBIDDEN, { type: "admin_only", message: e.message });
+        }
+        if (e instanceof NotFoundError) {
+            return failure(404, ResponseMessage.NOT_FOUND, { message: e.message });
         }
         ctx.logger.error(`operation "${op.name}" failed`, e);
         return failure(500, ResponseMessage.SERVER_ERROR, { message: e instanceof Error ? e.message : String(e) });

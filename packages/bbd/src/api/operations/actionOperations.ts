@@ -1,9 +1,37 @@
 import { z } from "zod";
 import { defineOperation, type Operation } from "../Operation";
+import { NotFoundError } from "../execute";
 import type { MessageSender } from "../../messaging/MessageSender";
+import { serializeChat } from "../../serialize/chatSerializer";
+
+/**
+ * The slice of {@link ChatReader} the group-management ops need to read an updated chat
+ * back. A narrow interface (not the concrete class) so it's trivially fakeable in tests;
+ * `ChatReader` satisfies it structurally.
+ */
+export interface ChatBackReader {
+    getChatByGuid(guid: string): Record<string, unknown> | undefined;
+    getParticipants(chatRowIds: number[]): Map<number, Record<string, unknown>[]>;
+}
 
 export interface ActionOperationDeps {
     sender: MessageSender;
+    /** Read-only chat.db reader — used to return the updated chat after a group mutation. */
+    chatReader: ChatBackReader;
+}
+
+/**
+ * After a group mutation (rename / participant change) the helper only acks — no chat is
+ * returned — so we read the chat back from chat.db with its participants and return
+ * `{ chat }` (the shape the RN client's `SingleChat` schema accepts). chat.db lags the
+ * action slightly, so this is best-effort; the app re-syncs to the authoritative state.
+ */
+function readChatBack(chatReader: ChatBackReader, guid: string): { chat: ReturnType<typeof serializeChat> } {
+    const row = chatReader.getChatByGuid(guid);
+    if (!row) throw new NotFoundError(`no chat with guid ${guid}`);
+    const rowId = Number(row["ROWID"]);
+    const participants = chatReader.getParticipants([rowId]).get(rowId) ?? [];
+    return { chat: serializeChat(row, { participants }) };
 }
 
 /**
@@ -173,6 +201,49 @@ export function buildActionOperations(deps: ActionOperationDeps): Operation[] {
             handler: async (_ctx, input) => {
                 await deps.sender.unsendMessage({ chatGuid: input.chatGuid, messageGuid: input.guid, partIndex: input.partIndex });
                 return { unsent: true };
+            }
+        }),
+        // ── Group management (Private API — helper drives IMChat directly) ─────────────
+        defineOperation({
+            name: "rename-chat",
+            method: "PUT",
+            path: "/api/v1/chat/:guid",
+            auth: true,
+            // displayName may be empty (clearing a group's custom name is valid in iMessage).
+            input: z.object({ guid: z.string().min(1), displayName: z.string() }),
+            summary: "Rename a group chat (Private API)",
+            handler: async (_ctx, input) => {
+                await deps.sender.renameChat(input.guid, input.displayName);
+                return readChatBack(deps.chatReader, input.guid);
+            }
+        }),
+        defineOperation({
+            name: "update-participant",
+            method: "POST",
+            path: "/api/v1/chat/:guid/participant/:action",
+            auth: true,
+            input: z.object({
+                guid: z.string().min(1),
+                action: z.enum(["add", "remove"]),
+                address: z.string().min(1)
+            }),
+            summary: "Add or remove a group participant (Private API)",
+            handler: async (_ctx, input) => {
+                if (input.action === "add") await deps.sender.addParticipant(input.guid, input.address);
+                else await deps.sender.removeParticipant(input.guid, input.address);
+                return readChatBack(deps.chatReader, input.guid);
+            }
+        }),
+        defineOperation({
+            name: "leave-chat",
+            method: "POST",
+            path: "/api/v1/chat/:guid/leave",
+            auth: true,
+            input: z.object({ guid: z.string().min(1) }),
+            summary: "Leave a group chat (Private API)",
+            handler: async (_ctx, input) => {
+                await deps.sender.leaveChat(input.guid);
+                return { left: true };
             }
         })
     ];

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { defineOperation, type Operation } from "../Operation";
+import { NotFoundError } from "../execute";
 import type { ChatReader } from "../../data/imessage/ChatReader";
 import type { HandleReader } from "../../data/imessage/HandleReader";
 import type { AttachmentReader } from "../../data/imessage/AttachmentReader";
@@ -106,6 +107,32 @@ export function buildReadOperations(deps: ReadOperationDeps): Operation[] {
                         return serializeChat(row, extra);
                     })
                 };
+            }
+        }),
+        defineOperation({
+            name: "get-chat",
+            method: "GET",
+            path: "/api/v1/chat/:guid",
+            auth: true,
+            input: z.object({
+                guid: z.string().min(1),
+                with: z.union([z.string(), z.array(z.string())]).optional()
+            }),
+            summary: "Get a single chat by guid (optionally with participants / lastMessage)",
+            handler: (_ctx, input) => {
+                const row = deps.chatReader.getChatByGuid(input.guid);
+                if (!row) throw new NotFoundError(`no chat with guid ${input.guid}`);
+                // Tokens are lowercased so the app's "lastmessage" matches getLastMessages.
+                const want = new Set([...wantSet(input.with)].map(t => t.toLowerCase()));
+                const rowId = Number(row["ROWID"]);
+                const extra: ChatExtra = {};
+                if (want.has("participants")) {
+                    extra.participants = deps.chatReader.getParticipants([rowId]).get(rowId) ?? [];
+                }
+                if (want.has("lastmessage")) {
+                    extra.lastMessage = deps.chatReader.getLastMessages([rowId]).get(rowId);
+                }
+                return { chat: serializeChat(row, extra) };
             }
         }),
         defineOperation({

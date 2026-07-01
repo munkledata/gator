@@ -291,7 +291,7 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
         .registerAll(buildCoreOperations({ configStore, version: BBD_VERSION }))
         .registerAll(buildAdminOperations({ configService, version: BBD_VERSION, startedAt: Date.now() }))
         .registerAll(buildReadOperations({ chatReader, handleReader, attachmentReader, messageReader }))
-        .registerAll(buildActionOperations({ sender }))
+        .registerAll(buildActionOperations({ sender, chatReader }))
         .registerAll(buildContactsOperations({ contacts }))
         .registerAll(buildFaceTimeOperations({ facetime: new FaceTimeService(transportFt, logger) }))
         .registerAll(

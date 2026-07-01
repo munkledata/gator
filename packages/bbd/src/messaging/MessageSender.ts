@@ -173,6 +173,30 @@ export class MessageSender {
         await this.#privateApi(isTyping ? "start-typing" : "stop-typing", { chatGuid });
     }
 
+    // ── Group management (Private API only — the helper drives IMChat directly) ──────────
+    // The helper acks these with just the transaction id (no chat back), so callers read the
+    // updated chat from chat.db (which lags the action slightly; the app re-syncs authoritatively).
+
+    /** Rename a group chat's display name. Helper: `set-display-name` {chatGuid, newName}. */
+    async renameChat(chatGuid: string, newName: string): Promise<void> {
+        await this.#privateApi("set-display-name", { chatGuid, newName });
+    }
+
+    /** Add a participant by address. Helper: `add-participant` {chatGuid, address}. */
+    async addParticipant(chatGuid: string, address: string): Promise<void> {
+        await this.#privateApi("add-participant", { chatGuid, address });
+    }
+
+    /** Remove a participant by address. Helper: `remove-participant` {chatGuid, address}. */
+    async removeParticipant(chatGuid: string, address: string): Promise<void> {
+        await this.#privateApi("remove-participant", { chatGuid, address });
+    }
+
+    /** Leave a group chat. Helper: `leave-chat` {chatGuid}. */
+    async leaveChat(chatGuid: string): Promise<void> {
+        await this.#privateApi("leave-chat", { chatGuid });
+    }
+
     async markRead(chatGuid: string): Promise<void> {
         await this.#privateApi("mark-chat-read", { chatGuid });
     }

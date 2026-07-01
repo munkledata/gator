@@ -85,6 +85,19 @@ export class ChatReader {
         >[];
     }
 
+    /**
+     * Read a single chat by GUID (includes its ROWID for participant hydration). Backs the
+     * `get-chat` read op and the group-management action ops' read-back-the-updated-chat.
+     * Returns undefined when the guid isn't found (or the chat table is absent/degraded).
+     * The guid is bound as `@guid` (never interpolated).
+     */
+    getChatByGuid(guid: string): Record<string, unknown> | undefined {
+        if (this.#chatCols.length === 0) return undefined;
+        const cols = this.#chatCols.map(c => `chat.${c}`).join(", ");
+        const sql = `SELECT ${cols} FROM chat WHERE chat.guid = @guid LIMIT 1`;
+        return this.#db.prepare(sql).get({ guid }) as Record<string, unknown> | undefined;
+    }
+
     getChatMessages(params: GetChatMessagesParams): Record<string, unknown>[] {
         if (this.#messageCols.length === 0) return [];
         const cols = this.#messageCols.map(c => `message.${c}`).join(", ");
