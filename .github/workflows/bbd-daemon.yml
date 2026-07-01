@@ -23,6 +23,12 @@ jobs:
       - name: Install workspace deps
         run: npm ci  # npm ci installs all workspaces strictly from package-lock.json (fails on drift)
 
+      # `.npmrc ignore-scripts=true` (audit S11) blocks install-time dep scripts, so the native
+      # better-sqlite3 the bbd tests load isn't built by `npm ci` — rebuild it explicitly for the
+      # CI Node ABI, allowing scripts for ONLY this known module.
+      - name: Rebuild better-sqlite3 for Node
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+
       - name: Typecheck + test bbd
         working-directory: packages/bbd
         run: |

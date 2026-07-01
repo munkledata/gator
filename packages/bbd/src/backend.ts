@@ -34,6 +34,8 @@ import { AttachmentReader } from "./data/imessage/AttachmentReader";
 import { AttachmentStreamer } from "./data/imessage/AttachmentStreamer";
 import { mountAttachmentRoutes } from "./api/attachmentRoutes";
 import { mountContactAvatarRoutes } from "./api/contactAvatarRoutes";
+import { excludeFromBackups } from "./host-platform/backupExclusion";
+import { parseHelperEvent } from "./private-api/eventValidation";
 import { FramedUdsTransport } from "./private-api/PrivateApiTransport";
 import { AppleScriptFallback } from "./messaging/appleScriptFallback";
 import { OsascriptRunner } from "./messaging/OsascriptRunner";
@@ -138,6 +140,9 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     const userDataPath = options.userDataPath ?? host.userDataPath();
     const messagesDir = options.messagesDir ?? path.join(os.homedir(), "Library", "Messages");
     const chatDbPath = options.chatDbPath ?? path.join(messagesDir, "chat.db");
+    // Keep config.db (0600 but not encrypted at rest — server password + non-vaulted config)
+    // out of Time Machine / iCloud backups (audit F18). Best-effort, non-blocking, macOS-only.
+    void excludeFromBackups(userDataPath, logger);
 
     const dbPath = path.join(userDataPath, "config.db");
     // Keep long-lived cloud credentials (FCM service-account key, OAuth secret, Cloudflare/zrok
@@ -329,18 +334,23 @@ export async function startBbdBackend(options: BackendOptions = {}): Promise<Run
     // subscribed, so only chat.db-polled new/updated-message events reached clients
     // (audit: real-time event regression). new-message/updated-message still come from
     // the chat.db watcher below; these are the everything-else live events.
-    transport.onEvent((event, data) => {
-        emitToAuthed(event, data);
+    // Validate the helper frame's envelope before relaying it to sockets + webhooks — a
+    // malformed/malicious frame (non-object data, empty event) is dropped, not forwarded.
+    const forwardHelperEvent = (event: string, data: Record<string, unknown>): void => {
+        const valid = parseHelperEvent(event, data);
+        if (!valid) {
+            logger.warn(`dropped malformed helper event "${event}"`);
+            return;
+        }
+        emitToAuthed(event, valid);
         // A webhook dispatch failure must not become an unhandled rejection (audit F19).
-        webhookSubscriber.onEvent(event, data).catch(e => logger.error(`webhook onEvent(${event}) failed`, e));
-    });
+        webhookSubscriber.onEvent(event, valid).catch(e => logger.error(`webhook onEvent(${event}) failed`, e));
+    };
+    transport.onEvent(forwardHelperEvent);
     // The FaceTime helper is on its OWN socket (single-client transport), so its pushed
     // events (incoming-facetime, ft-call-status-changed) arrive on transportFt — subscribe it
     // too or those call notifications are silently dropped.
-    transportFt.onEvent((event, data) => {
-        emitToAuthed(event, data);
-        webhookSubscriber.onEvent(event, data).catch(e => logger.error(`webhook onEvent(${event}) failed`, e));
-    });
+    transportFt.onEvent(forwardHelperEvent);
 
     // Push notifications. Both providers read their credentials live from the config
     // store, so configuring FCM (service account) or Web Push (VAPID keys) after boot

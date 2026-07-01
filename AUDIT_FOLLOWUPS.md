@@ -29,8 +29,11 @@ Remaining for F18:
   `security` access, and that the daemon boots cleanly. The 5s timeout guarantees no hang
   (degrades to a loud "credentials unavailable" warning), but the prompt behavior itself can only be
   verified on a real packaged build. If it prompts, set an explicit non-prompting ACL on write.
-- Still **exclude the userData dir from Time Machine / iCloud backups** — the `password` and any
-  non-vaulted residual remain on disk (file permissions don't protect a copied DB).
+- **DONE (2026-06-30): exclude the userData dir from Time Machine / iCloud backups.**
+  `host-platform/backupExclusion.ts` runs `tmutil addexclusion <userDataPath>` at boot (best-effort,
+  macOS-only, non-blocking), so config.db (0600 but not encrypted at rest — the server `password` +
+  non-vaulted residual) isn't copied into backup media where the owner-only permission no longer
+  applies. Wired in `backend.ts` right after `userDataPath` is resolved.
 
 ## Also fixed (2026-06-22): LAN-URL interface selection
 
@@ -51,8 +54,13 @@ interfaces (`feth`/`bridge`/`utun`/`awdl`/…) and prefers the physical private-
 - **F19 — crash resilience.** Added a non-exiting `unhandledRejection`/`uncaughtException` logger and
   `.catch` on the fire-and-forget ingestion sinks (poll / webhook / notify), plus degrade-to-empty on
   transient DB reads. Confirm a transient `chat.db` `SQLITE_BUSY`/`IOERR` no longer crashes the daemon.
-- Helper-sourced live event payload shapes (typing / read-status / group / facetime) emitted by the
-  macOS BlueBubbles-helper dylib (not in this repo) should be validated against the app's zod schemas.
+- **DONE (2026-06-30): server-side helper-event validation.** Helper frames (typing / read-status /
+  group / facetime) are now envelope-validated with zod (`private-api/eventValidation.ts` —
+  `parseHelperEvent`) before being relayed to authed sockets + webhooks: a non-object `data` or empty
+  event name is dropped, not forwarded (`backend.ts` `forwardHelperEvent`). This validates STRUCTURE
+  only; per-event field schemas are intentionally deferred until the dylib's exact payload contract is
+  pinned (an over-strict schema would drop valid events). The app's own zod schemas remain the deep
+  per-field enforcement point.
 
 ## Note
 

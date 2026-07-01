@@ -23,10 +23,11 @@ jobs:
       - name: Install workspace deps
         run: npm ci
 
-      # The bbd tests load better-sqlite3 as a native addon; rebuild it for the
-      # CI Node ABI (the lockfile may carry an Electron-ABI build from postinstall).
+      # The bbd tests load better-sqlite3 as a native addon; rebuild it for the CI Node ABI.
+      # --ignore-scripts=false overrides the repo's `.npmrc ignore-scripts=true` (audit S11:
+      # install-time dep scripts are gated; we explicitly allow ONLY this known native module).
       - name: Rebuild better-sqlite3 for Node
-        run: npm rebuild better-sqlite3
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
 
       - name: Typecheck bbd
         run: npm run -w @bluebubbles/bbd typecheck

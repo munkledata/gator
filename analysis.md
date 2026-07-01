@@ -9,6 +9,61 @@ survived; 5 were rejected** as false-positives or "verified-clean" notes.
 
 ---
 
+## STATUS UPDATE — verified 2026-06-30
+
+Everything from "## 1" down is the ORIGINAL fork-analysis snapshot (kept for the record). Since
+then the findings were re-verified against the current code on `master`; **most are remediated**.
+Current state:
+
+### Security (S1–S18)
+- **Fixed + verified in code:** S1 (trust is now a per-boot local token via `isTrustedLocal`, NOT
+  source-IP — a loopback request with no token gets 401, proven by `test/backendSmoke.test.ts`),
+  S2 (empty password never authenticates; constant-time `safeEqual`), S3 + S7 (both read paths share
+  one `sanitizeConfig` stripping password/FCM/OAuth/Cloudflare-DDNS-token/zrok/VAPID), S5 (RateLimiter
+  instantiated in `backend.ts` + shared across REST/socket/attachment/avatar), S6 (socket handshake
+  auth + `AUTHED_ROOM` broadcast gating), S8 (config.db + WAL/SHM chmod 0600), S9/S12/S13/S15 (CSP +
+  nav guards, loopback-only OAuth callback, header-auth default, destructive-IPC confirmation), S17
+  (`node-mac-permissions` declared), **S11 (install-time dep scripts gated via `.npmrc
+  ignore-scripts=true` + explicit allowlisted native rebuilds — see Remediation notes)**.
+- **Partial:** S4 (a real HTTPS listener now exists + default bind is loopback, so plain HTTP is not on
+  `0.0.0.0` by default; `?password=` is retained only as a fallback behind header auth — the S13
+  Low/Info residual). S14 (`openExternal` is scheme-allowlisted on the IPC + window-open paths; the
+  `will-navigate` fallback is not).
+- **Deferred (trusted-registry machine — the proxied registry here strips integrity hashes):** S10/S16
+  lockfile integrity + `npm ci`, S18 EOL build-toolchain bump. See "Remediation notes".
+
+### Feature gaps (Section 3)
+- **Restored:** attachment send, full-fidelity text send, `message/query`, `server/info`, single-chat
+  get, contact query + avatar bytes, live realtime relay (helper events forwarded + envelope-validated),
+  core group management (create/add/remove/rename/leave), FindMy (friends boot-seeded on a timer), zrok
+  tunnel (now enrolls + `share`s + auto-restarts — no longer "only stores config"), LAN URL (real LAN IP,
+  skips virtual interfaces). The `protocol` package now also exports typed DTOs, not just the envelope.
+- **Still removed / open (lower-priority parity):** group icon/mark-unread/contact-card, attachment media
+  richness (transcode/resize/blurhash/live-photo), legacy `/fcm/*` paths + 504 status + VCF + chunked
+  socket transfer, Google Contacts, iCloud alias mgmt, macOS lock/restart-Messages, message search,
+  auto-update, theme/settings backup-sync, managed ngrok/cloudflared tunnels.
+
+### Improvements (Sections 4 & 5)
+- **Fixed:** daemon respawn with capped exponential backoff (not `app.quit()`), config.db RENAMEs legacy
+  tables instead of dropping them (no data loss), CI gates every PR (typecheck + test + lint) with a
+  composition-root smoke test, health endpoint, `electron-builder` publish target → `munkledata/gator`,
+  CONTRIBUTING/README rebranded + corrected (arm64 / min 26.0), dead update-available UI removed.
+- **Open:** config backup/restore + non-destructive `reset-app` (only a host-side confirmation added so
+  far); metrics endpoint + log rotation.
+
+### Follow-ups (AUDIT_FOLLOWUPS.md)
+- **Fixed:** F18 keychain credential custody + **Time Machine / iCloud exclusion of the userData dir**
+  (`tmutil addexclusion`), LAN-URL interface selection, F26 logger redaction, **helper-event validation**
+  (frames are envelope-validated before relay to sockets/webhooks).
+- **Needs on-device proof (wired in code):** F18 launchd keychain-ACL prompt, F1 live fanout hydration,
+  F17 tunnel-listener callback/SPA omission, F19 crash resilience under transient `chat.db` errors.
+
+**Net:** the security-critical work is complete. What remains is (a) two documented trusted-registry
+deferrals (S10/S16 + S18), (b) on-device validation of four already-wired items, and (c) a
+lower-severity feature-parity backlog.
+
+---
+
 ## 1. What this fork is now
 
 Upstream BlueBubbles is a single Electron god-object (`Server()`) running Koa +
@@ -209,3 +264,17 @@ should be upgraded — notably the eslint 8 → 9 flat-config migration. This is
 because it cannot be installed or verified in this proxied environment (same
 integrity-stripping issue as above); it should be done where the new versions can be
 installed against the real registry and the build/lint actually run.
+
+**S11 — native-build integrity gate (FIXED 2026-06-30).** Root `.npmrc` now sets
+`ignore-scripts=true`, so `npm ci`/`npm install` no longer auto-runs ANY dependency's
+install/lifecycle scripts on the signing host — closing the "a compromised transitive dep
+runs arbitrary C++ at build time and gets baked into a signed artifact" vector. The three
+KNOWN native modules are rebuilt EXPLICITLY instead: `packages/server`'s `start`/`dist`/`release`
+prepend `npm run rebuild` (the `electron-rebuild` CLI, which compiles directly and is unaffected
+by `ignore-scripts`), and CI (`ci.yml`, `bbd-daemon.yml`) runs `npm rebuild better-sqlite3
+--ignore-scripts=false` (an explicit per-package allow) for the Node-ABI test build. The
+former blanket `postinstall: electron-rebuild install-app-deps && npm run rebuild` was removed
+(it was the anti-pattern). Verified: `npm run <script>` still executes under the gate, the
+`--ignore-scripts=false` override rebuilds, and the bbd suite passes (291 tests). A full
+electron-builder release build under the gate should be confirmed on the next packaged build
+(electron-builder's own `npmRebuild` also rebuilds natives during pack).
